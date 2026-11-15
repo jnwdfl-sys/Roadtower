@@ -1,1 +1,49 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ROADTOWER Family</title>
+<style>
+body{margin:0;background:#081726;color:#fff;font-family:Arial,sans-serif}
+header{background:#12354d;text-align:center;padding:25px}
+h1{color:#56d6ff;margin:0}
+main{max-width:650px;margin:auto;padding:18px}
+.card{background:#173149;padding:20px;border-radius:15px;margin-bottom:14px}
+button{background:#10b9e8;color:#041522;border:0;border-radius:10px;padding:13px;font-weight:bold;margin:4px}
+p{line-height:1.5}
+</style>
+</head>
+<body>
+<header><h1>ROADTOWER FAMILY</h1><p>Family Road Safety Command</p></header>
+<main>
+<div class="card"><h2>GPS Navigation</h2><button onclick="gps()">Find My Location</button><p id="location">Location not requested.</p></div>
+<div class="card"><h2>Weather Safety</h2><button onclick="weather()">Check Weather Alerts</button><p id="alerts">Official National Weather Service alerts</p></div>
+<div class="card"><h2>Family Radio</h2><p>Private push-to-talk is planned.</p></div>
+<div class="card"><h2>Administrator Center</h2><p>Arrival and departure alerts, family permissions, and optional sharing are planned.</p></div>
+<div class="card"><h2>Emergency</h2><a href="tel:911"><button>Call 911</button></a></div>
+<p>No GPS or family information is uploaded by this starter app.</p>
+</main>
+<script>
+let pos=null;
+function gps(){
+navigator.geolocation.getCurrentPosition(p=>{
+pos=p.coords;
+document.getElementById('location').textContent='GPS connected. Accuracy: '+Math.round(pos.accuracy)+' meters.';
+},e=>document.getElementById('location').textContent=e.message);
+}
+async function weather(){
+let el=document.getElementById('alerts');
+if(!pos){el.textContent='Tap Find My Location first.';return}
+el.textContent='Checking alerts...';
+try{
+let r=await fetch('https://api.weather.gov/alerts/active?point='+pos.latitude+','+pos.longitude);
+if(!r.ok)throw Error('Service unavailable');
+let d=await r.json();
+el.textContent=d.features.length?d.features.map(x=>x.properties.event).join(', '):'No active alerts reported.';
+}catch(e){el.textContent='Weather service unavailable.'}
+}
+</script>
+</body>
+</html>
