@@ -19,6 +19,19 @@ panel.innerHTML=
  '<div class="rt-details" id="rtDetails">Select a repeater to see radio settings.</div>'+
  '<div class="rt-buttons"><button id="rtAuto" type="button">Follow nearest: ON</button><button id="rtWide" type="button">★ KC Wide: All</button></div>'+
  '<div class="rt-muted">Nearest repeaters • straight-line miles</div><div id="rtNearby"></div>'+
+ '<div class="rt-muted">JCRAC club-confirmed local sites (approximate map pins)</div><div id="rtVerifiedLocal" class="rt-local-links"></div>'+
+ '<div class="rt-buttons"><button id="rtAddCustom" type="button">+ Add missing repeater</button></div>'+
+ '<form id="rtCustomForm" class="rt-custom-form" hidden>'+
+ '<label>Callsign or name<input id="rtNewCall" maxlength="70" placeholder="Example W0ABC" required></label>'+
+ '<label>Output frequency, MHz<input id="rtNewFreq" type="number" min="144" max="148" step="0.0001" placeholder="145.290" required></label>'+
+ '<label>Offset, MHz<input id="rtNewOffset" type="number" min="-5" max="5" step="0.001" value="-0.600"></label>'+
+ '<label>Access tone, Hz<input id="rtNewTone" maxlength="40" placeholder="151.4"></label>'+
+ '<label>City / tower name<input id="rtNewCity" maxlength="85" placeholder="Town / water tower"></label>'+
+ '<label>Latitude<input id="rtNewLat" type="number" min="-90" max="90" step="0.000001" required></label>'+
+ '<label>Longitude<input id="rtNewLon" type="number" min="-180" max="180" step="0.000001" required></label>'+
+ '<div class="rt-buttons"><button id="rtUseCenter" type="button">Use map center</button><button type="submit">Save repeater offline</button></div>'+
+ '<div class="rt-muted">Coordinates must be for the repeater, not necessarily where you are. Pan to a tower, use Map center, and verify the location. Added stations stay stored when the nationwide directory updates.</div>'+
+ '</form><div id="rtMyStations"></div>'+
  '<div class="rt-buttons"><button id="rtDownload" type="button">Download USA 2m list</button><button id="rtImport" type="button">Import JSON file</button></div>'+
  '<input type="file" accept=".json,application/json" id="rtFile" hidden>'+
  '<div class="rt-muted" id="rtFeedback">Save the directory once while online, then GPS and distances work offline. Streets need separate offline map data.</div>'+
@@ -39,7 +52,31 @@ HOST.appendChild(hud);
 L.DomEvent.disableClickPropagation(panel);
 L.DomEvent.disableScrollPropagation(panel);
 var el=function(id){return panel.querySelector('#'+id)};
-var data=[], selected=null, follow=true, wideOnly=false, directoryState='loading', markers=L.layerGroup().addTo(map);
+// Club operating details verified against https://www.w0erh.org/about-us/repeaters
+// Locations approximate INTERSECTIONS, not surveyed transmitter positions.
+var LOCAL_CLUB=[
+ {id:'jcrac-w0erh-145290',call:'W0ERH',mhz:145.290,lat:38.9700,lon:-94.6865,
+  tx:144.690,offset:-0.600,tone:'151.4 Hz',mode:'FM / DMR',
+  city:'Near 87th St & Antioch (Central Resource Library area)',state:'KS',wide:false,
+  notes:'Johnson County Radio Amateurs Club. Approximate intersection marker, not confirmed transmitter coordinates. Not linked to KC Wide.',
+  source:'JCRAC official club site',officialLocal:true,approx:true},
+ {id:'jcrac-wb0hac-145210',call:'WB0HAC',mhz:145.210,lat:39.0110,lon:-94.7230,
+  tx:144.610,offset:-0.600,tone:'151.4 Hz',mode:'FM / DMR',
+  city:'Near 65th St & Quivira Rd, Shawnee',state:'KS',wide:false,
+  notes:'Maintained by JCRAC for SRACT. Club describes 65th & Quivira cell tower, not a water tower. Approximate map position, not surveyed coordinates. Not linked to KC Wide.',
+  source:'JCRAC official club site',officialLocal:true,approx:true}
+];
+var data=[],customRecords=[],selected=null,follow=true,wideOnly=false,directoryState='loading',markers=L.layerGroup().addTo(map);
+function getAllStations(){
+ var combined=[...customRecords,...LOCAL_CLUB,...data],answer=[],seen=new Map();
+ for(var i=0;i<combined.length;i++){
+  var x=combined[i],key=x.call.toUpperCase()+'|'+x.mhz.toFixed(4);
+  var group=seen.get(key)||[];
+  if(group.some(old=>Math.abs(old.lat-x.lat)<.25&&Math.abs(old.lon-x.lon)<.25))continue;
+  group.push(x);seen.set(key,group);answer.push(x);
+ }
+ return answer;
+}
 function setIndicator(id,kind,message,help){
  var indicator=hud.querySelector('#'+id);
  if(!indicator)return;
@@ -52,8 +89,8 @@ function updateStatuses(){
  setIndicator('rtNetStatus',online?'good':'bad',
   'NETWORK: '+(online?'ONLINE*':'OFFLINE'),
   online?'Device reports a network connection; actual internet access is not guaranteed.':'Device reports no network connection.');
- var ready=directoryState==='ready'&&data.length>0;
- var directoryText=ready?'SAVED '+data.length.toLocaleString():directoryState==='loading'?'CHECKING':directoryState==='error'?'STORAGE ERROR':'NOT SAVED';
+ var ready=(directoryState==='ready'&&data.length>0)||getAllStations().length>0;
+ var directoryText=ready?'SAVED '+getAllStations().length.toLocaleString():(directoryState==='loading'?'CHECKING':directoryState==='error'?'STORAGE ERROR':'NOT SAVED');
  setIndicator('rtDataStatus',ready?'good':directoryState==='loading'?'neutral':'bad',
   'REPEATERS: '+directoryText,
   ready?'Directory saved on this device for offline use.':'Download the directory online before using it offline.');
@@ -185,7 +222,7 @@ function current(){return API.getGps?API.getGps():null}
 function anchor(){var p=current();return p?{lat:p.latitude,lon:p.longitude,gps:true}:{lat:map.getCenter().lat,lon:map.getCenter().lng,gps:false}}
 function sorted(){
  var point=anchor();
- return data.filter(function(x){return !wideOnly||x.wide}).map(function(x){
+ return getAllStations().filter(function(x){return !wideOnly||x.wide}).map(function(x){
   return {x:x,dist:distance(point.lat,point.lon,x.lat,x.lon)};
  }).sort(function(a,b){return a.dist-b.dist});
 }
@@ -202,6 +239,8 @@ function showDetails(x){
  lineText('TX tone:',x.tone);
  lineText('Mode:',x.mode);
  lineText('Location:',x.city+(x.state?', '+x.state:'')+' (approx.)');
+ if(x.source)lineText('Source:',x.source);
+ if(x.approx)lineText('Pin accuracy:','Approximate area — not exact transmitter location');
  if(x.notes)lineText('Notes:',x.notes);
  var p=document.createElement('div');p.className='rt-muted';p.textContent='Verify repeater settings before transmitting.';d.appendChild(p);
 }
@@ -223,9 +262,9 @@ function drawLine(){
  }).addTo(map);
 }
 function redraw(){
- if(!data.length){markers.clearLayers();line.setLatLngs([]);return}
+ if(!getAllStations().length){markers.clearLayers();line.setLatLngs([]);return}
  var list=sorted(),p=anchor(),nearest=list[0];
- el('rtCount').textContent=data.length.toLocaleString()+' USA 2m repeaters saved on this device'+(p.gps?' • GPS active':' • map-center distances');
+ el('rtCount').textContent=getAllStations().length.toLocaleString()+' visible-directory repeaters ('+data.length.toLocaleString()+' national records + club and saved local sites, duplicates merged)'+(p.gps?' • GPS active':' • map-center distances');
  if(follow){selected=nearest?nearest.x:null;showDetails(selected)}
  var closest=el('rtClosest');closest.replaceChildren();
  if(nearest){
@@ -252,12 +291,12 @@ function drawMarkers(list,p){
  visible.forEach(function(it){
   var x=it.x;
   var mark=L.circleMarker(coord(x),{
-   radius:x.wide?8:6,color:'#081b29',weight:2,
-   fillColor:x.wide?'#ffca56':'#56e3ff',fillOpacity:.95,bubblingMouseEvents:false
+   radius:x.officialLocal?9:x.wide?8:6,color:x.officialLocal?'#f6f0ff':'#081b29',weight:2,
+   fillColor:x.officialLocal?'#a16afa':x.wide?'#ffca56':'#56e3ff',fillOpacity:.95,bubblingMouseEvents:false
   }).addTo(markers);
   if(labels<15){
    var safeTooltip=document.createElement('span');
-   safeTooltip.textContent=(x.wide?'★ ':'')+x.call+' '+x.mhz.toFixed(3)+' • '+it.dist.toFixed(1)+'mi';
+   safeTooltip.textContent=(x.officialLocal?'✓ ':x.wide?'★ ':'')+x.call+' '+x.mhz.toFixed(3)+' • '+it.dist.toFixed(1)+'mi';
    mark.bindTooltip(safeTooltip,{
     permanent:true,direction:'right',offset:[7,0],className:'rt-repeater-tooltip'
    });
@@ -314,8 +353,8 @@ el('rtDownload').onclick=async function(){
   say('Download blocked or unavailable ('+e.message+'). Use the HearHam JSON link below to save the file, then tap Import JSON file while online.');
  }finally{loading=false;el('rtDownload').disabled=false}
 };
-map.on('moveend zoomend',function(){if(data.length)redraw()});
-API.onGps=function(){updateStatuses();if(data.length)redraw()};
+map.on('moveend zoomend',function(){if(getAllStations().length)redraw()});
+API.onGps=function(){updateStatuses();if(getAllStations().length)redraw()};
 (async function(){
  try{
   var saved=await readSaved();
@@ -323,7 +362,7 @@ API.onGps=function(){updateStatuses();if(data.length)redraw()};
    data=saved.records;directoryState='ready';updateStatuses();
    say('Offline directory ready • '+new Date(saved.savedAt).toLocaleDateString()+' • '+saved.origin);
    redraw();
-  }else{directoryState='empty';updateStatuses();el('rtCount').textContent='No offline directory saved yet.';say('Tap Download USA 2m list while online. Then these repeater details work without mobile data.')}
+  }else{directoryState='empty';updateStatuses();redraw();say('The club-confirmed local stations are included. Tap Download USA 2m list while online to add nationwide listings.')}
  }catch(e){directoryState='error';updateStatuses();el('rtCount').textContent='Offline storage unavailable';say('This browser cannot access offline repeater storage: '+e.message)}
 })();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(function(){});
