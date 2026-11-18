@@ -142,6 +142,17 @@ body.map-fullscreen #mapToolbar #offlineQuickMode{font-size:12px;max-width:148px
 }
 #map .leaflet-tooltip.rt-road-tooltip{border:0;box-shadow:none;background:#ffffeed8;color:#51554e;border-radius:5px;padding:2px 5px;font:700 10px system-ui,Arial;white-space:nowrap}
 #map .leaflet-tooltip.rt-road-tooltip:before{display:none}
+
+/* Explain missing/off-coverage offline road data inside the full-screen map. */
+#map .rt-missing-map{
+ position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+ z-index:1100;max-width:min(480px,78%);padding:14px 18px;
+ border:1px solid #e2b765;border-radius:12px;text-align:center;
+ font:700 14px/1.5 system-ui,Arial;letter-spacing:.01em;
+ background:rgba(8,29,43,.94);color:#fff0c9;
+ box-shadow:0 7px 30px #0018;pointer-events:none
+}
+#map .rt-missing-map[hidden]{display:none!important}
 </style></head><body><header><h1>ROADTOWER</h1><p>Free GPS • Official Weather • Road Information</p></header><main><section class="card"><h2>Live GPS Map</h2><span class="pill">Location stays on this device</span><p id="status" role="status">GPS stopped. Tap Start Live GPS.</p><div class="buttons" id="gpsActions"><button id="start">Start Live GPS</button><button id="stop" class="secondary" disabled>Stop GPS</button><button id="center" class="secondary" disabled>Center Map</button><button id="followMap" class="secondary">Follow GPS: ON</button></div><div class="buttons" id="mapToolbar"><button class="secondary" id="compactMap" type="button">Compact Map</button><button class="secondary" id="expandMap" type="button">Large Map</button><button id="fullscreenMap" type="button">Full Screen</button><button id="offlineQuickMode" class="secondary" type="button">Map: AUTO</button></div><div id="map" aria-label="Interactive road map"></div><p class="hint">Tap the map to save a location. Map tiles require internet and are subject to OpenStreetMap tile usage limits. Attribution appears on the map.</p><div class="buttons"><button id="saveCurrent" class="secondary" disabled>Save My GPS Location</button></div><div id="saveForm" class="hidden"><label for="placeName">Place name</label><input id="placeName" maxlength="80" placeholder="Home, parking, campsite..."><label for="placeType">Category</label><select id="placeType"><option value="📍">Place</option><option value="🏠">Home</option><option value="🅿️">Parking</option><option value="🏕️">Campsite</option><option value="🥾">Trailhead</option></select><p id="chosen" class="hint"></p><div class="buttons"><button id="confirmSave">Save Place</button><button id="cancelSave" class="secondary">Cancel</button></div></div></section><section class="card" id="offlineTravelCard">
 <h2>🗺️ Offline Travel Maps</h2>
 <p class="hint">Download <strong>road and town data</strong> before your trip for use without mobile service. This is a simpler vector-road view, not the detailed online street map, satellite imagery or turn-by-turn navigation. GPS and repeater distances continue working while the page stays active.</p>
