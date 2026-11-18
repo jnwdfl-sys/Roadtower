@@ -189,7 +189,7 @@ function normalize(r,index){
  var rosterStatus=kcRoster[call.toUpperCase()+'|'+mhz.toFixed(3)]||'';
  var wide=Boolean(rosterStatus)||/kc[\s-]*(wide|room[\s-]*wide)|kansas city wide/i.test(network);
  if(rosterStatus)notes=(notes?notes+' • ':'')+'KC Wide roster 2026-10-30: '+rosterStatus+' (historical; check current status).';
- return {id:call+'|'+mhz.toFixed(4)+'|'+lat.toFixed(4)+'|'+lon.toFixed(4),
+ return {service:'ham',id:call+'|'+mhz.toFixed(4)+'|'+lat.toFixed(4)+'|'+lon.toFixed(4),
  call:call,mhz:mhz,lat:lat,lon:lon,tx:isFinite(tx)?tx:null,
  offset:isFinite(offset)?offset:null,tone:tone,mode:mode,city:city,state:state,notes:notes,wide:wide};
 }
@@ -208,6 +208,30 @@ function normalizeAll(raw){
   if(x&&!seen.has(x.id)){seen.add(x.id);out.push(x)}
  }
  if(!out.length)throw new Error('No geolocated USA 2m/70cm repeaters found. Check JSON fields.');
+ return out;
+}
+function gmrsNormalize(r){
+ if(!r||typeof r!=='object'||String(r.service||'').toLowerCase()!=='gmrs')return null;
+ var lat=number(first(r,['lat','latitude','site_latitude'])),lon=number(first(r,['lon','lng','longitude','site_longitude']));
+ var output=readMHz(first(r,['rx_mhz','output_mhz','output_frequency','frequency','output','rx']));
+ var input=readMHz(first(r,['tx_mhz','input_mhz','input_frequency','input','tx']));
+ if(!isFinite(lat)||!isFinite(lon)||!isUS(lat,lon)||!gmrsOutput(output)||!isFinite(input)||Math.abs(input-output-5)>.002)return null;
+ var call=String(first(r,['callsign','call','name','channel_name'])||'GMRS').trim().slice(0,70);
+ var city=String(first(r,['city','location','name'])||'Location not listed').slice(0,85);
+ var tone=first(r,['ctcss','tone','encode','tx_ctcss']),dcs=first(r,['dcs','dcs_code']);
+ var access=tone&&String(tone)!=='0'?String(tone)+' Hz':dcs?'DCS '+dcs:'Not listed';
+ return {id:'gmrs|'+call+'|'+output.toFixed(4)+'|'+lat.toFixed(4)+'|'+lon.toFixed(4),
+  service:'gmrs',call:call,mhz:output,tx:input,offset:5,tone:access,
+  lat:lat,lon:lon,city:city,state:String(r.state||'').slice(0,35),
+  mode:String(r.mode||'FM').slice(0,45),wide:false,
+  source:'SSRF-Lite open data (Apache-2.0)',notes:'Owner access rules and site status unverified. Check before transmitting.'};
+}
+function normalizeGmrs(raw){
+ var rows=rowsFrom(raw),out=[],seen=new Set();
+ for(var i=0;i<rows.length;i++){
+  var x=gmrsNormalize(rows[i]);
+  if(x&&!seen.has(x.id)){out.push(x);seen.add(x.id)}
+ }
  return out;
 }
 function indexedDBOpen(){
@@ -233,6 +257,24 @@ async function saveSaved(records,origin){
  return new Promise(function(resolve,reject){
   var t=db.transaction('packs','readwrite');
   t.objectStore('packs').put({records:records,origin:origin,savedAt:Date.now()},'usa2m');
+  t.oncomplete=function(){db.close();resolve()};
+  t.onerror=function(){reject(t.error)};
+ });
+}
+async function readKey(key){
+ var db=await indexedDBOpen();
+ return new Promise(function(resolve,reject){
+  var t=db.transaction('packs','readonly'),req=t.objectStore('packs').get(key);
+  req.onsuccess=function(){resolve(req.result||null)};
+  req.onerror=function(){reject(req.error)};
+  t.oncomplete=function(){db.close()};
+ });
+}
+async function saveKey(key,records,origin){
+ var db=await indexedDBOpen();
+ return new Promise(function(resolve,reject){
+  var t=db.transaction('packs','readwrite');
+  t.objectStore('packs').put({records:records,origin:origin,savedAt:Date.now()},key);
   t.oncomplete=function(){db.close();resolve()};
   t.onerror=function(){reject(t.error)};
  });
@@ -291,7 +333,9 @@ function drawLine(){
 function redraw(){
  if(!getAllStations().length){markers.clearLayers();line.setLatLngs([]);return}
  var list=sorted(),p=anchor(),nearest=list[0];
- el('rtCount').textContent=getAllStations().length.toLocaleString()+' visible-directory repeaters ('+data.length.toLocaleString()+' national records + club and saved local sites, duplicates merged)'+(p.gps?' • GPS active':' • map-center distances');
+ el('rtCount').textContent=radioService==='gmrs'?
+   getAllStations().length.toLocaleString()+' GMRS sites ('+gmrsData.length.toLocaleString()+' open listings plus local entries)'+(p.gps?' • GPS active':' • map-center distances'):
+   getAllStations().length.toLocaleString()+' amateur repeaters ('+data.length.toLocaleString()+' national records + verified local stations)'+(p.gps?' • GPS active':' • map-center distances');
  if(follow){selected=nearest?nearest.x:null;showDetails(selected)}
  var closest=el('rtClosest');closest.replaceChildren();
  if(nearest){
@@ -318,12 +362,13 @@ function drawMarkers(list,p){
  visible.forEach(function(it){
   var x=it.x;
   var mark=L.circleMarker(coord(x),{
-   radius:x.officialLocal?9:x.wide?8:6,color:x.wide?'#f5d36c':'#ecfff4',weight:2,
-   fillColor:x.officialLocal?'#35c979':x.wide?'#e9c54a':'#35c979',fillOpacity:.95,bubblingMouseEvents:false
+   radius:radioService==='gmrs'?9:x.officialLocal?9:x.wide?8:6,
+   color:radioService==='gmrs'?'#ffe4fc':x.wide?'#f5d36c':'#ecfff4',weight:2,
+   fillColor:radioService==='gmrs'?'#b340cf':x.wide?'#e9c54a':'#35c979',fillOpacity:.95,bubblingMouseEvents:false
   }).addTo(markers);
   if(labels<15){
    var safeTooltip=document.createElement('span');
-   safeTooltip.textContent=(x.officialLocal?'✓ ':x.wide?'★ ':'')+x.call+' '+x.mhz.toFixed(3)+' • '+it.dist.toFixed(1)+'mi';
+   safeTooltip.textContent=(radioService==='gmrs'?'GMRS ':x.wide?'★ ':x.officialLocal?'✓ ':'')+x.call+' '+x.mhz.toFixed(3)+' • '+it.dist.toFixed(1)+'mi';
    mark.bindTooltip(safeTooltip,{
     permanent:true,direction:'right',offset:[7,0],className:'rt-repeater-tooltip'
    });
@@ -336,7 +381,7 @@ async function install(raw,source){
  var normalized=normalizeAll(raw);
  await saveSaved(normalized,source);
  data=normalized;directoryState='ready';selected=null;follow=true;el('rtAuto').textContent='Follow nearest: ON';updateStatuses();
- say('Saved '+normalized.length.toLocaleString()+' USA 2m repeaters for offline use. Source: '+source+'. Maps still need separate downloads.');
+ say('Saved '+normalized.length.toLocaleString()+' USA 2m + 70cm repeaters for offline use. Source: '+source+'. Maps still need separate downloads.');
  redraw();
 }
 el('rtHide').onclick=function(){
