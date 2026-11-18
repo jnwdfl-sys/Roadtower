@@ -88,6 +88,7 @@ var LOCAL_CLUB=[
 ];
 var data=[],gmrsData=[],customRecords=[],selected=null,follow=true,wideOnly=false,bandFilter='both',radioService='ham',directoryState='loading',gmrsState='loading',markers=L.layerGroup().addTo(map);
 const BASELINE_AMATEUR=5044;
+var completeHamRefresh=false;
 const GMRS_OPEN_URL='https://chicago-offline.github.io/ssrf-lite/codeplug.json';
 function hamBand(mhz){return mhz>=144&&mhz<=148?'2m':mhz>=420&&mhz<=450?'70cm':null}
 function gmrsOutput(mhz){return [462.55,462.575,462.600,462.625,462.650,462.675,462.700,462.725].some(f=>Math.abs(f-mhz)<.0003)}
@@ -304,7 +305,7 @@ function updateGrowth(){
  var diff=now-original,percent=diff/original*100;
  var two=data.filter(x=>hamBand(x.mhz)==='2m').length;
  var seventy=data.filter(x=>hamBand(x.mhz)==='70cm').length;
- el('rtGrowth').textContent=data.length?
+ el('rtGrowth').textContent=completeHamRefresh&&data.length?
   'Original 2m directory: '+original.toLocaleString()+' → downloaded 2m+70cm: '+now.toLocaleString()+
   ' ('+(diff>0?'+':'')+diff.toLocaleString()+'; '+(percent>0?'+':'')+percent.toFixed(1)+'%). '+
   two.toLocaleString()+' on 2m; '+seventy.toLocaleString()+' on 70cm. Counts are listings, not verified operating stations.':
@@ -428,7 +429,7 @@ function drawMarkers(list,p){
 async function install(raw,source){
  var normalized=normalizeAll(raw);
  await saveSaved(normalized,source);
- data=normalized;directoryState='ready';selected=null;follow=true;el('rtAuto').textContent='Follow nearest: ON';updateStatuses();updateGrowth();
+ data=normalized;completeHamRefresh=source.includes('2m+70cm');directoryState='ready';selected=null;follow=true;el('rtAuto').textContent='Follow nearest: ON';updateStatuses();updateGrowth();
  say('Saved '+normalized.length.toLocaleString()+' USA 2m + 70cm repeaters for offline use. Source: '+source+'. Maps still need separate downloads.');
  redraw();
 }
@@ -568,7 +569,7 @@ el('rtDownload').onclick=async function(){
    if(!res.ok)throw new Error('Relay HTTP '+res.status);
   }
   var raw=await res.json();
-  await install(raw,'HearHam');
+  await install(raw,'HearHam 2m+70cm');
  }catch(e){
   say('Download blocked or unavailable ('+e.message+'). Use the HearHam JSON link below to save the file, then tap Import JSON file while online.');
  }finally{loading=false;el('rtDownload').disabled=false}
@@ -587,7 +588,7 @@ API.onGps=function(){updateStatuses();if(getAllStations().length)redraw()};
  try{
   var saved=await readSaved();
   if(saved&&Array.isArray(saved.records)&&saved.records.length){
-   data=saved.records;directoryState='ready';updateStatuses();updateGrowth();
+   data=saved.records;completeHamRefresh=String(saved.origin||'').includes('2m+70cm');directoryState='ready';updateStatuses();updateGrowth();
    say('Offline directory ready • '+new Date(saved.savedAt).toLocaleDateString()+' • '+saved.origin);
    redraw();
   }else{directoryState='empty';updateStatuses();redraw();say('The club-confirmed local stations are included. Tap Download USA 2m list while online to add nationwide listings.')}
