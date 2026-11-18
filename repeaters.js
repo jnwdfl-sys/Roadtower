@@ -439,13 +439,42 @@ el('rtWide').onclick=function(){
  selected=null;follow=true;redraw();
 };
 el('rtImport').onclick=function(){el('rtFile').click()};
+el('rtGmrsDownload').onclick=async function(){
+ if(loading)return;
+ loading=true;this.disabled=true;
+ say('Downloading public SSRF-Lite GMRS repeater sites. This is a limited open dataset, not a complete nationwide list.');
+ try{
+  var response;
+  try{
+   response=await fetch(GMRS_OPEN_URL,{cache:'no-store',mode:'cors'});
+   if(!response.ok)throw Error('Data server HTTP '+response.status);
+  }catch(e){
+   response=await fetch('./api/gmrs-repeaters',{cache:'no-store'});
+   if(!response.ok)throw Error('Relay HTTP '+response.status);
+  }
+  var raw=await response.json();
+  var parsed=normalizeGmrs(raw);
+  if(!parsed.length)throw Error('No geolocated GMRS duplex repeaters were found in this open feed; existing GMRS records were kept');
+  await saveKey('gmrs-v1',parsed,'SSRF-Lite Apache-2.0');
+  gmrsData=parsed;gmrsState='ready';selected=null;follow=true;
+  say('Saved '+parsed.length+' open-data GMRS repeater sites offline. Additional repeaters may be absent. Verify tone and owner access.');
+  redraw();updateStatuses();
+ }catch(e){say('GMRS download failed: '+e.message+'. Existing saved sites are unchanged.')}
+ finally{loading=false;this.disabled=false}
+};
 el('rtFile').onchange=async function(){
  var file=this.files&&this.files[0];if(!file)return;
  say('Reading file '+file.name+'…');
  try{
   if(file.size>35*1024*1024)throw new Error('File exceeds the 35 MB import limit');
   var raw=JSON.parse(await file.text());
-  await install(raw,'Imported HearHam/compatible JSON');
+  if(radioService==='gmrs'){
+    var parsed=normalizeGmrs(raw);
+    if(!parsed.length)throw Error('No usable GMRS repeater sites with latitude/longitude, 462-MHz output and +5-MHz input');
+    await saveKey('gmrs-v1',parsed,'Imported GMRS data');
+    gmrsData=parsed;gmrsState='ready';redraw();updateStatuses();
+    say('Imported '+parsed.length+' GMRS repeater sites for offline use.');
+  }else await install(raw,'Imported HearHam/compatible JSON');
  }catch(e){say('Import failed: '+e.message)}
  this.value='';
 };
@@ -470,6 +499,11 @@ el('rtDownload').onclick=async function(){
 map.on('moveend zoomend',function(){if(getAllStations().length)redraw()});
 API.onGps=function(){updateStatuses();if(getAllStations().length)redraw()};
 (async function(){
+ try{
+  var g=await readKey('gmrs-v1');
+  if(g&&Array.isArray(g.records)){gmrsData=g.records;gmrsState='ready'}
+  else gmrsState='empty';
+ }catch(e){gmrsState='error'}
  try{
   var saved=await readSaved();
   if(saved&&Array.isArray(saved.records)&&saved.records.length){
