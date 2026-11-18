@@ -153,6 +153,32 @@ body.map-fullscreen #mapToolbar #offlineQuickMode{font-size:12px;max-width:148px
  box-shadow:0 7px 30px #0018;pointer-events:none
 }
 #map .rt-missing-map[hidden]{display:none!important}
+
+/* Clear radio service separation: HAM green, GMRS purple. */
+#map .rt-repeater-panel .rt-service-pick{
+ display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:9px 0;
+}
+#map .rt-repeater-panel .rt-service-pick button{
+ border-radius:9px;padding:9px 5px;font-weight:800;font-size:12px;min-width:0;
+}
+#map .rt-repeater-panel #rtHam{background:#183f31;color:#b8f5d1;border:1px solid #3ba46e}
+#map .rt-repeater-panel #rtHam[aria-pressed="true"]{background:#2fbb72;color:#07261a}
+#map .rt-repeater-panel #rtGMRS{background:#3b2345;color:#eccbff;border:1px solid #a765c8}
+#map .rt-repeater-panel #rtGMRS[aria-pressed="true"]{background:#a94ccb;color:#fff}
+#map .rt-repeater-panel.rt-gmrs-mode{border-color:#bf74de;box-shadow:0 5px 22px #45165d8c}
+#map .rt-repeater-panel.rt-gmrs-mode .rt-closest{background:#472256;border:1px solid #8c4da5}
+#map .rt-repeater-panel.rt-gmrs-mode .rt-distance{color:#f3b1ff}
+#map .rt-repeater-panel .rt-band-row{display:grid;gap:4px;color:#c8f3db;margin:8px 0;font-size:12px;font-weight:700}
+#map .rt-repeater-panel .rt-band-row select{background:#092f25;color:#e4ffed;border:1px solid #52ae78;
+ border-radius:6px;margin:0;padding:7px;width:100%;font:inherit}
+#map .rt-repeater-panel [hidden]{display:none!important}
+#map .rt-repeater-panel .rt-custom-form{background:#0d2534;border:1px solid #4d829b;padding:9px;border-radius:9px;margin:7px 0}
+#map .rt-repeater-panel .rt-custom-form label{font-size:11px;display:block}
+#map .rt-repeater-panel .rt-custom-form input{width:100%;min-width:0;padding:7px;margin:3px 0 7px;
+ background:#071e2b;border:1px solid #417b94;color:#fff;font:13px system-ui;border-radius:6px}
+#map .rt-repeater-panel .rt-local-links,#map .rt-repeater-panel #rtMyStations{display:grid;gap:4px}
+#map .rt-repeater-panel .rt-local-links button{width:100%;text-align:left}
+#map .rt-repeater-panel .rt-verified-note{color:#cae7da;font-size:11px}
 </style></head><body><header><h1>ROADTOWER</h1><p>Free GPS • Official Weather • Road Information</p></header><main><section class="card"><h2>Live GPS Map</h2><span class="pill">Location stays on this device</span><p id="status" role="status">GPS stopped. Tap Start Live GPS.</p><div class="buttons" id="gpsActions"><button id="start">Start Live GPS</button><button id="stop" class="secondary" disabled>Stop GPS</button><button id="center" class="secondary" disabled>Center Map</button><button id="followMap" class="secondary">Follow GPS: ON</button></div><div class="buttons" id="mapToolbar"><button class="secondary" id="compactMap" type="button">Compact Map</button><button class="secondary" id="expandMap" type="button">Large Map</button><button id="fullscreenMap" type="button">Full Screen</button><button id="offlineQuickMode" class="secondary" type="button">Map: AUTO</button></div><div id="map" aria-label="Interactive road map"></div><p class="hint">Tap the map to save a location. Map tiles require internet and are subject to OpenStreetMap tile usage limits. Attribution appears on the map.</p><div class="buttons"><button id="saveCurrent" class="secondary" disabled>Save My GPS Location</button></div><div id="saveForm" class="hidden"><label for="placeName">Place name</label><input id="placeName" maxlength="80" placeholder="Home, parking, campsite..."><label for="placeType">Category</label><select id="placeType"><option value="📍">Place</option><option value="🏠">Home</option><option value="🅿️">Parking</option><option value="🏕️">Campsite</option><option value="🥾">Trailhead</option></select><p id="chosen" class="hint"></p><div class="buttons"><button id="confirmSave">Save Place</button><button id="cancelSave" class="secondary">Cancel</button></div></div></section><section class="card" id="offlineTravelCard">
 <h2>🗺️ Offline Travel Maps</h2>
 <p class="hint">Download <strong>road and town data</strong> before your trip for use without mobile service. This is a simpler vector-road view, not the detailed online street map, satellite imagery or turn-by-turn navigation. GPS and repeater distances continue working while the page stays active.</p>
