@@ -114,11 +114,15 @@ function updateStatuses(){
  setIndicator('rtNetStatus',online?'good':'bad',
   'NETWORK: '+(online?'ONLINE*':'OFFLINE'),
   online?'Device reports a network connection; actual internet access is not guaranteed.':'Device reports no network connection.');
- var ready=(directoryState==='ready'&&data.length>0)||getAllStations().length>0;
- var directoryText=ready?'SAVED '+getAllStations().length.toLocaleString():(directoryState==='loading'?'CHECKING':directoryState==='error'?'STORAGE ERROR':'NOT SAVED');
- setIndicator('rtDataStatus',ready?'good':directoryState==='loading'?'neutral':'bad',
-  'REPEATERS: '+directoryText,
-  ready?'Directory saved on this device for offline use.':'Download the directory online before using it offline.');
+ var available=getAllStations().length;
+ var state=radioService==='gmrs'?gmrsState:directoryState;
+ var ready=available>0;
+ var prefix=radioService==='gmrs'?'GMRS':'HAM';
+ var directoryText=ready?'SAVED '+available.toLocaleString():
+  state==='loading'?'CHECKING':state==='error'?'STORAGE ERROR':'NOT SAVED';
+ setIndicator('rtDataStatus',ready?'good':state==='loading'?'neutral':'bad',
+  prefix+': '+directoryText,
+  ready?'Saved '+prefix+' repeater listings available offline.':'Save this radio-service directory while online, then use GPS offline.');
  var gps=API.getGps&&API.getGps();
  setIndicator('rtGpsStatus',gps?'good':'neutral',
   'GPS: '+(gps?'LIVE':'OFF'),
@@ -329,7 +333,7 @@ function serviceUI(){
 function switchService(name){
  radioService=name;selected=null;follow=true;
  el('rtAuto').textContent='Follow nearest: ON';
- serviceUI();renderPersonal();redraw();
+ serviceUI();renderPersonal();redraw();updateStatuses();
 }
 function showDetails(x){
  var d=el('rtDetails');d.replaceChildren();
@@ -360,10 +364,11 @@ function drawLine(){
  if(!current()||!selected){line.setLatLngs([]);if(middle){map.removeLayer(middle);middle=null}return}
  var p=current();
  line.setLatLngs([[p.latitude,p.longitude],coord(selected)]);
+ line.setStyle({color:radioService==='gmrs'?'#c56bea':'#35c979'});
  if(middle)map.removeLayer(middle);
  var d=distance(p.latitude,p.longitude,selected.lat,selected.lon);
  middle=L.marker([(p.latitude+selected.lat)/2,(p.longitude+selected.lon)/2],{
-  interactive:false,icon:L.divIcon({className:'rt-mile-icon',html:'<span>'+d.toFixed(1)+' mi</span>',iconSize:[75,22],iconAnchor:[38,11]})
+  interactive:false,icon:L.divIcon({className:radioService==='gmrs'?'rt-mile-icon rt-mile-gmrs':'rt-mile-icon rt-mile-ham',html:'<span>'+d.toFixed(1)+' mi</span>',iconSize:[75,22],iconAnchor:[38,11]})
  }).addTo(map);
 }
 function redraw(){
