@@ -23,7 +23,7 @@ panel.innerHTML=
  '<input type="file" accept=".json,application/json" id="rtFile" hidden>'+
  '<div class="rt-muted" id="rtFeedback">Save the directory once while online, then GPS and distances work offline. Streets need separate offline map data.</div>'+
  '<a id="rtSource" href="https://hearham.com/api/repeaters/v1" rel="noopener noreferrer" target="_blank">HearHam JSON download (manual backup)</a>'+
- '<div class="rt-muted">Data: HearHam, user-contributed. ★ KC Wide is reference information, not a live connection indicator. Never assume distance equals signal coverage.</div></div>';
+ '<div class="rt-muted">Data: HearHam, user-contributed. ★ KC Wide from the 2026-10-30 published roster or matching network metadata; not a live link indicator. Check radio programming and coverage before use.</div><a href="https://www.kansascityroom-wide.com/repeater-list/" target="_blank" rel="noopener noreferrer">KC Wide official repeater roster</a></div>';
 HOST.appendChild(panel);
 L.DomEvent.disableClickPropagation(panel);
 L.DomEvent.disableScrollPropagation(panel);
@@ -68,7 +68,16 @@ function normalize(r,index){
  var mode=String(first(r,['mode','system','type','repeater_type'])||'Not listed').slice(0,65);
  var notes=String(first(r,['restriction','notes','remarks','description'])||'').slice(0,150);
  var network=String(first(r,['network','linked_to','link','room','system'])||'');
- var wide=/kc[\s-]*(wide|room[\s-]*wide)|kansas city wide/i.test(network)||(/KC0KW/i.test(call)&&Math.abs(mhz-145.110)<0.0001);
+ var kcRoster={
+ 'KC0KW|145.110':'UP','KC0KW|147.270':'UP','WM0L|147.360':'UP',
+ 'KC0KW|145.490':'UP','K0HAM|145.410':'DOWN','W0SRC|146.940':'UP',
+ 'K9GOX|145.310':'UP','K0HAM|146.910':'UP','K0HAM|147.315':'DOWN',
+ 'KC0KW|147.180':'DOWN','K0NXA|146.685':'UP','WV0S|146.805':'UP',
+ 'KC0KW|146.955':'UP','KK6BXJ|146.115':'UP'
+ };
+ var rosterStatus=kcRoster[call.toUpperCase()+'|'+mhz.toFixed(3)]||'';
+ var wide=Boolean(rosterStatus)||/kc[\\s-]*(wide|room[\\s-]*wide)|kansas city wide/i.test(network);
+ if(rosterStatus)notes=(notes?notes+' • ':'')+'KC Wide roster 2026-10-30: '+rosterStatus+' (historical; check current status).';
  return {id:call+'|'+mhz.toFixed(4)+'|'+lat.toFixed(4)+'|'+lon.toFixed(4),
  call:call,mhz:mhz,lat:lat,lon:lon,tx:isFinite(tx)?tx:null,
  offset:isFinite(offset)?offset:null,tone:tone,mode:mode,city:city,state:state,notes:notes,wide:wide};
