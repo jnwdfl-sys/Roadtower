@@ -56,9 +56,12 @@ function normalize(r,index){
  if(!isFinite(lat)||!isFinite(lon)||!isUS(lat,lon)||!isFinite(mhz)||mhz<144||mhz>148)return null;
  var country=String(first(r,['country','country_code','countryCode'])).toLowerCase();
  if(country&&!/^(us|usa|u\.s\.a\.|united states|united states of america)$/i.test(country))return null;
+ var placeText=String(first(r,['city','nearestcity','nearest_city','location','town','locality'])||'');
+ if(!country&&/\b(Canada|Mexico|United Kingdom|Australia|Germany)\b/i.test(placeText))return null;
  var call=String(first(r,['callsign','call_sign','call','repeater_callsign','name'])||'Unlisted').trim().slice(0,70);
  var offset=number(first(r,['offset','shift','frequency_offset','offset_mhz']));
- if(isFinite(offset)&&Math.abs(offset)>50)offset/=1000;
+ if(isFinite(offset)&&Math.abs(offset)>10000)offset/=1000000;
+ else if(isFinite(offset)&&Math.abs(offset)>50)offset/=1000;
  var tx=readMHz(first(r,['input','input_frequency','tx_frequency','transmit_frequency','tx']));
  if(!isFinite(tx)||tx<130||tx>170)tx=NaN;
  if(!isFinite(tx)&&isFinite(offset))tx=mhz+offset;
