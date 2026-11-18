@@ -60,6 +60,7 @@ function normalize(r,index){
  var offset=number(first(r,['offset','shift','frequency_offset','offset_mhz']));
  if(isFinite(offset)&&Math.abs(offset)>50)offset/=1000;
  var tx=readMHz(first(r,['input','input_frequency','tx_frequency','transmit_frequency','tx']));
+ if(!isFinite(tx)||tx<130||tx>170)tx=NaN;
  if(!isFinite(tx)&&isFinite(offset))tx=mhz+offset;
  var city=String(first(r,['city','nearestcity','nearest_city','location','town','locality'])||'Unknown area').slice(0,85);
  var state=String(first(r,['state','state_abbr','region','province'])||'').slice(0,35);
@@ -154,7 +155,7 @@ function choose(x,move){
  redraw();
 }
 function drawLine(){
- if(!current()||!selected){line.setLatLngs([]);return}
+ if(!current()||!selected){line.setLatLngs([]);if(middle){map.removeLayer(middle);middle=null}return}
  var p=current();
  line.setLatLngs([[p.latitude,p.longitude],coord(selected)]);
  if(middle)map.removeLayer(middle);
@@ -197,7 +198,9 @@ function drawMarkers(list,p){
    fillColor:x.wide?'#ffca56':'#56e3ff',fillOpacity:.95,bubblingMouseEvents:false
   }).addTo(markers);
   if(labels<15){
-   mark.bindTooltip((x.wide?'★ ':'')+x.call+' '+x.mhz.toFixed(3)+' • '+it.dist.toFixed(1)+'mi',{
+   var safeTooltip=document.createElement('span');
+   safeTooltip.textContent=(x.wide?'★ ':'')+x.call+' '+x.mhz.toFixed(3)+' • '+it.dist.toFixed(1)+'mi';
+   mark.bindTooltip(safeTooltip,{
     permanent:true,direction:'right',offset:[7,0],className:'rt-repeater-tooltip'
    });
    labels++;
