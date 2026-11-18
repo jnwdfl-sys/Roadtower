@@ -291,8 +291,8 @@ function drawMarkers(list,p){
  visible.forEach(function(it){
   var x=it.x;
   var mark=L.circleMarker(coord(x),{
-   radius:x.officialLocal?9:x.wide?8:6,color:x.officialLocal?'#f6f0ff':'#081b29',weight:2,
-   fillColor:x.officialLocal?'#a16afa':x.wide?'#ffca56':'#56e3ff',fillOpacity:.95,bubblingMouseEvents:false
+   radius:x.officialLocal?9:x.wide?8:6,color:x.wide?'#f5d36c':'#ecfff4',weight:2,
+   fillColor:x.officialLocal?'#35c979':x.wide?'#e9c54a':'#35c979',fillOpacity:.95,bubblingMouseEvents:false
   }).addTo(markers);
   if(labels<15){
    var safeTooltip=document.createElement('span');
