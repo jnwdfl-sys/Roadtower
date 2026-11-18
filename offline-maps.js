@@ -88,7 +88,9 @@ function normalize(raw,center,radius,name,id){
    if(!cls||!Array.isArray(e.geometry))continue;
    const c=e.geometry.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon)&&Math.abs(p.lat)<=90&&Math.abs(p.lon)<=180).map(p=>[p.lat,p.lon]);
    if(c.length<2)continue;
-   roads.push({k:cls,c:c,n:String(t.name||t.ref||'').slice(0,80)});
+   const lats=c.map(p=>p[0]),lons=c.map(p=>p[1]);
+   roads.push({k:cls,c:c,n:String(t.name||t.ref||'').slice(0,80),
+    b:[Math.min(...lats),Math.min(...lons),Math.max(...lats),Math.max(...lons)]});
    points+=c.length;
    if(roads.length>MAX_ROADS||points>MAX_POINTS)throw Error('Too much road data for this area. Try 5 or 10 miles instead.');
   }else if(e.type==='node'&&Number.isFinite(e.lat)&&Number.isFinite(e.lon)&&t.place){
@@ -150,16 +152,38 @@ function renderSavedRoads(force=false){
  packLayer.clearLayers();
  const allowed=zoom==='major'?new Set(['highway','primary','secondary']):zoom==='medium'?
   new Set(['highway','primary','secondary','tertiary']):null;
- let drawn=0,lines=0;
+ let lines=0,roadLabels=0;
+ const vb=map.getBounds().pad(.15);
+ const rectangle=[vb.getSouth(),vb.getWest(),vb.getNorth(),vb.getEast()];
+ const overlaps=b=>b&&b[0]<=rectangle[2]&&b[2]>=rectangle[0]&&b[1]<=rectangle[3]&&b[3]>=rectangle[1];
+ const MAX_DRAW=6500;
  for(const pack of visible){
   for(const road of pack.roads){
    if(allowed&&!allowed.has(road.k))continue;
-   const shape=L.polyline(road.c,{...styleFor(road.k),renderer:canvasRenderer,interactive:false}).addTo(packLayer);
-   lines+=1;drawn+=road.c.length;
+   // Store a small bounding box with each road. Only draw features on screen.
+   if(!road.b){
+    const lats=road.c.map(p=>p[0]),lons=road.c.map(p=>p[1]);
+    road.b=[Math.min(...lats),Math.min(...lons),Math.max(...lats),Math.max(...lons)];
+   }
+   if(!overlaps(road.b))continue;
+   L.polyline(road.c,{...styleFor(road.k),renderer:canvasRenderer,interactive:false}).addTo(packLayer);
+   lines++;
+   if(roadLabels<28&&map.getZoom()>=13&&road.n&&
+      ['highway','primary','secondary','tertiary'].includes(road.k)){
+    const middle=road.c[Math.floor(road.c.length/2)];
+    if(vb.contains(middle)){
+     const dot=L.circleMarker(middle,{radius:0,stroke:false,fillOpacity:0,interactive:false,renderer:canvasRenderer}).addTo(packLayer);
+     const caption=document.createElement('span');caption.textContent=road.n;
+     dot.bindTooltip(caption,{permanent:true,direction:'center',interactive:false,
+      opacity:.85,className:'rt-road-tooltip'});
+     roadLabels++;
+    }
+   }
+   if(lines>=MAX_DRAW)break;
   }
   if(map.getZoom()>=9){
    for(const town of pack.towns){
-    if(!town.n)continue;
+    if(!town.n||!vb.contains([town.a,town.b]))continue;
     const marker=L.circleMarker([town.a,town.b],{radius:2,color:'#21546e',weight:1,
       fillColor:'#21546e',fillOpacity:.85,interactive:false,renderer:canvasRenderer}).addTo(packLayer);
     const text=document.createElement('span');text.textContent=town.n;
@@ -167,6 +191,7 @@ function renderSavedRoads(force=false){
       direction:'top',className:'rt-town-tooltip'});
    }
   }
+  if(lines>=MAX_DRAW)break;
  }
  if(!visible.length)updateCard('Outside your saved areas. Pan to a downloaded area or save another area while online.');
  else updateCard('OFFLINE ROADS ACTIVE • '+visible.length+' saved area(s) on screen • '+lines.toLocaleString()+
