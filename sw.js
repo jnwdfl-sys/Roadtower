@@ -2,8 +2,8 @@
    Repeater data lives in IndexedDB, independently of service-worker cache.
    OpenStreetMap tiles are intentionally NOT bulk cached for offline use.
 */
-const VERSION='roadtower-offline-v3';
-const SHELL=['./','./index.html','./roadtower.html','./activity.html','./repeaters.js'];
+const VERSION='roadtower-offline-v4';
+const SHELL=['./','./index.html','./roadtower.html','./activity.html','./repeaters.js','./offline-maps.js'];
 const LEAFLET=[
  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
