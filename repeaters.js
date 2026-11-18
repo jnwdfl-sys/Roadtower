@@ -97,7 +97,7 @@ function getAllStations(){
  for(var i=0;i<combined.length;i++){
   var x=combined[i],key=x.call.toUpperCase()+'|'+x.mhz.toFixed(4);
   var group=seen.get(key)||[];
-  if(group.some(old=>Math.abs(old.lat-x.lat)<.25&&Math.abs(old.lon-x.lon)<.25))continue;
+  if(group.some(old=>Math.abs(old.lat-x.lat)<.015&&Math.abs(old.lon-x.lon)<.015))continue;
   group.push(x);seen.set(key,group);answer.push(x);
  }
  return answer;
@@ -316,6 +316,11 @@ function serviceUI(){
  el('rtGmrsDownload').hidden=radioService!=='gmrs';
  el('rtGrowth').hidden=radioService==='gmrs';
  el('rtGmrsSources').hidden=radioService!=='gmrs';
+ el('rtVerifiedLocal').hidden=radioService==='gmrs';
+ el('rtNewFreq').min=radioService==='gmrs'?'462.55':'144';
+ el('rtNewFreq').max=radioService==='gmrs'?'462.725':'450';
+ el('rtNewFreq').placeholder=radioService==='gmrs'?'462.675':'145.290';
+ el('rtNewOffset').value=radioService==='gmrs'?'5.000':'-0.600';
  el('rtServiceInfo').textContent=radioService==='gmrs'?
   'GMRS repeater sites • 462 MHz receive / +5 MHz input. Purple markers. FCC GMRS license required to transmit.':
   'Amateur repeater sites • 2m and 70cm. Green markers, gold stars for Kansas City Wide. Amateur license required to transmit.';
@@ -324,7 +329,7 @@ function serviceUI(){
 function switchService(name){
  radioService=name;selected=null;follow=true;
  el('rtAuto').textContent='Follow nearest: ON';
- serviceUI();redraw();
+ serviceUI();renderPersonal();redraw();
 }
 function showDetails(x){
  var d=el('rtDetails');d.replaceChildren();
@@ -439,6 +444,73 @@ el('rtWide').onclick=function(){
  selected=null;follow=true;redraw();
 };
 el('rtImport').onclick=function(){el('rtFile').click()};
+function renderPersonal(){
+ var root=el('rtMyStations');root.replaceChildren();
+ var mine=customRecords.filter(x=>x.service===radioService);
+ if(!mine.length)return;
+ var small=document.createElement('div');small.className='rt-muted';
+ small.textContent='Personal saved '+(radioService==='gmrs'?'GMRS':'amateur')+' repeaters: '+mine.length;
+ root.appendChild(small);
+ mine.forEach(x=>{
+  var holder=document.createElement('div');holder.className='rt-buttons';
+  var open=document.createElement('button');open.type='button';
+  open.textContent=x.call+' '+x.mhz.toFixed(4);
+  open.onclick=()=>choose(x,true);
+  var del=document.createElement('button');del.type='button';del.textContent='Remove';
+  del.onclick=async()=>{
+   if(!confirm('Remove saved repeater '+x.call+'?'))return;
+   var updated=customRecords.filter(r=>r.id!==x.id);
+   try{
+    await saveKey('custom-radio-v1',updated,'User-entered local repeaters');
+    customRecords=updated;renderPersonal();redraw();updateStatuses();
+   }catch(e){say('Unable to remove personal station: '+e.message)}
+  };
+  holder.append(open,del);root.appendChild(holder);
+ });
+}
+function renderVerifiedLocal(){
+ var root=el('rtVerifiedLocal');root.replaceChildren();
+ LOCAL_CLUB.forEach(x=>{
+  var item=document.createElement('button');item.type='button';
+  item.textContent='✓ '+x.call+' • '+x.mhz.toFixed(3)+' MHz • '+x.city.split('(')[0].trim();
+  item.onclick=()=>{if(radioService!=='ham')switchService('ham');choose(x,true)};
+  root.appendChild(item);
+ });
+}
+el('rtAddCustom').onclick=function(){
+ var form=el('rtCustomForm');
+ form.hidden=!form.hidden;
+ this.textContent=form.hidden?'+ Add missing repeater':'Hide add form';
+};
+el('rtUseCenter').onclick=function(){
+ var c=map.getCenter();
+ el('rtNewLat').value=c.lat.toFixed(6);el('rtNewLon').value=c.lng.toFixed(6);
+ say('Map center chosen as estimated tower position. Double-check the pin before saving.');
+};
+el('rtCustomForm').onsubmit=async function(event){
+ event.preventDefault();
+ var mhz=number(el('rtNewFreq').value),lat=number(el('rtNewLat').value),lon=number(el('rtNewLon').value);
+ var call=el('rtNewCall').value.trim(),off=number(el('rtNewOffset').value);
+ if(!call||!isUS(lat,lon)||!(radioService==='gmrs'?gmrsOutput(mhz):!!hamBand(mhz))){
+  say('Check callsign, United States tower coordinates and the selected radio band.');return;
+ }
+ if(radioService==='gmrs')off=5;
+ else if(!isFinite(off)||Math.abs(off)>12)off=NaN;
+ var rec={service:radioService,id:'custom|'+radioService+'|'+Date.now()+'|'+call,
+  call:call.slice(0,70),mhz:mhz,lat:lat,lon:lon,tx:isFinite(off)?mhz+off:null,
+  offset:isFinite(off)?off:null,tone:el('rtNewTone').value.trim()||'Not listed',
+  city:el('rtNewCity').value.trim()||'User-added tower',state:'',mode:'Not specified',
+  wide:false,source:'User-entered / not independently verified',approx:false,
+  notes:'Personal entry: verify location, tone and access before transmitting.'};
+ var updated=[...customRecords,rec];
+ try{
+  await saveKey('custom-radio-v1',updated,'User-added repeaters');
+  customRecords=updated;this.hidden=true;el('rtAddCustom').textContent='+ Add missing repeater';
+  renderPersonal();selected=rec;follow=false;redraw();choose(rec,true);updateStatuses();
+  say('Saved '+rec.call+' for offline use. This personal entry is not part of the published nationwide directory.');
+ }catch(e){say('Could not save locally: '+e.message)}
+};
+renderVerifiedLocal();renderPersonal();
 el('rtGmrsDownload').onclick=async function(){
  if(loading)return;
  loading=true;this.disabled=true;
@@ -500,6 +572,9 @@ map.on('moveend zoomend',function(){if(getAllStations().length)redraw()});
 API.onGps=function(){updateStatuses();if(getAllStations().length)redraw()};
 (async function(){
  try{
+  var c=await readKey('custom-radio-v1');
+  if(c&&Array.isArray(c.records))customRecords=c.records.filter(x=>x&&x.id&&x.call&&Number.isFinite(x.mhz)&&isUS(x.lat,x.lon));
+  renderPersonal();renderVerifiedLocal();
   var g=await readKey('gmrs-v1');
   if(g&&Array.isArray(g.records)){gmrsData=g.records;gmrsState='ready'}
   else gmrsState='empty';
