@@ -22,6 +22,15 @@ if(!['auto','online','offline'].includes(mode))mode='auto';
 let useOffline=false,downloadBusy=false,requestFailures=0,forceOffline=false;
 let packLayer=L.layerGroup().addTo(map),canvasRenderer=L.canvas({padding:0.5});
 let activeKeys='',lastRenderTimeout=0;
+const mapNotice=document.createElement('div');
+mapNotice.className='rt-missing-map';
+mapNotice.setAttribute('role','status');
+mapNotice.hidden=true;
+$('map').appendChild(mapNotice);
+function setMapNotice(message){
+ mapNotice.hidden=!message;
+ if(message)mapNotice.textContent=message;
+}
 const tiles=map.eachLayer?(()=>{let found=null;map.eachLayer(l=>{if(l instanceof L.TileLayer&&!found)found=l});return found})():null;
 const beforeUnload=()=>{if(downloadBusy)return 'Map download in progress'};
 window.addEventListener('beforeunload',e=>{if(beforeUnload()){e.preventDefault();e.returnValue=''}});
@@ -156,6 +165,7 @@ function inBounds(pack,b){
 function renderSavedRoads(force=false){
  if(!useOffline){if(activeKeys){packLayer.clearLayers();activeKeys=''}return}
  const visible=packs.filter(p=>inBounds(p,map.getBounds())).slice(0,7);
+ setMapNotice(!packs.length?'NO OFFLINE ROADS SAVED — Exit Map, open Offline Travel Maps and download an area while connected.':!visible.length?'OUTSIDE SAVED MAP AREAS — Pan to a downloaded area, or download this location while connected.':'');
  const zoom=zoomCategory(),key=visible.map(p=>p.id+'@'+p.savedAt).join('|')+'-'+zoom;
  if(!force&&activeKeys===key)return;
  activeKeys=key;
@@ -208,7 +218,13 @@ function renderSavedRoads(force=false){
    ' road segments. GPS and repeaters work without data.');
 }
 function scheduleRender(){if(lastRenderTimeout)clearTimeout(lastRenderTimeout);lastRenderTimeout=setTimeout(()=>{lastRenderTimeout=0;renderSavedRoads()},180)}
-function selectedMode(){if(mode==='offline')return true;if(mode==='online')return false;return !navigator.onLine||forceOffline}
+function selectedMode(){
+ // Do not blank a usable online map when the offline directory is empty.
+ if(!packs.length&&navigator.onLine)return false;
+ if(mode==='offline')return true;
+ if(mode==='online')return false;
+ return !navigator.onLine||forceOffline;
+}
 function emitState(){
  window.dispatchEvent(new CustomEvent('roadtower:offline-map-status',{detail:{ready:packs.length>0,mode:mode,usingOffline:useOffline,count:packs.length}}));
 }
@@ -224,7 +240,7 @@ function setMapMode(why){
    $('map').classList.remove('rt-offline-base');
    if(tiles&&!map.hasLayer(tiles))tiles.addTo(map);
    map.attributionControl.removeAttribution('Offline roads &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>');
-   packLayer.clearLayers();activeKeys='';
+   packLayer.clearLayers();activeKeys='';setMapNotice('');
   }
  }
  if(useOffline)renderSavedRoads(true);
@@ -237,6 +253,12 @@ function setMapMode(why){
  map.invalidateSize({pan:false});
 }
 function chooseMode(newMode){
+ if(newMode==='offline'&&!packs.length&&navigator.onLine){
+  mode='auto';forceOffline=false;
+  try{localStorage.setItem('roadtower.offlineMaps.mode',mode)}catch(e){}
+  setMapMode('No offline roads saved yet. Staying on the online map. Exit full screen, scroll to Offline Travel Maps, and download an area before switching offline.');
+  return;
+ }
  mode=newMode;forceOffline=false;
  try{localStorage.setItem('roadtower.offlineMaps.mode',mode)}catch(e){}
  setMapMode('Mode selected: '+mode+'. '+(mode==='auto'?'Roadtower switches to downloaded roads when network is unavailable.':''));
@@ -319,6 +341,11 @@ window.RoadtowerOfflineMaps={getPackCount:()=>packs.length,getState:()=>({mode:m
 (async()=>{
  try{
   packs=await getPacks();
+  // A prior offline selection should not hide the map before the first download.
+  if(!packs.length&&mode==='offline'&&navigator.onLine){
+   mode='auto';
+   try{localStorage.setItem('roadtower.offlineMaps.mode',mode)}catch(e){}
+  }
   renderList();
   setMapMode('Offline map storage ready. '+packs.length+' area(s) saved. To download a trip area, choose GPS or Map center.');
  }catch(e){
