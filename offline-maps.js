@@ -124,6 +124,16 @@ async function fetchRoads(center,radius){
    return JSON.parse(text);
   }catch(e){lastError=e.message}
  }
+ // Same-origin Cloudflare Pages relay if public endpoints block browser requests.
+ try{
+  const url='./api/offline-roads?lat='+encodeURIComponent(center.lat.toFixed(5))+
+   '&lon='+encodeURIComponent(center.lng.toFixed(5))+'&miles='+radius;
+  const res=await fetch(url,{cache:'no-store'});
+  if(!res.ok)throw Error('Fallback HTTP '+res.status);
+  const data=await res.text();
+  if(data.length>75*1024*1024)throw Error('Region too large');
+  return JSON.parse(data);
+ }catch(e){lastError=lastError+'; fallback '+e.message}
  throw Error(lastError+'. Try smaller radius or another time.');
 }
 function styleFor(k){
