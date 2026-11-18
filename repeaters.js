@@ -61,12 +61,17 @@ function updateStatuses(){
  setIndicator('rtGpsStatus',gps?'good':'neutral',
   'GPS: '+(gps?'LIVE':'OFF'),
   gps?'Updating distances as browser GPS reports new positions.':'Tap Start Live GPS to calculate distances from your location.');
- setIndicator('rtMapStatus',online?'warn':'bad',
-  online?'MAP: ONLINE TILES':'MAP: NO OFFLINE TILES',
-  'Current Roadtower map uses internet road tiles. This app has not downloaded offline road tiles.');
+ var m=window.RoadtowerOfflineMaps&&window.RoadtowerOfflineMaps.getState&&window.RoadtowerOfflineMaps.getState();
+ var count=m?m.count:0;
+ var using=m&&m.offline;
+ setIndicator('rtMapStatus',using?(count?'good':'bad'):(count?'good':online?'warn':'bad'),
+  using?(count?'MAP: OFFLINE ROADS':'MAP: NO SAVED ROADS'):(count?'MAP: '+count+' AREA'+(count===1?'':'S')+' SAVED':online?'MAP: ONLINE TILES':'MAP: NO OFFLINE MAP'),
+  count?'Roads saved for '+count+' travel area(s); use Map: Offline Roads when disconnected. Not turn-by-turn directions.':
+    'Download offline road areas before traveling. Online OSM street tiles cannot be bulk downloaded.');
 }
 window.addEventListener('online',updateStatuses);
 window.addEventListener('offline',updateStatuses);
+window.addEventListener('roadtower:offline-map-status',updateStatuses);
 document.addEventListener('visibilitychange',function(){if(!document.hidden)updateStatuses()});
 updateStatuses();
 var line=L.polyline([],{color:'#ffdf78',weight:2.5,opacity:.95,dashArray:'3 11',interactive:false}).addTo(map);
