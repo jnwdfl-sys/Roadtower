@@ -11,10 +11,14 @@ var HOST=document.getElementById('map');
 var SOURCE='https://hearham.com/api/repeaters/v1';
 var panel=document.createElement('aside');
 panel.className='rt-repeater-panel';
-panel.setAttribute('aria-label','2-meter repeater directory');
+panel.setAttribute('aria-label','Amateur and GMRS repeaters');
 panel.innerHTML=
- '<div class="rt-head"><strong>📡 2m Repeaters</strong><button id="rtHide" type="button">Hide</button></div>'+
- '<div id="rtContent"><div class="rt-muted" id="rtCount">Loading saved repeaters…</div>'+
+ '<div class="rt-head"><strong>📡 RADIO REPEATERS</strong><button id="rtHide" type="button">Hide</button></div>'+
+ '<div id="rtContent"><div class="rt-buttons rt-service-pick"><button id="rtHam" type="button" aria-pressed="true">HAM • GREEN</button><button id="rtGMRS" type="button" aria-pressed="false">GMRS • PURPLE</button></div>'+
+ '<div class="rt-muted" id="rtServiceInfo">Amateur radio repeaters: 2m and 70cm. Ham license required to transmit.</div>'+
+ '<label class="rt-band-row" id="rtBandRow">HAM band <select id="rtBand"><option value="both">Both 2m + 70cm</option><option value="2m">2m only</option><option value="70cm">70cm only</option></select></label>'+
+ '<div class="rt-muted" id="rtGrowth">Original count: 5,044 amateur repeaters. Updated percentage appears after downloading both bands.</div>'+
+ '<div class="rt-muted" id="rtCount">Loading saved repeaters…</div>'+
  '<div class="rt-closest" id="rtClosest">Start Live GPS for nearest repeater.</div>'+
  '<div class="rt-details" id="rtDetails">Select a repeater to see radio settings.</div>'+
  '<div class="rt-buttons"><button id="rtAuto" type="button">Follow nearest: ON</button><button id="rtWide" type="button">★ KC Wide: All</button></div>'+
@@ -32,9 +36,10 @@ panel.innerHTML=
  '<div class="rt-buttons"><button id="rtUseCenter" type="button">Use map center</button><button type="submit">Save repeater offline</button></div>'+
  '<div class="rt-muted">Coordinates must be for the repeater, not necessarily where you are. Pan to a tower, use Map center, and verify the location. Added stations stay stored when the nationwide directory updates.</div>'+
  '</form><div id="rtMyStations"></div>'+
- '<div class="rt-buttons"><button id="rtDownload" type="button">Download USA 2m list</button><button id="rtImport" type="button">Import JSON file</button></div>'+
+ '<div class="rt-buttons"><button id="rtDownload" type="button">Update USA 2m + 70cm</button><button id="rtGmrsDownload" type="button" hidden>Download open GMRS sites</button><button id="rtImport" type="button">Import JSON</button></div>'+
  '<input type="file" accept=".json,application/json" id="rtFile" hidden>'+
- '<div class="rt-muted" id="rtFeedback">Save the directory once while online, then GPS and distances work offline. Streets need separate offline map data.</div>'+
+ '<div class="rt-muted" id="rtFeedback">HAM list uses HearHam data. GMRS uses its own saved site list. Nationwide coverage cannot be guaranteed.</div>'+
+ '<div class="rt-muted" id="rtGmrsSources" hidden>GMRS listings come from a limited open-source data collection. It is not a complete U.S. database. FCC GMRS license required to transmit; verify owner access rules and repeater details.</div>'+
  '<a id="rtSource" href="https://hearham.com/api/repeaters/v1" rel="noopener noreferrer" target="_blank">HearHam JSON download (manual backup)</a>'+
  '<div class="rt-muted">Data: HearHam, user-contributed. ★ KC Wide from the 2026-10-30 published roster or matching network metadata; not a live link indicator. Check radio programming and coverage before use.</div><a href="https://www.kansascityroom-wide.com/repeater-list/" target="_blank" rel="noopener noreferrer">KC Wide official repeater roster</a></div>';
 HOST.appendChild(panel);
@@ -64,11 +69,31 @@ var LOCAL_CLUB=[
   tx:144.610,offset:-0.600,tone:'151.4 Hz',mode:'FM / DMR',
   city:'Near 65th St & Quivira Rd, Shawnee',state:'KS',wide:false,
   notes:'Maintained by JCRAC for SRACT. Club describes 65th & Quivira cell tower, not a water tower. Approximate map position, not surveyed coordinates. Not linked to KC Wide.',
-  source:'JCRAC official club site',officialLocal:true,approx:true}
+  source:'JCRAC official club site',officialLocal:true,approx:true},
+ {id:'jcrac-w0erh-442600',call:'W0ERH',mhz:442.600,lat:39.009,lon:-94.725,
+  tx:447.600,offset:5.000,tone:'Digital, no CTCSS',mode:'Yaesu System Fusion digital',
+  city:'Shawnee East (approximate city pin)',state:'KS',wide:true,
+  notes:'JCRAC reports a Wires-X link to the Kansas City Room; exact tower coordinates unverified.',
+  source:'JCRAC official site',officialLocal:true,approx:true},
+ {id:'jcrac-w0erh-443725',call:'W0ERH',mhz:443.725,lat:38.898,lon:-94.683,
+  tx:448.725,offset:5.000,tone:'Digital, no CTCSS',mode:'Yaesu System Fusion digital',
+  city:'Overland Park South (approximate city pin)',state:'KS',wide:true,
+  notes:'JCRAC reports a Wires-X link to the Kansas City Room; exact tower coordinates unverified.',
+  source:'JCRAC official site',officialLocal:true,approx:true},
+ {id:'kcwide-k0hcv-444400',call:'K0HCV',mhz:444.400,lat:38.856,lon:-94.824,
+  tx:449.400,offset:5.000,tone:'Digital, no CTCSS',mode:'Yaesu System Fusion digital',
+  city:'Olathe South (approximate city pin)',state:'KS',wide:true,
+  notes:'Kansas City Room digital site; exact tower location unverified.',
+  source:'JCRAC / KC Room listings',officialLocal:true,approx:true}
 ];
-var data=[],customRecords=[],selected=null,follow=true,wideOnly=false,directoryState='loading',markers=L.layerGroup().addTo(map);
+var data=[],gmrsData=[],customRecords=[],selected=null,follow=true,wideOnly=false,bandFilter='both',radioService='ham',directoryState='loading',gmrsState='loading',markers=L.layerGroup().addTo(map);
+const BASELINE_AMATEUR=5044;
+const GMRS_OPEN_URL='https://chicago-offline.github.io/ssrf-lite/codeplug.json';
+function hamBand(mhz){return mhz>=144&&mhz<=148?'2m':mhz>=420&&mhz<=450?'70cm':null}
+function gmrsOutput(mhz){return [462.55,462.575,462.600,462.625,462.650,462.675,462.700,462.725].some(f=>Math.abs(f-mhz)<.0003)}
+
 function getAllStations(){
- var combined=[...customRecords,...LOCAL_CLUB,...data],answer=[],seen=new Map();
+ var combined=radioService==='gmrs'?[...customRecords.filter(x=>x.service==='gmrs'),...gmrsData]:[...customRecords.filter(x=>x.service!=='gmrs'),...LOCAL_CLUB,...data],answer=[],seen=new Map();
  for(var i=0;i<combined.length;i++){
   var x=combined[i],key=x.call.toUpperCase()+'|'+x.mhz.toFixed(4);
   var group=seen.get(key)||[];
@@ -135,7 +160,7 @@ function normalize(r,index){
  var lat=number(first(r,['latitude','lat','site_latitude','site_lat'])),
      lon=number(first(r,['longitude','lng','lon','long','site_longitude','site_lon']));
  var mhz=readMHz(first(r,['frequency','output','output_frequency','frequency_mhz','rx_frequency','receive_frequency','rx','freq']));
- if(!isFinite(lat)||!isFinite(lon)||!isUS(lat,lon)||!isFinite(mhz)||mhz<144||mhz>148)return null;
+ if(!isFinite(lat)||!isFinite(lon)||!isUS(lat,lon)||!isFinite(mhz)||!hamBand(mhz))return null;
  var country=String(first(r,['country','country_code','countryCode'])).toLowerCase();
  if(country&&!/^(us|usa|u\.s\.a\.|united states|united states of america)$/i.test(country))return null;
  var placeText=String(first(r,['city','nearestcity','nearest_city','location','town','locality'])||'');
@@ -144,9 +169,9 @@ function normalize(r,index){
  var offset=number(first(r,['offset','shift','frequency_offset','offset_mhz']));
  if(isFinite(offset)&&Math.abs(offset)>10000)offset/=1000000;
  else if(isFinite(offset)&&Math.abs(offset)>50)offset/=1000;
- if(isFinite(offset)&&Math.abs(offset)>5)offset=NaN; // Reject implausible 2m shifts rather than showing unsafe radio settings.
+ if(isFinite(offset)&&Math.abs(offset)>12)offset=NaN; // Reject implausible ham offsets, allow 70cm +5 MHz.
  var tx=readMHz(first(r,['input','input_frequency','tx_frequency','transmit_frequency','tx']));
- if(!isFinite(tx)||tx<130||tx>170)tx=NaN;
+ if(!isFinite(tx)||!hamBand(tx))tx=NaN;
  if(!isFinite(tx)&&isFinite(offset))tx=mhz+offset;
  var city=String(first(r,['city','nearestcity','nearest_city','location','town','locality'])||'Unknown area').slice(0,85);
  var state=String(first(r,['state','state_abbr','region','province'])||'').slice(0,35);
@@ -182,7 +207,7 @@ function normalizeAll(raw){
   var x=normalize(rows[i],i);
   if(x&&!seen.has(x.id)){seen.add(x.id);out.push(x)}
  }
- if(!out.length)throw new Error('No geolocated USA 2m repeaters found. Check JSON fields.');
+ if(!out.length)throw new Error('No geolocated USA 2m/70cm repeaters found. Check JSON fields.');
  return out;
 }
 function indexedDBOpen(){
@@ -222,7 +247,7 @@ function current(){return API.getGps?API.getGps():null}
 function anchor(){var p=current();return p?{lat:p.latitude,lon:p.longitude,gps:true}:{lat:map.getCenter().lat,lon:map.getCenter().lng,gps:false}}
 function sorted(){
  var point=anchor();
- return getAllStations().filter(function(x){return !wideOnly||x.wide}).map(function(x){
+ return getAllStations().filter(function(x){return (radioService==='gmrs'||!wideOnly||x.wide)&&(radioService==='gmrs'||bandFilter==='both'||hamBand(x.mhz)===bandFilter)}).map(function(x){
   return {x:x,dist:distance(point.lat,point.lon,x.lat,x.lon)};
  }).sort(function(a,b){return a.dist-b.dist});
 }
@@ -233,12 +258,14 @@ function showDetails(x){
  if(!x){d.textContent='Select a repeater for frequency, offset, TX tone and location.';return}
  function lineText(label,value){var p=document.createElement('div');var b=document.createElement('strong');b.textContent=label+' ';p.appendChild(b);p.appendChild(document.createTextNode(String(value)));d.appendChild(p)}
  lineText('Callsign:',x.call+(x.wide?' ★ KC Wide':''));
+ lineText('Service:',radioService==='gmrs'?'GMRS • separate 462/467 MHz service':'Ham • '+hamBand(x.mhz));
  lineText('Output (RX):',localMhz(x.mhz));
  lineText('Input (TX):',x.tx!==null?localMhz(x.tx):'Not listed');
  lineText('Offset:',x.offset!==null?(x.offset>0?'+':'')+x.offset.toFixed(3)+' MHz':'Not listed');
  lineText('TX tone:',x.tone);
  lineText('Mode:',x.mode);
  lineText('Location:',x.city+(x.state?', '+x.state:'')+' (approx.)');
+ if(radioService==='gmrs')lineText('Access:', 'GMRS license required; verify owner permission/rules.');
  if(x.source)lineText('Source:',x.source);
  if(x.approx)lineText('Pin accuracy:','Approximate area — not exact transmitter location');
  if(x.notes)lineText('Notes:',x.notes);
