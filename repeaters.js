@@ -295,6 +295,37 @@ function sorted(){
 }
 function coord(x){return [x.lat,x.lon]}
 function localMhz(n){return isFinite(n)?Number(n).toFixed(4)+' MHz':'Not listed'}
+function updateGrowth(){
+ var original=BASELINE_AMATEUR,now=data.length;
+ var diff=now-original,percent=diff/original*100;
+ var two=data.filter(x=>hamBand(x.mhz)==='2m').length;
+ var seventy=data.filter(x=>hamBand(x.mhz)==='70cm').length;
+ el('rtGrowth').textContent=data.length?
+  'Original 2m directory: '+original.toLocaleString()+' → downloaded 2m+70cm: '+now.toLocaleString()+
+  ' ('+(diff>0?'+':'')+diff.toLocaleString()+'; '+(percent>0?'+':'')+percent.toFixed(1)+'%). '+
+  two.toLocaleString()+' on 2m; '+seventy.toLocaleString()+' on 70cm. Counts are listings, not verified operating stations.':
+  'Original 2m list: '+original.toLocaleString()+'. Refresh the 2m+70cm directory for a new total and percentage.';
+}
+function serviceUI(){
+ panel.classList.toggle('rt-gmrs-mode',radioService==='gmrs');
+ el('rtHam').setAttribute('aria-pressed',String(radioService==='ham'));
+ el('rtGMRS').setAttribute('aria-pressed',String(radioService==='gmrs'));
+ el('rtBandRow').hidden=radioService==='gmrs';
+ el('rtWide').hidden=radioService==='gmrs';
+ el('rtDownload').hidden=radioService==='gmrs';
+ el('rtGmrsDownload').hidden=radioService!=='gmrs';
+ el('rtGrowth').hidden=radioService==='gmrs';
+ el('rtGmrsSources').hidden=radioService!=='gmrs';
+ el('rtServiceInfo').textContent=radioService==='gmrs'?
+  'GMRS repeater sites • 462 MHz receive / +5 MHz input. Purple markers. FCC GMRS license required to transmit.':
+  'Amateur repeater sites • 2m and 70cm. Green markers, gold stars for Kansas City Wide. Amateur license required to transmit.';
+ updateGrowth();
+}
+function switchService(name){
+ radioService=name;selected=null;follow=true;
+ el('rtAuto').textContent='Follow nearest: ON';
+ serviceUI();redraw();
+}
 function showDetails(x){
  var d=el('rtDetails');d.replaceChildren();
  if(!x){d.textContent='Select a repeater for frequency, offset, TX tone and location.';return}
@@ -331,7 +362,14 @@ function drawLine(){
  }).addTo(map);
 }
 function redraw(){
- if(!getAllStations().length){markers.clearLayers();line.setLatLngs([]);return}
+ if(!getAllStations().length){
+  markers.clearLayers();line.setLatLngs([]);
+  el('rtCount').textContent=radioService==='gmrs'?'No saved GMRS repeater sites yet. Use Download open GMRS sites or add a local station.':
+    'No amateur repeater sites saved yet.';
+  el('rtClosest').textContent='No repeater sites in this service.';
+  el('rtNearby').replaceChildren();
+  showDetails(null);return
+ }
  var list=sorted(),p=anchor(),nearest=list[0];
  el('rtCount').textContent=radioService==='gmrs'?
    getAllStations().length.toLocaleString()+' GMRS sites ('+gmrsData.length.toLocaleString()+' open listings plus local entries)'+(p.gps?' • GPS active':' • map-center distances'):
@@ -380,10 +418,14 @@ function drawMarkers(list,p){
 async function install(raw,source){
  var normalized=normalizeAll(raw);
  await saveSaved(normalized,source);
- data=normalized;directoryState='ready';selected=null;follow=true;el('rtAuto').textContent='Follow nearest: ON';updateStatuses();
+ data=normalized;directoryState='ready';selected=null;follow=true;el('rtAuto').textContent='Follow nearest: ON';updateStatuses();updateGrowth();
  say('Saved '+normalized.length.toLocaleString()+' USA 2m + 70cm repeaters for offline use. Source: '+source+'. Maps still need separate downloads.');
  redraw();
 }
+el('rtHam').onclick=function(){switchService('ham')};
+el('rtGMRS').onclick=function(){switchService('gmrs')};
+el('rtBand').onchange=function(){bandFilter=this.value;selected=null;follow=true;redraw()};
+serviceUI();
 el('rtHide').onclick=function(){
  var hidden=panel.classList.toggle('rt-hidden');
  el('rtHide').textContent=hidden?'Show':'Hide';
@@ -409,7 +451,7 @@ el('rtFile').onchange=async function(){
 };
 el('rtDownload').onclick=async function(){
  if(loading)return;loading=true;el('rtDownload').disabled=true;
- say('Downloading the HearHam worldwide directory; filtering it to US 2m repeaters. This may use around 10 MB of data.');
+ say('Downloading worldwide HearHam listings and filtering USA 2m + 70cm amateur repeaters. Existing offline data stays saved until update succeeds.');
  try{
   var res;
   try{
@@ -431,7 +473,7 @@ API.onGps=function(){updateStatuses();if(getAllStations().length)redraw()};
  try{
   var saved=await readSaved();
   if(saved&&Array.isArray(saved.records)&&saved.records.length){
-   data=saved.records;directoryState='ready';updateStatuses();
+   data=saved.records;directoryState='ready';updateStatuses();updateGrowth();
    say('Offline directory ready • '+new Date(saved.savedAt).toLocaleDateString()+' • '+saved.origin);
    redraw();
   }else{directoryState='empty';updateStatuses();redraw();say('The club-confirmed local stations are included. Tap Download USA 2m list while online to add nationwide listings.')}
