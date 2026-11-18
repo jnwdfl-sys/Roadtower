@@ -62,6 +62,7 @@ function normalize(r,index){
  var offset=number(first(r,['offset','shift','frequency_offset','offset_mhz']));
  if(isFinite(offset)&&Math.abs(offset)>10000)offset/=1000000;
  else if(isFinite(offset)&&Math.abs(offset)>50)offset/=1000;
+ if(isFinite(offset)&&Math.abs(offset)>5)offset=NaN; // Reject implausible 2m shifts rather than showing unsafe radio settings.
  var tx=readMHz(first(r,['input','input_frequency','tx_frequency','transmit_frequency','tx']));
  if(!isFinite(tx)||tx<130||tx>170)tx=NaN;
  if(!isFinite(tx)&&isFinite(offset))tx=mhz+offset;
