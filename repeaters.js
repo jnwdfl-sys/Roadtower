@@ -76,7 +76,7 @@ function normalize(r,index){
  'KC0KW|146.955':'UP','KK6BXJ|146.115':'UP'
  };
  var rosterStatus=kcRoster[call.toUpperCase()+'|'+mhz.toFixed(3)]||'';
- var wide=Boolean(rosterStatus)||/kc[\\s-]*(wide|room[\\s-]*wide)|kansas city wide/i.test(network);
+ var wide=Boolean(rosterStatus)||/kc[\s-]*(wide|room[\s-]*wide)|kansas city wide/i.test(network);
  if(rosterStatus)notes=(notes?notes+' • ':'')+'KC Wide roster 2026-10-30: '+rosterStatus+' (historical; check current status).';
  return {id:call+'|'+mhz.toFixed(4)+'|'+lat.toFixed(4)+'|'+lon.toFixed(4),
  call:call,mhz:mhz,lat:lat,lon:lon,tx:isFinite(tx)?tx:null,
