@@ -25,10 +25,50 @@ panel.innerHTML=
  '<a id="rtSource" href="https://hearham.com/api/repeaters/v1" rel="noopener noreferrer" target="_blank">HearHam JSON download (manual backup)</a>'+
  '<div class="rt-muted">Data: HearHam, user-contributed. ★ KC Wide from the 2026-10-30 published roster or matching network metadata; not a live link indicator. Check radio programming and coverage before use.</div><a href="https://www.kansascityroom-wide.com/repeater-list/" target="_blank" rel="noopener noreferrer">KC Wide official repeater roster</a></div>';
 HOST.appendChild(panel);
+var hud=document.createElement('div');
+hud.id='rtStatusHUD';
+hud.className='rt-status-hud';
+hud.setAttribute('role','group');
+hud.setAttribute('aria-label','Live connection and offline readiness indicators');
+hud.innerHTML=
+ '<div id="rtNetStatus" class="rt-status rt-state-neutral">● NETWORK: Checking</div>'+
+ '<div id="rtDataStatus" class="rt-status rt-state-neutral">● REPEATERS: Checking</div>'+
+ '<div id="rtGpsStatus" class="rt-status rt-state-neutral">● GPS: Not active</div>'+
+ '<div id="rtMapStatus" class="rt-status rt-state-warn">● MAP: Online tiles</div>';
+HOST.appendChild(hud);
 L.DomEvent.disableClickPropagation(panel);
 L.DomEvent.disableScrollPropagation(panel);
 var el=function(id){return panel.querySelector('#'+id)};
-var data=[], selected=null, follow=true, wideOnly=false, markers=L.layerGroup().addTo(map);
+var data=[], selected=null, follow=true, wideOnly=false, directoryState='loading', markers=L.layerGroup().addTo(map);
+function setIndicator(id,kind,message,help){
+ var indicator=hud.querySelector('#'+id);
+ if(!indicator)return;
+ indicator.className='rt-status rt-state-'+kind;
+ indicator.textContent='● '+message;
+ indicator.title=help;
+}
+function updateStatuses(){
+ var online=navigator.onLine;
+ setIndicator('rtNetStatus',online?'good':'bad',
+  'NETWORK: '+(online?'ONLINE*':'OFFLINE'),
+  online?'Device reports a network connection; actual internet access is not guaranteed.':'Device reports no network connection.');
+ var ready=directoryState==='ready'&&data.length>0;
+ var directoryText=ready?'SAVED '+data.length.toLocaleString():directoryState==='loading'?'CHECKING':directoryState==='error'?'STORAGE ERROR':'NOT SAVED';
+ setIndicator('rtDataStatus',ready?'good':directoryState==='loading'?'neutral':'bad',
+  'REPEATERS: '+directoryText,
+  ready?'Directory saved on this device for offline use.':'Download the directory online before using it offline.');
+ var gps=API.getGps&&API.getGps();
+ setIndicator('rtGpsStatus',gps?'good':'neutral',
+  'GPS: '+(gps?'LIVE':'OFF'),
+  gps?'Updating distances as browser GPS reports new positions.':'Tap Start Live GPS to calculate distances from your location.');
+ setIndicator('rtMapStatus',online?'warn':'bad',
+  online?'MAP: ONLINE TILES':'MAP: NO OFFLINE TILES',
+  'Current Roadtower map uses internet road tiles. This app has not downloaded offline road tiles.');
+}
+window.addEventListener('online',updateStatuses);
+window.addEventListener('offline',updateStatuses);
+document.addEventListener('visibilitychange',function(){if(!document.hidden)updateStatuses()});
+updateStatuses();
 var line=L.polyline([],{color:'#ffdf78',weight:2.5,opacity:.95,dashArray:'3 11',interactive:false}).addTo(map);
 var middle=null, label=null, lastDraw=0, loading=false;
 function number(v){var n=parseFloat(String(v==null?'':v).replace(/,/g,''));return isFinite(n)?n:NaN}
@@ -224,7 +264,7 @@ function drawMarkers(list,p){
 async function install(raw,source){
  var normalized=normalizeAll(raw);
  await saveSaved(normalized,source);
- data=normalized;selected=null;follow=true;el('rtAuto').textContent='Follow nearest: ON';
+ data=normalized;directoryState='ready';selected=null;follow=true;el('rtAuto').textContent='Follow nearest: ON';updateStatuses();
  say('Saved '+normalized.length.toLocaleString()+' USA 2m repeaters for offline use. Source: '+source+'. Maps still need separate downloads.');
  redraw();
 }
@@ -270,16 +310,16 @@ el('rtDownload').onclick=async function(){
  }finally{loading=false;el('rtDownload').disabled=false}
 };
 map.on('moveend zoomend',function(){if(data.length)redraw()});
-API.onGps=function(){if(!data.length)return;redraw()};
+API.onGps=function(){updateStatuses();if(data.length)redraw()};
 (async function(){
  try{
   var saved=await readSaved();
   if(saved&&Array.isArray(saved.records)&&saved.records.length){
-   data=saved.records;
+   data=saved.records;directoryState='ready';updateStatuses();
    say('Offline directory ready • '+new Date(saved.savedAt).toLocaleDateString()+' • '+saved.origin);
    redraw();
-  }else{el('rtCount').textContent='No offline directory saved yet.';say('Tap Download USA 2m list while online. Then these repeater details work without mobile data.')}
- }catch(e){el('rtCount').textContent='Offline storage unavailable';say('This browser cannot access offline repeater storage: '+e.message)}
+  }else{directoryState='empty';updateStatuses();el('rtCount').textContent='No offline directory saved yet.';say('Tap Download USA 2m list while online. Then these repeater details work without mobile data.')}
+ }catch(e){directoryState='error';updateStatuses();el('rtCount').textContent='Offline storage unavailable';say('This browser cannot access offline repeater storage: '+e.message)}
 })();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(function(){});
 })();
