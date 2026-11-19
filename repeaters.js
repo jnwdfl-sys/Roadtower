@@ -113,7 +113,10 @@ function renderNearestSide(list,point){
    const miles=document.createElement('span');miles.className='rt-near-miles';
    miles.textContent=item.dist.toFixed(1)+(item.x.approx?' mi*':' mi');
    btn.append(number,name,miles);
-   btn.onclick=()=>choose(item.x,false);
+   btn.onclick=()=>{
+    choose(item.x,false);
+    if(window.RoadtowerPanelLayout&&window.RoadtowerPanelLayout.open)window.RoadtowerPanelLayout.open('radio');
+   };
    root.appendChild(btn);
   });
  }
@@ -599,7 +602,33 @@ function drawMarkers(list,p){
    });
    labels++;
   }
+  // Every repeater marker opens readable information even when the
+  // large Radio Repeaters panel is minimized into its colored dot.
+  const popup=document.createElement('section');popup.className='rt-radio-popup';
+  const title=document.createElement('strong');
+  title.textContent=(isGMRS(x)?'🟣 GMRS · ':'🟢 HAM · ')+x.call+' · '+x.mhz.toFixed(3)+' MHz';
+  popup.appendChild(title);
+  const info=(label,value)=>{
+   const row=document.createElement('div');const bold=document.createElement('b');
+   bold.textContent=label+': ';row.appendChild(bold);
+   row.appendChild(document.createTextNode(String(value)));popup.appendChild(row);
+  };
+  info('Location',x.city+(x.state?', '+x.state:'')+(x.approx?' (approx.)':''));
+  info('Input / TX',isFinite(x.tx)?x.tx.toFixed(3)+' MHz':'Not listed');
+  info('TX tone',x.tone||'Not listed');
+  info('Mode',x.mode||'Not listed');
+  if(x.wide)info('Kansas City Wide','Listed');
+  if(isGMRS(x))info('Access',x.restricted?'Owner permission required':'Confirm owner permission');
+  const detail=document.createElement('button');detail.type='button';
+  detail.textContent='More repeater details';
+  detail.onclick=()=>{
+   choose(x,false);
+   if(window.RoadtowerPanelLayout&&window.RoadtowerPanelLayout.open)window.RoadtowerPanelLayout.open('radio');
+  };
+  popup.appendChild(detail);
+  mark.bindPopup(popup,{maxWidth:340,autoPan:true});
   mark.on('click',function(){choose(x,false)});
+
  });
 }
 async function install(raw,source){
