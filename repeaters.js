@@ -49,6 +49,7 @@ var nearDock=document.createElement('aside');
 nearDock.id='rtNearestDock';nearDock.className='rt-nearest-dock';
 nearDock.setAttribute('aria-label','Nearby radio repeaters sorted by distance');
 nearDock.innerHTML='<div class="rt-near-head"><strong id="rtNearHeading">NEAREST HAM</strong><button id="rtNearToggle" type="button">Hide</button></div>'+
+ '<div id="rtNearOrigin" class="rt-near-origin">FROM MAP CENTER • GPS OFF</div>'+
  '<div id="rtNearRows"><span class="rt-near-empty">Start GPS for nearest-to-farthest mile distances.</span></div>'+
  '<div class="rt-near-foot" id="rtNearSource">Distances from map center until GPS is on</div>';
 HOST.appendChild(nearDock);
@@ -63,6 +64,7 @@ nearEl('rtNearToggle').onclick=function(){
 };
 function renderNearestSide(list,point){
  nearEl('rtNearHeading').textContent=radioService==='gmrs'?'NEAREST GMRS':'NEAREST HAM';
+ nearEl('rtNearOrigin').textContent=point.gps?'FROM YOUR GPS • LIVE':'FROM MAP CENTER • GPS OFF';
  nearEl('rtNearSource').textContent=point.gps?'Straight-line miles from GPS':'Straight-line miles from map center • Start GPS';
  const root=nearEl('rtNearRows');root.replaceChildren();
  if(!list.length){
