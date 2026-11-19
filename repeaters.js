@@ -829,6 +829,30 @@ el('rtDownload').onclick=async function(){
  }finally{loading=false;el('rtDownload').disabled=false}
 };
 map.on('moveend zoomend resize',function(){if(getAllStations().length)redraw()});
+// Suggest a GPS-centered zoom that actually shows the nearest HAM and GMRS
+// pins at the same time as the flashing YOU location marker. This zoom does
+// not pan away from the user's position or include distant nationwide sites.
+API.getFollowZoom=function(p){
+ if(!p||!Number.isFinite(p.latitude)||!Number.isFinite(p.longitude))return 11;
+ const near=sorted();
+ const ham=near.find(it=>!isGMRS(it.x));
+ const gmrs=near.find(it=>isGMRS(it.x));
+ const targets=[ham,gmrs].filter(it=>it&&it.dist<=25).map(it=>it.x);
+ if(!targets.length)return 11;
+ const size=map.getSize(),lat=p.latitude,cos=Math.max(.15,Math.cos(lat*Math.PI/180));
+ const maxHorizontal=Math.max(60,(size.x||375)*.26);
+ const maxVertical=Math.max(60,(size.y||650)*.26);
+ for(let zoom=12;zoom>=8;zoom--){
+  const metersPerPixel=156543.03392*cos/Math.pow(2,zoom);
+  const fits=targets.every(t=>{
+   const dx=Math.abs(t.lon-p.longitude)*111320*cos/metersPerPixel;
+   const dy=Math.abs(t.lat-p.latitude)*111320/metersPerPixel;
+   return dx<maxHorizontal&&dy<maxVertical;
+  });
+  if(fits)return zoom;
+ }
+ return 8;
+};
 API.onGps=function(){updateStatuses();if(getAllStations().length)redraw()};
 // Paint all bundled HAM and GMRS references immediately. IndexedDB may be
 // empty, blocked, or slow; don't wait for any download to draw local dots.
