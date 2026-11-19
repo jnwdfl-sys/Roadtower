@@ -970,64 +970,6 @@ body.map-fullscreen #map .rt-status-hud{
  #map .rt-live-panel .rt-live-title{font-size:14px}
  #map .rt-live-panel .rt-live-switches button{font-size:11px}
 }
-
-/* Reported drone targets flash RED / YELLOW rapidly, unlike the GPS SOS
-   beacon. No marker is fabricated if the ADS-B source has no drone reports. */
-#map .rt-live-panel .rt-live-switches{
- grid-template-columns:repeat(3,minmax(0,1fr))!important;
-}
-#map .rt-live-panel .rt-live-switches button{
- font-size:clamp(9px,1.5vw,11px)!important;
- padding:6px 2px!important;
- min-height:48px;
- overflow-wrap:anywhere;
-}
-#map .rt-live-panel #rtDroneToggle[aria-pressed="true"]{
- background:#69271d!important;color:#fff6b2!important;
- border-color:#ffe04a!important;
-}
-#map .rt-live-panel #rtDroneToggle[aria-pressed="false"]{
- background:#25343c;color:#a8c3d1;border-color:#4a6574;
-}
-#map .rt-live-panel #rtDroneStatus{
- border-left:3px solid #ffce2a;background:#473324;color:#fff5cb;
-}
-#map .rt-live-panel .rt-drone-nearby{
- border:1px solid #efbe29!important;
- background:#4b3124!important;color:#fff3bf!important;
-}
-#map .rt-drone-icon{
- border:0!important;background:transparent!important;
- overflow:visible!important;pointer-events:auto;
-}
-#map .rt-drone-strobe{
- display:flex;align-items:center;justify-content:center;
- width:35px;height:35px;border:4px solid #ffe600;
- background:#ff3027;border-radius:50%;
- color:#0b1728;text-shadow:0 0 1px #fff;
- box-shadow:0 0 10px 3px #ffe600;
- animation:rt-drone-red-yellow .24s steps(1,end) infinite;
-}
-#map .rt-drone-glyph{
- color:#0a2037;font:900 28px/1 system-ui,Arial;
-}
-@keyframes rt-drone-red-yellow{
- 0%,49.99%{
-  background:#fa2d22;border-color:#ffe91d;
-  box-shadow:0 0 11px 4px #fa2d22;
- }
- 50%,100%{
-  background:#ffea16;border-color:#f52f25;
-  box-shadow:0 0 11px 4px #ffdc20;
- }
-}
-@media(prefers-reduced-motion:reduce){
- #map .rt-drone-strobe{
-  animation:none!important;
-  background:linear-gradient(135deg,#fa3025 50%,#ffe71b 50%)!important;
-  box-shadow:0 0 3px 2px #ffe71b!important;
- }
-}
 </style></head><body><header><h1>ROADTOWER</h1><p>Free GPS • Official Weather • Road Information</p></header><main><section class="card"><h2>Live GPS Map</h2><span class="pill">Exact GPS stays on this device · aircraft searches use a rounded map center</span><p id="status" role="status">GPS stopped. Tap Start Live GPS.</p><div class="buttons" id="gpsActions"><button id="start">Start Live GPS</button><button id="stop" class="secondary" disabled>Stop GPS</button><button id="center" class="secondary" disabled>Center Map</button><button id="followMap" class="secondary">Follow GPS: ON</button></div><div class="buttons" id="mapToolbar"><button class="secondary" id="compactMap" type="button">Compact Map</button><button class="secondary" id="expandMap" type="button">Large Map</button><button id="fullscreenMap" type="button">Full Screen</button><button id="offlineQuickMode" class="secondary" type="button">Map: AUTO</button></div><div id="map" aria-label="Interactive road map"></div><p class="hint">Tap the map to save a location. Map tiles require internet and are subject to OpenStreetMap tile usage limits. Attribution appears on the map.</p><div class="buttons"><button id="saveCurrent" class="secondary" disabled>Save My GPS Location</button></div><div id="saveForm" class="hidden"><label for="placeName">Place name</label><input id="placeName" maxlength="80" placeholder="Home, parking, campsite..."><label for="placeType">Category</label><select id="placeType"><option value="📍">Place</option><option value="🏠">Home</option><option value="🅿️">Parking</option><option value="🏕️">Campsite</option><option value="🥾">Trailhead</option></select><p id="chosen" class="hint"></p><div class="buttons"><button id="confirmSave">Save Place</button><button id="cancelSave" class="secondary">Cancel</button></div></div></section><section class="card" id="offlineTravelCard">
 <h2>🗺️ Offline Travel Maps</h2>
 <p class="hint">Download <strong>road and town data</strong> before your trip for use without mobile service. This is a simpler vector-road view, not the detailed online street map, satellite imagery or turn-by-turn navigation. GPS and repeater distances continue working while the page stays active.</p>
