@@ -22,6 +22,15 @@ grip.className='rt-layout-dock-grip';grip.textContent='⠿ DOTS';
 grip.title='Hold to move the panel dots';grip.setAttribute('role','button');
 grip.tabIndex=0;grip.setAttribute('aria-label','Move panel dot shortcuts');
 tray.appendChild(grip);
+// The map launches with the panels available. A single tap clears them all
+// into the same colored shortcut dots that were already supported.
+function trayButton(label,description){
+ const b=document.createElement('button');b.type='button';b.className='rt-layout-all-button';
+ b.textContent=label;b.title=description;b.setAttribute('aria-label',description);
+ tray.appendChild(b);return b;
+}
+const minimizeAll=trayButton('− ALL','Minimize all information panels into colored dots');
+const showAll=trayButton('+ ALL','Open all information panels');
 map.appendChild(tray);
 if(window.L&&L.DomEvent){L.DomEvent.disableClickPropagation(tray);L.DomEvent.disableScrollPropagation(tray)}
 const BUBBLES={
@@ -113,6 +122,11 @@ function putAtDefault(s){
  else {s.x=12;s.y=Math.max(160,b.height-h-106)}
  s.x=Math.max(4,s.x);s.y=Math.max(4,s.y);
 }
+function updateAllButtons(){
+ const list=Object.values(states);
+ minimizeAll.disabled=!!list.length&&list.every(v=>v.mode==='min'||v.mode==='hide');
+ showAll.disabled=!!list.length&&list.every(v=>v.mode==='normal');
+}
 function update(s,shouldSave=true){
  const {el,mode}=s;
  el.classList.toggle('rt-layout-minimized',mode==='min');
@@ -134,6 +148,7 @@ function update(s,shouldSave=true){
  if(mode==='normal')move(s,s.x,s.y);
  else if(mode==='max'){el.style.removeProperty('left');el.style.removeProperty('top');el.style.removeProperty('right');el.style.removeProperty('bottom')}
  colorizeDots();
+ updateAllButtons();
  if(shouldSave)store();
 }
 function setMode(s,mode){
@@ -160,7 +175,9 @@ function attach(c){
  const el=map.querySelector(c.selector);if(!el)return;
  const v=saved[c.id]||{};
  const s={id:c.id,el,x:Number.isFinite(v.x)?v.x:0,y:Number.isFinite(v.y)?v.y:0,moved:v.moved===true,
-  mode:['normal','min','max','hide'].includes(v.mode)?v.mode:'min'};
+  // Every new app launch starts visible. After launch you can minimize,
+  // hide, or full-screen each panel. Manually dragged positions are retained.
+  mode:'normal'};
  const header=document.createElement('div');header.className='rt-layout-header';
  const grip=document.createElement('div');grip.className='rt-layout-grip';
  grip.setAttribute('role','button');grip.tabIndex=0;
@@ -213,13 +230,16 @@ function attach(c){
  states[c.id]=s;
  // Delay saved placement until CSS and fonts have been laid out.
  requestAnimationFrame(()=>{
-  if(!Number.isFinite(v.x)||!Number.isFinite(v.y)){
+  if(!s.moved||!Number.isFinite(v.x)||!Number.isFinite(v.y)){
    putAtDefault(s);
   }
   update(s,false);
  });
 }
 configs.forEach(attach);
+minimizeAll.addEventListener('click',()=>Object.values(states).forEach(s=>setMode(s,'min')));
+showAll.addEventListener('click',()=>Object.values(states).forEach(s=>setMode(s,'normal')));
+updateAllButtons();
 if(window.MutationObserver&&states.radio)new MutationObserver(colorizeDots).observe(states.radio.el,{attributes:true,attributeFilter:['class']});
 colorizeDots();requestAnimationFrame(refreshDock);
 function reflowPanels(){
@@ -237,6 +257,8 @@ if(window.MutationObserver)new MutationObserver(()=>requestAnimationFrame(reflow
 window.RoadtowerPanelLayout={
  reset(){Object.values(states).forEach(s=>{s.mode='normal';s.el.style.removeProperty('left');s.el.style.removeProperty('top');s.el.style.removeProperty('right');s.el.style.removeProperty('bottom');s.el.classList.remove('rt-layout-managed','rt-layout-minimized','rt-layout-maximized','rt-layout-hidden')});try{localStorage.removeItem(KEY)}catch(e){}location.reload()},
  getModes(){return Object.fromEntries(Object.entries(states).map(([k,v])=>[k,v.mode]))},
+ minimizeAll(){minimizeAll.click()},
+ showAll(){showAll.click()},
  open(id){const s=states[id];if(s)setMode(s,'normal')},
  maximize(id){const s=states[id];if(s)setMode(s,'max')},
  minimize(id){const s=states[id];if(s)setMode(s,'min')}
