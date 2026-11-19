@@ -10,14 +10,75 @@ const configs=[
  {id:'gps',selector:'.rt-gps-hud',title:'My GPS'},
  {id:'status',selector:'.rt-status-hud',title:'Connection status'}
 ];
-const KEY='roadtower-panel-layout-v1';
+const KEY='roadtower-panel-layout-v2';
 let saved={};
 try{saved=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){}
 const states={};
 const tray=document.createElement('nav');
 tray.id='rtLayoutTray';
-tray.setAttribute('aria-label','Restore hidden map panels');
+tray.setAttribute('aria-label','Colored map panel shortcuts');
+const grip=document.createElement('div');
+grip.className='rt-layout-dock-grip';grip.textContent='⠿ DOTS';
+grip.title='Hold to move the panel dots';grip.setAttribute('role','button');
+grip.tabIndex=0;grip.setAttribute('aria-label','Move panel dot shortcuts');
+tray.appendChild(grip);
 map.appendChild(tray);
+if(window.L&&L.DomEvent){L.DomEvent.disableClickPropagation(tray);L.DomEvent.disableScrollPropagation(tray)}
+const BUBBLES={
+ radio:{icon:'📡',short:'HAM',color:'green'},
+ nearest:{icon:'➊',short:'NEAR',color:'amber'},
+ gps:{icon:'◎',short:'GPS',color:'cyan'},
+ status:{icon:'●',short:'INFO',color:'blue'}
+};
+const DOCK_KEY='roadtower-dot-position-v1';
+let dockSaved=null;
+try{const p=JSON.parse(localStorage.getItem(DOCK_KEY)||'null');if(p&&Number.isFinite(p.x)&&Number.isFinite(p.y))dockSaved=p}catch(e){}
+function moveDock(x,y,store){
+ const b=map.getBoundingClientRect(),w=tray.offsetWidth||66,h=tray.offsetHeight||260;
+ const xx=Math.max(5,Math.min(Math.max(5,b.width-w-5),x));
+ const yy=Math.max(5,Math.min(Math.max(5,b.height-h-5),y));
+ tray.style.setProperty('left',xx+'px','important');tray.style.setProperty('top',yy+'px','important');
+ if(store){
+  dockSaved={x:xx/Math.max(1,b.width-w),y:yy/Math.max(1,b.height-h)};
+  try{localStorage.setItem(DOCK_KEY,JSON.stringify(dockSaved))}catch(e){}
+ }
+}
+let draggingDock=null;
+grip.addEventListener('pointerdown',e=>{
+ if(e.pointerType==='mouse'&&e.button!==0)return;
+ e.preventDefault();e.stopPropagation();
+ const b=map.getBoundingClientRect(),p=tray.getBoundingClientRect();
+ draggingDock={id:e.pointerId,px:e.clientX,py:e.clientY,x:p.left-b.left,y:p.top-b.top};
+ grip.setPointerCapture(e.pointerId);
+});
+grip.addEventListener('pointermove',e=>{
+ if(!draggingDock||e.pointerId!==draggingDock.id)return;
+ moveDock(draggingDock.x+e.clientX-draggingDock.px,draggingDock.y+e.clientY-draggingDock.py,false);
+});
+function endDock(e){
+ if(!draggingDock||e.pointerId!==draggingDock.id)return;
+ const b=map.getBoundingClientRect(),p=tray.getBoundingClientRect();
+ moveDock(p.left-b.left,p.top-b.top,true);draggingDock=null;
+}
+grip.addEventListener('pointerup',endDock);
+grip.addEventListener('pointercancel',endDock);
+grip.addEventListener('keydown',e=>{
+ const d={ArrowLeft:[-20,0],ArrowRight:[20,0],ArrowUp:[0,-20],ArrowDown:[0,20]}[e.key];
+ if(!d)return;e.preventDefault();
+ const b=map.getBoundingClientRect(),p=tray.getBoundingClientRect();
+ moveDock(p.left-b.left+d[0],p.top-b.top+d[1],true);
+});
+function refreshDock(){
+ if(!dockSaved)return;
+ const b=map.getBoundingClientRect(),w=tray.offsetWidth||66,h=tray.offsetHeight||260;
+ moveDock(dockSaved.x*Math.max(1,b.width-w),dockSaved.y*Math.max(1,b.height-h),false);
+}
+function colorizeDots(){
+ const gmrs=!!(states.radio&&states.radio.el.classList.contains('rt-gmrs-mode'));
+ for(const id of ['radio','nearest']){const p=states[id];if(p)p.restore.classList.toggle('rt-dot-gmrs',gmrs)}
+ if(states.radio)states.radio.restore.querySelector('.rt-layout-dot-label').textContent=gmrs?'GMRS':'HAM';
+}
+
 function store(){
  try{const obj={};Object.keys(states).forEach(k=>{const s=states[k];obj[k]={x:s.x,y:s.y,mode:s.mode}});localStorage.setItem(KEY,JSON.stringify(obj))}catch(e){}
 }
@@ -44,9 +105,11 @@ function update(s,shouldSave=true){
  s.hideBtn.textContent='Hide';
  s.minBtn.setAttribute('aria-expanded',String(mode!=='min'&&mode!=='hide'));
  s.maxBtn.setAttribute('aria-pressed',String(mode==='max'));
- s.restore.hidden=mode!=='hide';
- if(mode==='normal'||mode==='min')move(s,s.x,s.y);
- else {el.style.removeProperty('left');el.style.removeProperty('top');el.style.removeProperty('right');el.style.removeProperty('bottom')}
+ s.restore.hidden=!(mode==='hide'||mode==='min');
+ s.restore.dataset.mode=mode;
+ if(mode==='normal')move(s,s.x,s.y);
+ else if(mode==='max'){el.style.removeProperty('left');el.style.removeProperty('top');el.style.removeProperty('right');el.style.removeProperty('bottom')}
+ colorizeDots();
  if(shouldSave)store();
 }
 function setMode(s,mode){
@@ -68,7 +131,7 @@ function attach(c){
  const el=map.querySelector(c.selector);if(!el)return;
  const v=saved[c.id]||{};
  const s={id:c.id,el,x:Number.isFinite(v.x)?v.x:0,y:Number.isFinite(v.y)?v.y:0,
-  mode:['normal','min','max','hide'].includes(v.mode)?v.mode:'normal'};
+  mode:['normal','min','max','hide'].includes(v.mode)?v.mode:'min'};
  const header=document.createElement('div');header.className='rt-layout-header';
  const grip=document.createElement('div');grip.className='rt-layout-grip';
  grip.setAttribute('role','button');grip.tabIndex=0;
@@ -80,8 +143,12 @@ function attach(c){
  s.hideBtn=makeButton('Hide',()=>setMode(s,'hide'));
  for(const b of [s.minBtn,s.maxBtn,s.hideBtn])controls.appendChild(b);
  header.append(grip,controls);el.insertBefore(header,el.firstChild);
- s.restore=makeButton('Show '+c.title,()=>setMode(s,'normal'));
- s.restore.className='rt-layout-restore';tray.appendChild(s.restore);
+ const meta=BUBBLES[c.id];
+ s.restore=makeButton('',()=>setMode(s,'normal'));
+ s.restore.className='rt-layout-restore rt-dot-'+meta.color;
+ s.restore.innerHTML='<span class="rt-layout-dot-symbol" aria-hidden="true">'+meta.icon+'</span><span class="rt-layout-dot-label">'+meta.short+'</span>';
+ s.restore.title='Open '+c.title;s.restore.setAttribute('aria-label','Open '+c.title+' panel');
+ tray.appendChild(s.restore);
  if(window.L&&L.DomEvent){L.DomEvent.disableClickPropagation(el);L.DomEvent.disableScrollPropagation(el)}
  let drag=null;
  grip.addEventListener('pointerdown',e=>{
@@ -124,7 +191,12 @@ function attach(c){
  });
 }
 configs.forEach(attach);
-window.addEventListener('resize',()=>{Object.values(states).forEach(s=>{if(s.mode==='normal'||s.mode==='min')move(s,s.x,s.y)})});
+if(window.MutationObserver&&states.radio)new MutationObserver(colorizeDots).observe(states.radio.el,{attributes:true,attributeFilter:['class']});
+colorizeDots();requestAnimationFrame(refreshDock);
+window.addEventListener('resize',()=>{
+ Object.values(states).forEach(p=>{if(p.mode==='normal')move(p,p.x,p.y)});
+ refreshDock();
+});
 window.RoadtowerPanelLayout={
  reset(){Object.values(states).forEach(s=>{s.mode='normal';s.el.style.removeProperty('left');s.el.style.removeProperty('top');s.el.style.removeProperty('right');s.el.style.removeProperty('bottom');s.el.classList.remove('rt-layout-managed','rt-layout-minimized','rt-layout-maximized','rt-layout-hidden')});try{localStorage.removeItem(KEY)}catch(e){}location.reload()},
  getModes(){return Object.fromEntries(Object.entries(states).map(([k,v])=>[k,v.mode]))}
