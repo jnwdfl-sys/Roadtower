@@ -88,7 +88,7 @@ nearEl('rtNearToggle').onclick=function(){
 function renderNearestSide(list,point){
  nearEl('rtNearHeading').textContent=radioService==='gmrs'?'NEAREST GMRS':'NEAREST HAM';
  nearEl('rtNearOrigin').textContent=point.gps?'FROM YOUR GPS • LIVE':'FROM MAP CENTER • GPS OFF';
- nearEl('rtNearSource').textContent=point.gps?'Straight-line miles from GPS':'Straight-line miles from map center • Start GPS';
+ nearEl('rtNearSource').textContent=(point.gps?'Straight-line miles from GPS':'Straight-line miles from map center • Start GPS')+' • *site-location approximate';
  const root=nearEl('rtNearRows');
  const previousScroll=nearDock.scrollTop;
  root.replaceChildren();
@@ -103,7 +103,7 @@ function renderNearestSide(list,point){
   const name=document.createElement('span');name.className='rt-near-name';
   name.textContent=item.x.call+' · '+item.x.mhz.toFixed(3);
   const miles=document.createElement('span');miles.className='rt-near-miles';
-  miles.textContent=item.dist.toFixed(1)+' mi';
+  miles.textContent=item.dist.toFixed(1)+(item.x.approx?' mi*':' mi');
   btn.append(number,name,miles);
   btn.onclick=()=>choose(item.x,false);
   root.appendChild(btn);
@@ -157,11 +157,20 @@ var data=[],gmrsData=[],customRecords=[],selected=null,follow=true,wideOnly=fals
 const BASELINE_AMATEUR=5044;
 var completeHamRefresh=false;
 const GMRS_OPEN_URL='https://chicago-offline.github.io/ssrf-lite/codeplug.json';
+
+const GMRS_STARTER_ROWS=[["WRNW944",462.65,39.0267,-94.6569,"123.0 Hz","Mission, KS","KS","N9TPB public GMRS listings","https://n9tpb.com/uls/call/K0QJ","Published as open; city-center map reference, not an antenna position.",false],["WSHC585",462.6,38.96611,-94.73389,"136.5 Hz","Lenexa, KS","KS","N9TPB public GMRS listings","https://n9tpb.com/uls/call/KF0ICI","Published as open; city-center map reference, not an antenna position.",false],["KAF4575",462.7,39.0417,-94.7202,"110.9 Hz","Shawnee, KS","KS","N9TPB public GMRS listings","https://n9tpb.com/uls/call/K0QJ","Published as open; city-center map reference, not an antenna position.",false],["WRZE330",462.575,40.9987,-74.3471,"Not published","Butler, NJ","NJ","SSRF-Lite Butler GMRS (Apache-2.0)","https://github.com/Chicago-Offline/ssrf-lite/blob/main/ssrf/systems/US/NJ/Morris/Butler/gmrs/butler_gmrs_repeater.yml","Open listing; tone unpublished; city reference point.",false],["KAA8142",462.675,42.0432,-87.8477,"141.3 Hz","Park Ridge, IL","IL","SSRF-Lite NSEA GMRS (Apache-2.0)","https://github.com/Chicago-Offline/ssrf-lite/blob/main/ssrf/systems/US/IL/Cook/_Countywide/gmrs/nsea_gmrs_repeaters.yml","NSEA 675; permission required; hospital-area reference.",true],["KAE2050",462.65,42.1073,-87.8495,"107.2 Hz","Northbrook, IL","IL","SSRF-Lite NSEA GMRS (Apache-2.0)","https://github.com/Chicago-Offline/ssrf-lite/blob/main/ssrf/systems/US/IL/Cook/_Countywide/gmrs/nsea_gmrs_repeaters.yml","NSEA 650; permission required; golf-course-area reference.",true],["WRAF954",462.575,27.9518,-82.4572,"141.3 Hz","Downtown Tampa, FL","FL","SSRF-Lite Florida Simulcast Group (Apache-2.0)","https://github.com/Chicago-Offline/ssrf-lite/blob/main/ssrf/systems/US/FL/_Regional/florida_simulcast_group.yml","Tampa city-area reference; owner permission and operation unconfirmed.",false]];
+const GMRS_STARTER=GMRS_STARTER_ROWS.map((r,i)=>({
+ id:'gmrs-starter-'+i+'|'+r[0]+'|'+r[1].toFixed(3),
+ service:'gmrs',call:r[0],mhz:r[1],lat:r[2],lon:r[3],tx:r[1]+5,offset:5,
+ tone:r[4],mode:'FM',city:r[5],state:r[6],source:r[7],sourceUrl:r[8],
+ notes:r[9]+' Verify current operation and permission before transmitting.',
+ wide:false,approx:true,restricted:Boolean(r[10]),starter:true
+}));
 function hamBand(mhz){return mhz>=144&&mhz<=148?'2m':mhz>=420&&mhz<=450?'70cm':null}
 function gmrsOutput(mhz){return [462.55,462.575,462.600,462.625,462.650,462.675,462.700,462.725].some(f=>Math.abs(f-mhz)<.0003)}
 
 function getAllStations(){
- var combined=radioService==='gmrs'?[...customRecords.filter(x=>x.service==='gmrs'),...gmrsData]:[...customRecords.filter(x=>x.service!=='gmrs'),...LOCAL_CLUB,...data],answer=[],seen=new Map();
+ var combined=radioService==='gmrs'?[...customRecords.filter(x=>x.service==='gmrs'),...gmrsData,...GMRS_STARTER]:[...customRecords.filter(x=>x.service!=='gmrs'),...LOCAL_CLUB,...data],answer=[],seen=new Map();
  for(var i=0;i<combined.length;i++){
   var x=combined[i],key=x.call.toUpperCase()+'|'+x.mhz.toFixed(4);
   var group=seen.get(key)||[];
@@ -447,9 +456,9 @@ function showDetails(x){
  lineText('Location:',x.city+(x.state?', '+x.state:'')+' (approx.)');
  var nearPoint=anchor();
  lineText('Straight-line distance:',distance(nearPoint.lat,nearPoint.lon,x.lat,x.lon).toFixed(1)+' miles '+(nearPoint.gps?'from GPS':'from map center'));
- if(radioService==='gmrs')lineText('Access:', 'GMRS license required; verify owner permission/rules.');
+ if(radioService==='gmrs')lineText('Access:', x.restricted?'GMRS license AND repeater-owner permission REQUIRED.':'GMRS license required; verify repeater-owner access rules.');
  if(x.source)lineText('Source:',x.source);
- if(x.approx)lineText('Pin accuracy:','Approximate area — not exact transmitter location');
+ if(x.approx)lineText('Pin accuracy:','APPROXIMATE reference area, NOT a surveyed repeater antenna. Mileage is approximate.');
  if(x.notes)lineText('Notes:',x.notes);
  var p=document.createElement('div');p.className='rt-muted';p.textContent='Verify repeater settings before transmitting.';d.appendChild(p);
 }
@@ -484,7 +493,7 @@ function redraw(){
  var list=sorted(),p=anchor(),nearest=list[0];
  renderNearestSide(list,p);
  el('rtCount').textContent=radioService==='gmrs'?
-   getAllStations().length.toLocaleString()+' GMRS sites ('+gmrsData.length.toLocaleString()+' open listings plus local entries)'+(p.gps?' • GPS active':' • map-center distances'):
+   getAllStations().length.toLocaleString()+' GMRS reference sites ('+GMRS_STARTER.length+' starter + '+gmrsData.length.toLocaleString()+' downloaded + personal; duplicates merged)'+(p.gps?' • GPS active':' • map-center distances'):
    getAllStations().length.toLocaleString()+' amateur repeaters ('+data.length.toLocaleString()+' national records + verified local stations)'+(p.gps?' • GPS active':' • map-center distances');
  if(follow){selected=nearest?nearest.x:null;showDetails(selected)}
  var closest=el('rtClosest');closest.replaceChildren();
