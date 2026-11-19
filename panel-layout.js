@@ -236,6 +236,9 @@ if(window.MutationObserver)new MutationObserver(()=>requestAnimationFrame(reflow
  .observe(document.body,{attributes:true,attributeFilter:['class']});
 window.RoadtowerPanelLayout={
  reset(){Object.values(states).forEach(s=>{s.mode='normal';s.el.style.removeProperty('left');s.el.style.removeProperty('top');s.el.style.removeProperty('right');s.el.style.removeProperty('bottom');s.el.classList.remove('rt-layout-managed','rt-layout-minimized','rt-layout-maximized','rt-layout-hidden')});try{localStorage.removeItem(KEY)}catch(e){}location.reload()},
- getModes(){return Object.fromEntries(Object.entries(states).map(([k,v])=>[k,v.mode]))}
+ getModes(){return Object.fromEntries(Object.entries(states).map(([k,v])=>[k,v.mode]))},
+ open(id){const s=states[id];if(s)setMode(s,'normal')},
+ maximize(id){const s=states[id];if(s)setMode(s,'max')},
+ minimize(id){const s=states[id];if(s)setMode(s,'min')}
 };
 })();
