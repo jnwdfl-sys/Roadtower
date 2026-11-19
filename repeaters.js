@@ -37,10 +37,10 @@ panel.innerHTML=
  '<div class="rt-buttons"><button id="rtUseCenter" type="button">Use map center</button><button type="submit">Save repeater offline</button></div>'+
  '<div class="rt-muted">Coordinates must be for the repeater, not necessarily where you are. Pan to a tower, use Map center, and verify the location. Added stations stay stored when the nationwide directory updates.</div>'+
  '</form><div id="rtMyStations"></div>'+
- '<div class="rt-buttons"><button id="rtDownload" type="button">Update USA 2m + 70cm</button><button id="rtGmrsDownload" type="button" hidden>Download open GMRS sites</button><button id="rtImport" type="button">Import JSON</button></div>'+
- '<input type="file" accept=".json,application/json" id="rtFile" hidden>'+
+ '<div class="rt-buttons"><button id="rtDownload" type="button">Update USA 2m + 70cm</button><button id="rtGmrsDownload" type="button" hidden>Download open GMRS sites</button><button id="rtImport" type="button">Import JSON / CSV</button></div>'+
+ '<input type="file" accept=".json,.csv,application/json,text/csv,text/plain" id="rtFile" hidden>'+
  '<div class="rt-muted" id="rtFeedback">HAM list uses HearHam data. GMRS uses its own saved site list. Nationwide coverage cannot be guaranteed.</div>'+
- '<div class="rt-muted" id="rtGmrsSources" hidden>GMRS listings come from a limited open-source data collection. It is not a complete U.S. database. FCC GMRS license required to transmit; verify owner access rules and repeater details.</div>'+
+ '<div class="rt-muted" id="rtGmrsSources" hidden>GMRS: limited open-data download plus your own JSON/CSV imports. For broader personal coverage, export a GMRS list with tower latitude/longitude from a directory you are authorized to use, then tap Import JSON / CSV. Data remains on your device for offline use. No nationwide completeness claim. Verify owner permission, tones and site status. <a href="https://www.repeaterbook.com/gmrs/index.php/index/0" target="_blank" rel="noopener noreferrer">Browse GMRS directory</a></div>'+
  '<a id="rtSource" href="https://hearham.com/api/repeaters/v1" rel="noopener noreferrer" target="_blank">HearHam JSON download (manual backup)</a>'+
  '<div class="rt-muted">Data: HearHam, user-contributed. ★ KC Wide from the 2026-10-30 published roster or matching network metadata; not a live link indicator. Check radio programming and coverage before use.</div><a href="https://www.kansascityroom-wide.com/repeater-list/" target="_blank" rel="noopener noreferrer">KC Wide official repeater roster</a></div>';
 HOST.appendChild(panel);
@@ -283,20 +283,21 @@ function normalizeAll(raw){
  return out;
 }
 function gmrsNormalize(r){
- if(!r||typeof r!=='object'||String(r.service||'').toLowerCase()!=='gmrs')return null;
- var lat=number(first(r,['lat','latitude','site_latitude'])),lon=number(first(r,['lon','lng','longitude','site_longitude']));
- var output=readMHz(first(r,['rx_mhz','output_mhz','output_frequency','frequency','output','rx']));
- var input=readMHz(first(r,['tx_mhz','input_mhz','input_frequency','input','tx']));
+ if(!r||typeof r!=='object'||(r.service&&String(r.service).toLowerCase()!=='gmrs'))return null;
+ var lat=number(first(r,['lat','latitude','site_latitude','Lat','Latitude','LAT'])),lon=number(first(r,['lon','lng','longitude','site_longitude','Long','Lon','Longitude','LONG']));
+ var output=readMHz(first(r,['rx_mhz','output_mhz','output_frequency','frequency','output','rx','Frequency','Output','Output Frequency','Output Freq','RX Frequency']));
+ var input=readMHz(first(r,['tx_mhz','input_mhz','input_frequency','input','tx','Input Freq','Input Frequency','Input','TX Frequency']));
+ if(!isFinite(input)&&gmrsOutput(output))input=output+5;
  if(!isFinite(lat)||!isFinite(lon)||!isUS(lat,lon)||!gmrsOutput(output)||!isFinite(input)||Math.abs(input-output-5)>.002)return null;
- var call=String(first(r,['callsign','call','name','channel_name'])||'GMRS').trim().slice(0,70);
- var city=String(first(r,['city','location','name'])||'Location not listed').slice(0,85);
- var tone=first(r,['ctcss','tone','encode','tx_ctcss']),dcs=first(r,['dcs','dcs_code']);
+ var call=String(first(r,['callsign','call','name','channel_name','Callsign','Call','Name','Landmark'])||'GMRS').trim().slice(0,70);
+ var city=String(first(r,['city','location','name','Nearest City','City','Location','Landmark'])||'Location not listed').slice(0,85);
+ var tone=first(r,['ctcss','tone','encode','tx_ctcss','PL','Tone','Encode','Uplink Tone']),dcs=first(r,['dcs','dcs_code','DCS']);
  var access=tone&&String(tone)!=='0'?String(tone)+' Hz':dcs?'DCS '+dcs:'Not listed';
  return {id:'gmrs|'+call+'|'+output.toFixed(4)+'|'+lat.toFixed(4)+'|'+lon.toFixed(4),
   service:'gmrs',call:call,mhz:output,tx:input,offset:5,tone:access,
-  lat:lat,lon:lon,city:city,state:String(r.state||'').slice(0,35),
+  lat:lat,lon:lon,city:city,state:String(r.state||r.State||'').slice(0,35),
   mode:String(r.mode||'FM').slice(0,45),wide:false,
-  source:'SSRF-Lite open data (Apache-2.0)',notes:'Owner access rules and site status unverified. Check before transmitting.'};
+  source:String(r._roadtowerSource||'GMRS user-supplied directory').slice(0,90),notes:'Owner access rules and site status unverified. Check before transmitting.'};
 }
 function normalizeGmrs(raw){
  var rows=rowsFrom(raw),out=[],seen=new Set();
@@ -305,6 +306,35 @@ function normalizeGmrs(raw){
   if(x&&!seen.has(x.id)){out.push(x);seen.add(x.id)}
  }
  return out;
+}
+
+function parseRepeaterCSV(input){
+ // Quoted commas, quoted line breaks and escaped double quotes are supported.
+ var rows=[],row=[],field='',quoted=false;
+ input=String(input||'').replace(/^\uFEFF/,'');
+ for(var i=0;i<input.length;i++){
+  var ch=input[i];
+  if(ch==='"'){
+   if(quoted&&input[i+1]==='"'){field+='"';i++}
+   else quoted=!quoted;
+  }else if(ch===','&&!quoted){row.push(field);field=''}
+  else if((ch==='\n'||ch==='\r')&&!quoted){
+   if(ch==='\r'&&input[i+1]==='\n')i++;
+   row.push(field);field='';
+   if(row.some(v=>String(v).trim()))rows.push(row);
+   row=[];
+  }else field+=ch;
+ }
+ if(quoted)throw Error('CSV contains an unclosed quoted field');
+ row.push(field);if(row.some(v=>String(v).trim()))rows.push(row);
+ if(rows.length<2)throw Error('CSV needs a header and at least one repeater');
+ var headers=rows.shift().map(h=>h.trim());
+ return rows.map(values=>{
+  var obj={};
+  headers.forEach((h,i)=>{if(h)obj[h]=String(values[i]||'').trim()});
+  obj._roadtowerSource='Personal GMRS CSV import';
+  return obj;
+ });
 }
 function indexedDBOpen(){
  return new Promise(function(resolve,reject){
@@ -640,7 +670,7 @@ el('rtGmrsDownload').onclick=async function(){
    if(!response.ok)throw Error('Relay HTTP '+response.status);
   }
   var raw=await response.json();
-  var parsed=normalizeGmrs(raw);
+  var parsed=normalizeGmrs(raw).map(x=>Object.assign(x,{source:'SSRF-Lite open data (Apache-2.0)'}));
   if(!parsed.length)throw Error('No geolocated GMRS duplex repeaters were found in this open feed; existing GMRS records were kept');
   await saveKey('gmrs-v1',parsed,'SSRF-Lite Apache-2.0');
   gmrsData=parsed;gmrsState='ready';selected=null;follow=true;
@@ -654,13 +684,22 @@ el('rtFile').onchange=async function(){
  say('Reading file '+file.name+'…');
  try{
   if(file.size>35*1024*1024)throw new Error('File exceeds the 35 MB import limit');
-  var raw=JSON.parse(await file.text());
+  var contents=await file.text();
+  var csv=/\.csv$/i.test(file.name)||/^\s*(?:callsign|call|frequency|output|lat|latitude|name)\s*,/i.test(contents);
+  var raw=csv?parseRepeaterCSV(contents):JSON.parse(contents);
   if(radioService==='gmrs'){
     var parsed=normalizeGmrs(raw);
     if(!parsed.length)throw Error('No usable GMRS repeater sites with latitude/longitude, 462-MHz output and +5-MHz input');
-    await saveKey('gmrs-v1',parsed,'Imported GMRS data');
-    gmrsData=parsed;gmrsState='ready';redraw();updateStatuses();
-    say('Imported '+parsed.length+' GMRS repeater sites for offline use.');
+    // Merge updates with previously saved stations rather than replacing them.
+    // Same callsign/output and nearby tower position are considered duplicates.
+    var merged=[...parsed,...gmrsData],seen=new Set();
+    merged=merged.filter(x=>{
+      var key=x.call.toUpperCase()+'|'+x.mhz.toFixed(4)+'|'+x.lat.toFixed(2)+'|'+x.lon.toFixed(2);
+      if(seen.has(key))return false;seen.add(key);return true;
+    });
+    await saveKey('gmrs-v1',merged,'Personal GMRS directory import');
+    gmrsData=merged;gmrsState='ready';redraw();updateStatuses();
+    say('Imported '+parsed.length+' geolocated GMRS sites; '+merged.length+' saved total for offline use.');
   }else await install(raw,'Imported HearHam/compatible JSON');
  }catch(e){say('Import failed: '+e.message)}
  this.value='';
