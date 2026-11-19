@@ -100,9 +100,14 @@ function update(s,shouldSave=true){
  el.classList.toggle('rt-layout-maximized',mode==='max');
  el.classList.toggle('rt-layout-hidden',mode==='hide');
  el.classList.add('rt-layout-managed');
- s.minBtn.textContent=mode==='min'?'Expand':'Minimize';
- s.maxBtn.textContent=mode==='max'?'Restore':'Full screen';
- s.hideBtn.textContent='Hide';
+ s.minBtn.textContent='−';
+ s.maxBtn.textContent=mode==='max'?'↙':'⛶';
+ s.hideBtn.textContent='×';
+ s.minBtn.title='Minimize into colored dot';s.minBtn.setAttribute('aria-label','Minimize into colored dot');
+ s.maxBtn.title=mode==='max'?'Return to movable panel':'Make panel full screen';
+ s.maxBtn.setAttribute('aria-label',s.maxBtn.title);
+ s.hideBtn.title='Hide panel (tap colored dot to reopen)';
+ s.hideBtn.setAttribute('aria-label','Hide panel (tap colored dot to reopen)');
  s.minBtn.setAttribute('aria-expanded',String(mode!=='min'&&mode!=='hide'));
  s.maxBtn.setAttribute('aria-pressed',String(mode==='max'));
  s.restore.hidden=!(mode==='hide'||mode==='min');
