@@ -896,6 +896,20 @@ body.map-fullscreen #map .rt-status-hud{
  font:800 15px system-ui,Arial;cursor:pointer
 }
 #map .leaflet-popup-content-wrapper:has(.rt-radio-popup) + .leaflet-popup-tip-container .leaflet-popup-tip{background:#0b2c40}
+
+/* Always-visible shortcuts to clear the map after the launch panels appear. */
+#map #rtLayoutTray button.rt-layout-all-button{
+ display:flex!important;align-items:center;justify-content:center;
+ width:55px!important;min-height:43px!important;padding:4px 2px!important;
+ border:2px solid #9ad4f2!important;border-radius:10px!important;
+ color:#fff!important;background:#16415b!important;font:900 11px/1.2 system-ui,Arial!important;
+ margin:2px 0!important;text-align:center!important;cursor:pointer!important
+}
+#map #rtLayoutTray button.rt-layout-all-button:first-of-type{
+ background:#22614c!important;border-color:#76dba8!important
+}
+#map #rtLayoutTray button.rt-layout-all-button:disabled{opacity:.48!important}
+#map #rtLayoutTray button.rt-layout-all-button:focus-visible{outline:3px solid #fff!important}
 </style></head><body><header><h1>ROADTOWER</h1><p>Free GPS • Official Weather • Road Information</p></header><main><section class="card"><h2>Live GPS Map</h2><span class="pill">Location stays on this device</span><p id="status" role="status">GPS stopped. Tap Start Live GPS.</p><div class="buttons" id="gpsActions"><button id="start">Start Live GPS</button><button id="stop" class="secondary" disabled>Stop GPS</button><button id="center" class="secondary" disabled>Center Map</button><button id="followMap" class="secondary">Follow GPS: ON</button></div><div class="buttons" id="mapToolbar"><button class="secondary" id="compactMap" type="button">Compact Map</button><button class="secondary" id="expandMap" type="button">Large Map</button><button id="fullscreenMap" type="button">Full Screen</button><button id="offlineQuickMode" class="secondary" type="button">Map: AUTO</button></div><div id="map" aria-label="Interactive road map"></div><p class="hint">Tap the map to save a location. Map tiles require internet and are subject to OpenStreetMap tile usage limits. Attribution appears on the map.</p><div class="buttons"><button id="saveCurrent" class="secondary" disabled>Save My GPS Location</button></div><div id="saveForm" class="hidden"><label for="placeName">Place name</label><input id="placeName" maxlength="80" placeholder="Home, parking, campsite..."><label for="placeType">Category</label><select id="placeType"><option value="📍">Place</option><option value="🏠">Home</option><option value="🅿️">Parking</option><option value="🏕️">Campsite</option><option value="🥾">Trailhead</option></select><p id="chosen" class="hint"></p><div class="buttons"><button id="confirmSave">Save Place</button><button id="cancelSave" class="secondary">Cancel</button></div></div></section><section class="card" id="offlineTravelCard">
 <h2>🗺️ Offline Travel Maps</h2>
 <p class="hint">Download <strong>road and town data</strong> before your trip for use without mobile service. This is a simpler vector-road view, not the detailed online street map, satellite imagery or turn-by-turn navigation. GPS and repeater distances continue working while the page stays active.</p>
@@ -925,6 +939,8 @@ gpsHud.innerHTML='<div class="rt-gps-row"><strong id="rtGpsMode">GPS OFF</strong
 $('map').appendChild(gpsHud);
 if(window.L){L.DomEvent.disableClickPropagation(gpsHud);L.DomEvent.disableScrollPropagation(gpsHud)}
 const gpsIcon=window.L?L.divIcon({className:'rt-self-pin-icon',html:'<div class="rt-self-beacon" role="img" aria-label="Your position: colored visual SOS rhythm, not an emergency broadcast"><span class="rt-self-wave"></span><span class="rt-self-core"></span><span class="rt-self-center"></span><span class="rt-self-word">YOU · SOS</span></div>',iconSize:[56,70],iconAnchor:[28,35]}):null;
+function visibleFollowZoom(p){try{const f=window.RoadtowerRepeaters&&window.RoadtowerRepeaters.getFollowZoom;return typeof f==='function'?f(p):11}catch(e){return 11}}
+
 function gpsHudState(state,message){
  gpsHud.classList.remove('rt-gps-off','rt-gps-searching','rt-gps-live','rt-gps-error');gpsHud.classList.add('rt-gps-'+state);
  $('map').dataset.gps=state;
@@ -938,7 +954,7 @@ $('rtGpsQuick').onclick=()=>{
  if(watch===null){$('start').click();return}
  if(position&&map){
   followMap=true;$('followMap').textContent='Follow GPS: ON';
-  map.setView([position.latitude,position.longitude],15,{animate:false});
+  map.setView([position.latitude,position.longitude],visibleFollowZoom(position),{animate:false});
  }
 };
 $('rtGpsStopQuick').onclick=()=>$('stop').click();
@@ -962,7 +978,7 @@ function openSave(lat,lng){pending={lat,lng};$('saveForm').classList.remove('hid
   if(map){
    if(!locationMarker){
     locationMarker=L.marker([lat,lng],{icon:gpsIcon,interactive:false,zIndexOffset:3000}).addTo(map);
-    map.setView([lat,lng],15,{animate:false});
+    map.setView([lat,lng],visibleFollowZoom(position),{animate:false});
    }else locationMarker.setLatLng([lat,lng]);
    // GPS marker should remain visible even after switching map modes or resizing.
    if(locationMarker&&!map.hasLayer(locationMarker))locationMarker.addTo(map);
@@ -1005,7 +1021,7 @@ $('stop').onclick=()=>{
 };
 $('center').onclick=()=>{
  if(!position&&watch===null){followMap=true;$('followMap').textContent='Follow GPS: ON';$('start').click();return}
- if(map&&position){map.setView([position.latitude,position.longitude],16,{animate:false});followMap=true;$('followMap').textContent='Follow GPS: ON'}
+ if(map&&position){map.setView([position.latitude,position.longitude],visibleFollowZoom(position),{animate:false});followMap=true;$('followMap').textContent='Follow GPS: ON'}
 };$('followMap').onclick=()=>{
  // The Follow control must START GPS if location is off; previously the
  // initial "Follow GPS: ON" state was toggling OFF on the very first tap.
@@ -1022,7 +1038,7 @@ $('center').onclick=()=>{
  $('followMap').textContent='Follow GPS: '+(followMap?'ON':'OFF');
  if(followMap&&map){
   map.invalidateSize({pan:false});
-  map.setView([position.latitude,position.longitude],16,{animate:false});
+  map.setView([position.latitude,position.longitude],visibleFollowZoom(position),{animate:false});
  }
 };$('saveCurrent').onclick=()=>{if(position)openSave(position.latitude,position.longitude)};$('cancelSave').onclick=()=>{$('saveForm').classList.add('hidden');pending=null};$('confirmSave').onclick=()=>{if(!pending)return;const name=$('placeName').value.trim();if(!name)return alert('Enter a name');if(places.length>=500)return alert('Maximum 500 places');places.push({name:name.slice(0,80),type:$('placeType').value,lat:pending.lat,lng:pending.lng});if(save()){pending=null;$('saveForm').classList.add('hidden');render()}};$('export').onclick=()=>{const blob=new Blob([JSON.stringify({format:'roadtower-places-v1',places},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='roadtower-saved-places.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000)};$('import').onclick=()=>$('importFile').click();$('importFile').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{const obj=JSON.parse(await f.text());if(obj.format!=='roadtower-places-v1'||!Array.isArray(obj.places))throw Error('Invalid backup');const clean=obj.places.filter(p=>p&&typeof p.name==='string'&&p.name.trim()&&Number.isFinite(p.lat)&&Number.isFinite(p.lng)&&Math.abs(p.lat)<=90&&Math.abs(p.lng)<=180).slice(0,500).map(p=>({name:p.name.slice(0,80),type:typeof p.type==='string'?p.type.slice(0,8):'📍',lat:p.lat,lng:p.lng}));if(confirm('Replace your saved places with '+clean.length+' imported places?')){places=clean;save();render()}}catch(err){alert('Backup could not be restored: '+err.message)}finally{e.target.value=''}};async function checkWeather(){if(!position){$('alerts').textContent='Start GPS first to check alerts near you.';return}if(checking)return;checking=true;lastCheck=Date.now();$('weatherStatus').textContent='Checking official weather service...';try{const r=await fetch('https://api.weather.gov/alerts/active?point='+position.latitude.toFixed(4)+','+position.longitude.toFixed(4),{headers:{Accept:'application/geo+json'}});if(!r.ok)throw Error('HTTP '+r.status);const json=await r.json(),a=(json.features||[]).slice(0,8);$('alerts').textContent=a.length?a.map(f=>(f.properties?.event||'Alert')+': '+(f.properties?.headline||'Active alert')).join('\n\n'):'No active NWS alerts reported for this location.';$('weatherStatus').textContent='Last checked '+new Date().toLocaleTimeString();const signature=a.map(f=>f.id).join('|');if(voice&&a.length&&signature!==lastSpoken&&'speechSynthesis'in window){speechSynthesis.speak(new SpeechSynthesisUtterance('ROADTOWER weather warning. '+a.slice(0,3).map(f=>f.properties?.event||'Weather alert').join('. ')));lastSpoken=signature}}catch(e){$('alerts').textContent='Weather service unavailable. Please check the official weather website.';$('weatherStatus').textContent='Check failed at '+new Date().toLocaleTimeString()}finally{checking=false}}$('checkWeather').onclick=checkWeather;$('voice').onclick=()=>{voice=!voice;$('voice').textContent='Voice: '+(voice?'On':'Off');if(voice&&'speechSynthesis'in window)speechSynthesis.speak(new SpeechSynthesisUtterance('ROADTOWER voice alerts enabled'))};setInterval(()=>{if(watch!==null&&position&&document.visibilityState==='visible'&&Date.now()-lastCheck>=300000)checkWeather()},60000);// The app launches in live map mode on phones, then starts GPS
 // immediately. Browser permission is always required and cannot be bypassed.
