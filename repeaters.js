@@ -16,6 +16,7 @@ panel.innerHTML=
  '<div class="rt-head"><strong>📡 RADIO REPEATERS</strong><button id="rtHide" type="button">Hide</button></div>'+
  '<div id="rtContent"><div class="rt-buttons rt-service-pick"><button id="rtHam" type="button" aria-pressed="true">HAM • GREEN</button><button id="rtGMRS" type="button" aria-pressed="false">GMRS • PURPLE</button></div>'+
  '<div class="rt-muted" id="rtServiceInfo">Amateur radio repeaters: 2m and 70cm. Ham license required to transmit.</div>'+
+ '<div class="rt-buttons rt-joco-shortcuts"><button id="rtFindLibrary" type="button">📍 Library 2m · 145.290</button><button id="rtFindJocoUhf" type="button">★ Johnson Co. 70cm</button></div>'+
  '<label class="rt-band-row" id="rtBandRow">HAM band <select id="rtBand"><option value="both">Both 2m + 70cm</option><option value="2m">2m only</option><option value="70cm">70cm only</option></select></label>'+
  '<div class="rt-muted" id="rtGrowth">Original count: 5,044 amateur repeaters. Updated percentage appears after downloading both bands.</div>'+
  '<div class="rt-muted" id="rtCount">Loading saved repeaters…</div>'+
@@ -60,11 +61,11 @@ var el=function(id){return panel.querySelector('#'+id)};
 // Club operating details verified against https://www.w0erh.org/about-us/repeaters
 // Locations approximate INTERSECTIONS, not surveyed transmitter positions.
 var LOCAL_CLUB=[
- {id:'jcrac-w0erh-145290',call:'W0ERH',mhz:145.290,lat:38.9700,lon:-94.6865,
+ {id:'jcrac-w0erh-145290',call:'W0ERH',mhz:145.290,lat:38.969826,lon:-94.699526,
   tx:144.690,offset:-0.600,tone:'151.4 Hz',mode:'FM / DMR',
-  city:'Near 87th St & Antioch (Central Resource Library area)',state:'KS',wide:false,
-  notes:'Johnson County Radio Amateurs Club. Approximate intersection marker, not confirmed transmitter coordinates. Not linked to KC Wide.',
-  source:'JCRAC official club site',officialLocal:true,approx:true},
+  city:'Johnson County Central Resource Library area, 87th & Antioch',state:'KS',wide:false,
+  notes:'Johnson County Radio Amateurs Club operates this 2m repeater NEAR the library. This pin is the PUBLIC LIBRARY BUILDING at 9875 W 87th St, not the verified antenna location. Club says this repeater is NOT linked to KC Wide.',
+  source:'JCRAC official site (w0erh.org/about-us/welcome); Johnson County Library building address',officialLocal:true,approx:true,landmark:'Central Resource Library, Overland Park'},
  {id:'jcrac-wb0hac-145210',call:'WB0HAC',mhz:145.210,lat:39.0110,lon:-94.7230,
   tx:144.610,offset:-0.600,tone:'151.4 Hz',mode:'FM / DMR',
   city:'Near 65th St & Quivira Rd, Shawnee',state:'KS',wide:false,
@@ -72,13 +73,13 @@ var LOCAL_CLUB=[
   source:'JCRAC official club site',officialLocal:true,approx:true},
  {id:'jcrac-w0erh-442600',call:'W0ERH',mhz:442.600,lat:39.009,lon:-94.725,
   tx:447.600,offset:5.000,tone:'Digital, no CTCSS',mode:'Yaesu System Fusion digital',
-  city:'Shawnee East (approximate city pin)',state:'KS',wide:true,
-  notes:'JCRAC reports a Wires-X link to the Kansas City Room; exact tower coordinates unverified.',
+  city:'65th Street & Quivira Road area, Shawnee',state:'KS',wide:true,
+  notes:'JCRAC locates this Fusion repeater on a cell tower near 65th and Quivira; exact tower coordinates unverified. Linked to Kansas City Room.',
   source:'JCRAC official site',officialLocal:true,approx:true},
- {id:'jcrac-w0erh-443725',call:'W0ERH',mhz:443.725,lat:38.898,lon:-94.683,
+ {id:'jcrac-w0erh-443725',call:'W0ERH',mhz:443.725,lat:38.9245,lon:-94.6559,
   tx:448.725,offset:5.000,tone:'Digital, no CTCSS',mode:'Yaesu System Fusion digital',
-  city:'Overland Park South (approximate city pin)',state:'KS',wide:true,
-  notes:'JCRAC reports a Wires-X link to the Kansas City Room; exact tower coordinates unverified.',
+  city:'College Boulevard & Lamar Avenue area, Overland Park',state:'KS',wide:true,
+  notes:'JCRAC locates this repeater near College Blvd and Lamar. Reference location only, not a surveyed antenna location. Yaesu Fusion WIRES-X Kansas City Room link.',
   source:'JCRAC official site',officialLocal:true,approx:true},
  {id:'kcwide-k0hcv-444400',call:'K0HCV',mhz:444.400,lat:38.856,lon:-94.824,
   tx:449.400,offset:5.000,tone:'Digital, no CTCSS',mode:'Yaesu System Fusion digital',
@@ -406,7 +407,11 @@ function redraw(){
 function drawMarkers(list,p){
  markers.clearLayers();
  var bounds=map.getBounds().pad(.15);
- var visible=list.filter(function(it){return bounds.contains(coord(it.x))}).slice(0,90);
+ // Always put club-confirmed nearby locations ahead of bulk directory markers.
+ // The user should not lose the library reference marker among thousands of results.
+ var visible=list.filter(function(it){return bounds.contains(coord(it.x))})
+   .sort(function(a,b){return Number(Boolean(b.x.officialLocal))-Number(Boolean(a.x.officialLocal))||a.dist-b.dist})
+   .slice(0,90);
  var labels=0;
  visible.forEach(function(it){
   var x=it.x;
@@ -415,9 +420,9 @@ function drawMarkers(list,p){
    color:radioService==='gmrs'?'#ffe4fc':x.wide?'#f5d36c':'#ecfff4',weight:2,
    fillColor:radioService==='gmrs'?'#b340cf':x.wide?'#e9c54a':'#35c979',fillOpacity:.95,bubblingMouseEvents:false
   }).addTo(markers);
-  if(labels<15){
+  if(labels<15||x.officialLocal){
    var safeTooltip=document.createElement('span');
-   safeTooltip.textContent=(radioService==='gmrs'?'GMRS ':x.wide?'★ ':x.officialLocal?'✓ ':'')+x.call+' '+x.mhz.toFixed(3)+' • '+it.dist.toFixed(1)+'mi';
+   safeTooltip.textContent=(x.landmark?'LIBRARY · ':radioService==='gmrs'?'GMRS ':x.wide?'★ ':x.officialLocal?'✓ ':'')+x.call+' '+x.mhz.toFixed(3)+' • '+it.dist.toFixed(1)+'mi';
    mark.bindTooltip(safeTooltip,{
     permanent:true,direction:'right',offset:[7,0],className:'rt-repeater-tooltip'
    });
@@ -474,12 +479,27 @@ function renderPersonal(){
   holder.append(open,del);root.appendChild(holder);
  });
 }
+function locateClubRepeater(id){
+ var x=LOCAL_CLUB.find(a=>a.id===id);
+ if(!x){say('Club repeater not found');return}
+ if(radioService!=='ham')switchService('ham');
+ wideOnly=false;el('rtWide').textContent='★ KC Wide: All';
+ bandFilter=hamBand(x.mhz);el('rtBand').value=bandFilter;
+ selected=null;follow=false;
+ choose(x,true);
+ map.setView([x.lat,x.lon],14,{animate:false});
+ redraw();
+ showDetails(x);
+ say('Centered on '+x.call+' '+x.mhz.toFixed(3)+' MHz. '+(x.landmark?'Pin is the library building; the tower is reported nearby.':'Pin indicates the published area, not a verified tower coordinate.')+' Select Both bands to see all nearby ham repeaters.');
+}
+el('rtFindLibrary').onclick=function(){locateClubRepeater('jcrac-w0erh-145290')};
+el('rtFindJocoUhf').onclick=function(){locateClubRepeater('jcrac-w0erh-443725')};
 function renderVerifiedLocal(){
  var root=el('rtVerifiedLocal');root.replaceChildren();
  LOCAL_CLUB.forEach(x=>{
   var item=document.createElement('button');item.type='button';
   item.textContent='✓ '+x.call+' • '+x.mhz.toFixed(3)+' MHz • '+x.city.split('(')[0].trim();
-  item.onclick=()=>{if(radioService!=='ham')switchService('ham');choose(x,true)};
+  item.onclick=()=>locateClubRepeater(x.id);
   root.appendChild(item);
  });
 }
