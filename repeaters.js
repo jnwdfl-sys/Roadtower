@@ -16,7 +16,7 @@ panel.innerHTML=
  '<div class="rt-head"><strong>📡 RADIO REPEATERS</strong><button id="rtHide" type="button">Hide</button></div>'+
  '<div id="rtContent"><div class="rt-buttons rt-service-pick"><button id="rtHam" type="button" aria-pressed="false">HAM • GREEN</button><button id="rtGMRS" type="button" aria-pressed="false">GMRS • PURPLE</button><button id="rtBoth" type="button" aria-pressed="true">BOTH • ON</button></div>'+
  '<div class="rt-muted" id="rtServiceInfo">Amateur radio repeaters: 2m and 70cm. Ham license required to transmit.</div>'+
- '<div class="rt-buttons rt-joco-shortcuts"><button id="rtFindLibrary" type="button">📍 Library 2m · 145.290</button><button id="rtFindJocoUhf" type="button">★ Johnson Co. 70cm</button><button id="rtFindOP" type="button">★ OP Water Tower area · 146.910</button></div>'+
+ '<div class="rt-buttons rt-joco-shortcuts"><button id="rtFindLibrary" type="button">📍 Library 2m · 145.290</button><button id="rtFindJocoUhf" type="button">★ Johnson Co. 70cm</button><button id="rtFindOP" type="button">★ Santa Fe Water Tower · 146.910</button></div>'+
  '<label class="rt-band-row" id="rtBandRow">HAM band <select id="rtBand"><option value="both">Both 2m + 70cm</option><option value="2m">2m only</option><option value="70cm">70cm only</option></select></label>'+
  '<div class="rt-muted" id="rtGrowth">Original count: 5,044 amateur repeaters. Updated percentage appears after downloading both bands.</div>'+
  '<div class="rt-muted" id="rtCount">Loading saved repeaters…</div>'+
@@ -145,8 +145,8 @@ var el=function(id){return panel.querySelector('#'+id)};
 var LOCAL_CLUB=[
  {id:'kcwide-k0ham-146910-op',call:'K0HAM',mhz:146.910,lat:38.98780,lon:-94.67090,
   tx:146.310,offset:-0.600,tone:'Digital (no analog PL published)',mode:'Yaesu System Fusion (C4FM) / WIRES-X',
-  city:'Santa Fe Water Tower area (7745 Santa Fe Dr), 78th Street, Overland Park',state:'KS',wide:true,
-  notes:'K0HAM site coordinates from published repeater listing near 78th and Santa Fe Drive. WaterOne independently identifies the Santa Fe Water Tower at 7745 Santa Fe Dr, Overland Park. The physical water tower is a nearby reference landmark; whether K0HAM uses its antenna structures is NOT verified. Kansas City Wide August 13, 2026 roster lists K0HAM 146.910 UP and connected.',
+  city:'Santa Fe Water Tower, 7745 Santa Fe Dr, Overland Park',state:'KS',wide:true,
+  notes:'Water-tower antennas at the Santa Fe Water Tower were visually observed on site by a local Roadtower user (November 2026). The K0HAM 146.910 repeater is listed in this vicinity by published directories; the exact ownership/identity of individual mounted antennas is not separately verified. WaterOne gives the tower address as 7745 Santa Fe Dr, Overland Park. KC Wide published roster lists K0HAM as connected. Map coordinates remain an approximate repeater-area reference.',
   source:'Kansas City Wide 2026-08-13 roster; N9TPB/RepeaterBook K0HAM published coordinates; WaterOne Santa Fe Water Tower facility address',
   sourceUrl:'https://n9tpb.com/repeaters/r/rb:20-3874',officialLocal:true,approx:true},
  {id:'jcrac-w0erh-145290',call:'W0ERH',mhz:145.290,lat:38.969826,lon:-94.699526,
