@@ -178,9 +178,11 @@ function attach(c){
  const el=map.querySelector(c.selector);if(!el)return;
  const v=saved[c.id]||{};
  const s={id:c.id,el,x:Number.isFinite(v.x)?v.x:0,y:Number.isFinite(v.y)?v.y:0,moved:v.moved===true,
-  // Every new app launch starts visible. After launch you can minimize,
-  // hide, or full-screen each panel. Manually dragged positions are retained.
-  mode:'normal'};
+  // Start every information screen minimized into a colored dot.
+  // This changes ONLY the panel view: GPS, HAM/GMRS, aircraft and radar
+  // remain independently active and visible on the underlying map.
+  // Manually dragged positions remain available when a panel reopens.
+  mode:'min'};
  const header=document.createElement('div');header.className='rt-layout-header';
  const grip=document.createElement('div');grip.className='rt-layout-grip';
  grip.setAttribute('role','button');grip.tabIndex=0;
@@ -198,6 +200,9 @@ function attach(c){
  s.restore.innerHTML='<span class="rt-layout-dot-symbol" aria-hidden="true">'+meta.icon+'</span><span class="rt-layout-dot-label">'+meta.short+'</span>';
  s.restore.title='Open '+c.title;s.restore.setAttribute('aria-label','Open '+c.title+' panel');
  tray.appendChild(s.restore);
+ // Apply minimization immediately, not one paint after the map appears.
+ // The dots are clickable even while asynchronous feeds load.
+ update(s,false);
  if(window.L&&L.DomEvent){L.DomEvent.disableClickPropagation(el);L.DomEvent.disableScrollPropagation(el)}
  let drag=null;
  grip.addEventListener('pointerdown',e=>{

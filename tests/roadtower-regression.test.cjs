@@ -123,8 +123,9 @@ test('Follow GPS starts tracking if off and keeps the SOS position marker',()=>{
  assert.equal(withFix.followMap,true);assert.equal(withFix.centers,1);
 });
 
-test('Panels start open, can minimize all, and reopen from colored shortcuts',()=>{
- assert.match(panels,/mode:'normal'/);
+test('Panels start minimized while all live layers remain active and can reopen',()=>{
+ assert.match(panels,/mode:'min'/);
+ assert.match(panels,/update\(s,false\);/);
  assert.match(panels,/rt-layout-restore/);
  assert.match(panels,/rt-layout-all-button/);
  assert.match(panels,/minimizeAll\.addEventListener\('click'/);
