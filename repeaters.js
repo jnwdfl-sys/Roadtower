@@ -48,7 +48,7 @@ HOST.appendChild(panel);
 var nearDock=document.createElement('aside');
 nearDock.id='rtNearestDock';nearDock.className='rt-nearest-dock';
 nearDock.setAttribute('aria-label','Nearby radio repeaters sorted by distance');
-nearDock.innerHTML='<div class="rt-near-head"><strong id="rtNearHeading">NEAREST HAM</strong><button id="rtNearToggle" type="button">Hide</button></div>'+
+nearDock.innerHTML='<div class="rt-near-head"><strong id="rtNearHeading">NEAREST HAM</strong><div class="rt-near-tools"><button id="rtNearMinus" type="button" aria-label="Smaller repeater list text">A−</button><button id="rtNearPlus" type="button" aria-label="Larger repeater list text">A+</button><button id="rtNearExpand" type="button" aria-label="Expand repeater list">Expand</button><button id="rtNearToggle" type="button">Hide</button></div></div>'+
  '<div id="rtNearOrigin" class="rt-near-origin">FROM MAP CENTER • GPS OFF</div>'+
  '<div id="rtNearRows"><span class="rt-near-empty">Start GPS for nearest-to-farthest mile distances.</span></div>'+
  '<div class="rt-near-foot" id="rtNearSource">Distances from map center until GPS is on</div>';
@@ -56,7 +56,26 @@ HOST.appendChild(nearDock);
 L.DomEvent.disableClickPropagation(nearDock);
 L.DomEvent.disableScrollPropagation(nearDock);
 const nearEl=id=>nearDock.querySelector('#'+id);
-let nearCollapsed=false;
+let nearCollapsed=false,nearExpanded=false;
+let nearFont=Number(localStorage.getItem('rt-near-font-v1'))||16;
+nearFont=Math.max(14,Math.min(26,nearFont));
+function setNearFont(px){
+ nearFont=Math.max(14,Math.min(26,px));
+ nearDock.style.setProperty('--rt-near-font',nearFont+'px');
+ try{localStorage.setItem('rt-near-font-v1',String(nearFont))}catch(e){}
+ nearEl('rtNearMinus').disabled=nearFont<=14;
+ nearEl('rtNearPlus').disabled=nearFont>=26;
+}
+setNearFont(nearFont);
+nearEl('rtNearPlus').onclick=()=>setNearFont(nearFont+2);
+nearEl('rtNearMinus').onclick=()=>setNearFont(nearFont-2);
+nearEl('rtNearExpand').onclick=function(){
+ nearExpanded=!nearExpanded;
+ nearDock.classList.toggle('rt-nearest-expanded',nearExpanded);
+ this.textContent=nearExpanded?'Compact':'Expand';
+ this.setAttribute('aria-label',nearExpanded?'Return repeater list to compact view':'Expand repeater list');
+ if(nearExpanded&&nearCollapsed){nearEl('rtNearToggle').click()}
+};
 nearEl('rtNearToggle').onclick=function(){
  nearCollapsed=!nearCollapsed;
  nearDock.classList.toggle('rt-nearest-collapsed',nearCollapsed);
@@ -72,7 +91,7 @@ function renderNearestSide(list,point){
   empty.textContent='No '+(radioService==='gmrs'?'GMRS':'amateur')+' sites in the selected list.';
   root.appendChild(empty);return
  }
- list.slice(0,7).forEach((item,index)=>{
+ list.slice(0,nearExpanded?20:7).forEach((item,index)=>{
   const btn=document.createElement('button');btn.type='button';btn.className='rt-near-row';
   const number=document.createElement('span');number.className='rt-near-rank';number.textContent=(index+1)+'.';
   const name=document.createElement('span');name.className='rt-near-name';
