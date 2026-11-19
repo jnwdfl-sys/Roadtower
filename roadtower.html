@@ -715,7 +715,31 @@ body.map-fullscreen #map .rt-status-hud{
 #map .rt-layout-managed.rt-layout-maximized.rt-status-hud{pointer-events:auto!important}
 #map .rt-layout-managed.rt-status-hud .rt-layout-header{pointer-events:auto!important}
 #map .rt-layout-managed.rt-status-hud{background:rgba(5,28,42,.95);padding:7px;border-radius:10px}
-#map .rt-layout-managed.rt-nearest-dock{display:block}
+#map .rt-layout-managed.rt-nearest-dock{
+ display:block;position:absolute;right:8px;bottom:8px;
+ width:min(240px,45%);max-height:min(235px,68%);overflow:auto;
+}
+/* Reading view: all repeater labels, buttons and mile distances grow together. */
+#map .rt-layout-maximized .rt-head strong{font-size:clamp(20px,3.5vw,32px)!important}
+#map .rt-layout-maximized .rt-closest,
+#map .rt-layout-maximized #rtNearby button,
+#map .rt-layout-maximized #rtCount,
+#map .rt-layout-maximized #rtGrowth,
+#map .rt-layout-maximized #rtServiceInfo,
+#map .rt-layout-maximized #rtNearSource,
+#map .rt-layout-maximized #rtNearOrigin{
+ font-size:clamp(17px,2.7vw,25px)!important;line-height:1.5!important
+}
+#map .rt-layout-maximized .rt-distance{font-size:clamp(20px,3.2vw,31px)!important}
+#map .rt-layout-maximized .rt-near-row .rt-near-miles{
+ font-size:clamp(18px,3vw,28px)!important
+}
+#map .rt-layout-maximized .rt-gps-hud button,
+#map .rt-layout-maximized .rt-gps-row button{
+ font-size:clamp(15px,2.5vw,23px)!important;
+ padding:10px!important
+}
+
 @media(max-width:520px){
  #map .rt-layout-actions button{font-size:10px!important;min-height:28px;padding:5px!important}
  #map .rt-layout-grip{font-size:11px}
