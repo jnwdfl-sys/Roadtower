@@ -89,28 +89,38 @@ nearEl('rtNearToggle').onclick=function(){
  this.textContent=nearCollapsed?'Show':'Hide';
 };
 function renderNearestSide(list,point){
- nearEl('rtNearHeading').textContent=radioService==='gmrs'?'NEAREST GMRS':'NEAREST HAM';
+ const both=radioService==='both';
+ nearEl('rtNearHeading').textContent=both?'NEAREST • HAM + GMRS':radioService==='gmrs'?'NEAREST GMRS':'NEAREST HAM';
  nearEl('rtNearOrigin').textContent=point.gps?'FROM YOUR GPS • LIVE':'FROM MAP CENTER • GPS OFF';
- nearEl('rtNearSource').textContent=(point.gps?'Straight-line miles from GPS':'Straight-line miles from map center • Start GPS')+' • *site-location approximate';
- const root=nearEl('rtNearRows');
- const previousScroll=nearDock.scrollTop;
+ nearEl('rtNearSource').textContent=(point.gps?'Straight-line miles from GPS':'Straight-line miles from map center • Start GPS')+' • *area-location estimate';
+ const root=nearEl('rtNearRows'),previousScroll=nearDock.scrollTop;
  root.replaceChildren();
- if(!list.length){
-  const empty=document.createElement('span');empty.className='rt-near-empty';
-  empty.textContent='No '+(radioService==='gmrs'?'GMRS':'amateur')+' sites in the selected list.';
-  root.appendChild(empty);return
+ function section(heading,items,service){
+  const h=document.createElement('div');h.className='rt-near-group-title'+(service==='gmrs'?' rt-near-group-gmrs':'');
+  h.textContent=heading;root.appendChild(h);
+  if(!items.length){
+   const empty=document.createElement('span');empty.className='rt-near-empty';
+   empty.textContent='No '+(service==='gmrs'?'GMRS':'amateur')+' repeater listings.';
+   root.appendChild(empty);return
+  }
+  items.slice(0,nearExpanded?12:5).forEach((item,index)=>{
+   const btn=document.createElement('button');btn.type='button';
+   btn.className='rt-near-row'+(service==='gmrs'?' rt-near-row-gmrs':'');
+   btn.title='Show '+(service==='gmrs'?'GMRS ':'HAM ')+item.x.call+' radio settings';
+   const number=document.createElement('span');number.className='rt-near-rank';number.textContent=(index+1)+'.';
+   const name=document.createElement('span');name.className='rt-near-name';
+   name.textContent=item.x.call+' · '+item.x.mhz.toFixed(3);
+   const miles=document.createElement('span');miles.className='rt-near-miles';
+   miles.textContent=item.dist.toFixed(1)+(item.x.approx?' mi*':' mi');
+   btn.append(number,name,miles);
+   btn.onclick=()=>choose(item.x,false);
+   root.appendChild(btn);
+  });
  }
- list.slice(0,nearExpanded?20:7).forEach((item,index)=>{
-  const btn=document.createElement('button');btn.type='button';btn.className='rt-near-row';
-  const number=document.createElement('span');number.className='rt-near-rank';number.textContent=(index+1)+'.';
-  const name=document.createElement('span');name.className='rt-near-name';
-  name.textContent=item.x.call+' · '+item.x.mhz.toFixed(3);
-  const miles=document.createElement('span');miles.className='rt-near-miles';
-  miles.textContent=item.dist.toFixed(1)+(item.x.approx?' mi*':' mi');
-  btn.append(number,name,miles);
-  btn.onclick=()=>choose(item.x,false);
-  root.appendChild(btn);
- });
+ if(both){
+  section('🟣 CLOSEST GMRS',list.filter(it=>isGMRS(it.x)),'gmrs');
+  section('🟢 CLOSEST HAM',list.filter(it=>!isGMRS(it.x)),'ham');
+ }else section(radioService==='gmrs'?'🟣 GMRS REPEATERS':'🟢 HAM REPEATERS',list,radioService);
  nearDock.scrollTop=previousScroll;
 }
 var hud=document.createElement('div');
