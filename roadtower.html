@@ -746,6 +746,8 @@ body.map-fullscreen #map .rt-status-hud{
  #map .rt-layout-managed.rt-layout-maximized{inset:3px!important;width:calc(100% - 6px)!important;height:calc(100% - 6px)!important}
 }
 
+/* Ensure the nearest panel can float outside map full-screen as well as inside it. */
+#map .rt-layout-managed.rt-nearest-dock{position:absolute!important}
 /* Panel shortcut dock v2: minimized AND hidden cards become colored one-tap dots.
    A dock bubble stays present so panels can never be lost off screen. */
 #map .rt-layout-managed.rt-layout-minimized,
