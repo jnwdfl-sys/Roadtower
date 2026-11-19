@@ -80,7 +80,7 @@ function colorizeDots(){
 }
 
 function store(){
- try{const obj={};Object.keys(states).forEach(k=>{const s=states[k];obj[k]={x:s.x,y:s.y,mode:s.mode}});localStorage.setItem(KEY,JSON.stringify(obj))}catch(e){}
+ try{const obj={};Object.keys(states).forEach(k=>{const s=states[k];obj[k]={x:s.x,y:s.y,mode:s.mode,moved:s.moved}});localStorage.setItem(KEY,JSON.stringify(obj))}catch(e){}
 }
 function bounds(el){const area=map.getBoundingClientRect(),rect=el.getBoundingClientRect();return {area,rect}}
 function move(s,x,y){
@@ -93,6 +93,17 @@ function move(s,x,y){
  s.el.style.setProperty('top',s.y+'px','important');
  s.el.style.setProperty('right','auto','important');
  s.el.style.setProperty('bottom','auto','important');
+}
+function putAtDefault(s){
+ const b=map.getBoundingClientRect();
+ const r=s.el.getBoundingClientRect();
+ const w=Math.max(120,r.width||Math.min(b.width*.42,300));
+ const h=Math.max(65,r.height||220);
+ if(s.id==='radio'){s.x=b.width-w-12;s.y=70}
+ else if(s.id==='nearest'){s.x=b.width-w-12;s.y=b.height-h-96}
+ else if(s.id==='gps'){s.x=12;s.y=88}
+ else {s.x=12;s.y=Math.max(160,b.height-h-106)}
+ s.x=Math.max(4,s.x);s.y=Math.max(4,s.y);
 }
 function update(s,shouldSave=true){
  const {el,mode}=s;
@@ -127,7 +138,12 @@ function setMode(s,mode){
   // Only one overlay should cover the map at a time.
   Object.values(states).forEach(other=>{if(other!==s&&other.mode==='max'){other.mode='normal';update(other,false)}});
  }
- s.mode=mode;update(s);
+ s.mode=mode;
+ if(mode==='normal'&&!s.moved){
+  s.el.classList.remove('rt-layout-minimized','rt-layout-hidden','rt-layout-maximized');
+  putAtDefault(s);
+ }
+ update(s);
 }
 function makeButton(label,action){
  const b=document.createElement('button');b.type='button';b.textContent=label;b.addEventListener('click',e=>{e.stopPropagation();action()});return b
@@ -135,7 +151,7 @@ function makeButton(label,action){
 function attach(c){
  const el=map.querySelector(c.selector);if(!el)return;
  const v=saved[c.id]||{};
- const s={id:c.id,el,x:Number.isFinite(v.x)?v.x:0,y:Number.isFinite(v.y)?v.y:0,
+ const s={id:c.id,el,x:Number.isFinite(v.x)?v.x:0,y:Number.isFinite(v.y)?v.y:0,moved:v.moved===true,
   mode:['normal','min','max','hide'].includes(v.mode)?v.mode:'min'};
  const header=document.createElement('div');header.className='rt-layout-header';
  const grip=document.createElement('div');grip.className='rt-layout-grip';
@@ -163,7 +179,7 @@ function attach(c){
   const b=bounds(el);
   // A newly positioned panel starts at its current on-screen location.
   s.x=b.rect.left-b.area.left;s.y=b.rect.top-b.area.top;
-  drag={id:e.pointerId,startX:e.clientX,startY:e.clientY,x:s.x,y:s.y};
+  s.moved=true;drag={id:e.pointerId,startX:e.clientX,startY:e.clientY,x:s.x,y:s.y};
   grip.setPointerCapture(e.pointerId);
   el.classList.add('rt-layout-dragging');
  });
@@ -184,13 +200,13 @@ function attach(c){
   const b=bounds(el);
   const x=Number.isFinite(s.x)&&s.x!==0?s.x:b.rect.left-b.area.left;
   const y=Number.isFinite(s.y)&&s.y!==0?s.y:b.rect.top-b.area.top;
-  move(s,x+(e.key==='ArrowRight'?d:e.key==='ArrowLeft'?-d:0),y+(e.key==='ArrowDown'?d:e.key==='ArrowUp'?-d:0));store()
+  s.moved=true;move(s,x+(e.key==='ArrowRight'?d:e.key==='ArrowLeft'?-d:0),y+(e.key==='ArrowDown'?d:e.key==='ArrowUp'?-d:0));store()
  });
  states[c.id]=s;
  // Delay saved placement until CSS and fonts have been laid out.
  requestAnimationFrame(()=>{
   if(!Number.isFinite(v.x)||!Number.isFinite(v.y)){
-   const b=bounds(el);s.x=b.rect.left-b.area.left;s.y=b.rect.top-b.area.top;
+   putAtDefault(s);
   }
   update(s,false);
  });
@@ -198,10 +214,18 @@ function attach(c){
 configs.forEach(attach);
 if(window.MutationObserver&&states.radio)new MutationObserver(colorizeDots).observe(states.radio.el,{attributes:true,attributeFilter:['class']});
 colorizeDots();requestAnimationFrame(refreshDock);
-window.addEventListener('resize',()=>{
- Object.values(states).forEach(p=>{if(p.mode==='normal')move(p,p.x,p.y)});
+function reflowPanels(){
+ Object.values(states).forEach(p=>{
+  if(p.mode==='normal'){
+   if(!p.moved)putAtDefault(p);
+   move(p,p.x,p.y)
+  }
+ });
  refreshDock();
-});
+}
+window.addEventListener('resize',()=>requestAnimationFrame(reflowPanels));
+if(window.MutationObserver)new MutationObserver(()=>requestAnimationFrame(reflowPanels))
+ .observe(document.body,{attributes:true,attributeFilter:['class']});
 window.RoadtowerPanelLayout={
  reset(){Object.values(states).forEach(s=>{s.mode='normal';s.el.style.removeProperty('left');s.el.style.removeProperty('top');s.el.style.removeProperty('right');s.el.style.removeProperty('bottom');s.el.classList.remove('rt-layout-managed','rt-layout-minimized','rt-layout-maximized','rt-layout-hidden')});try{localStorage.removeItem(KEY)}catch(e){}location.reload()},
  getModes(){return Object.fromEntries(Object.entries(states).map(([k,v])=>[k,v.mode]))}
