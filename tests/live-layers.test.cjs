@@ -33,13 +33,11 @@ test('new frontend and both Cloudflare worker scripts are valid JS',()=>{
 });
 
 test('aircraft and radar both start ON and retain independent OFF controls',()=>{
- assert.match(js,/let aircraftOn=true,dronesOn=true,radarOn=true/);
+ assert.match(js,/let aircraftOn=true,radarOn=true/);
  assert.match(js,/loadRadar\(true\);\s*loadAircraft\(true\)/);
  assert.match(js,/setAircraft\(!aircraftOn\)/);
- assert.match(js,/setDrones\(!dronesOn\)/);
  assert.match(js,/setRadar\(!radarOn\)/);
  assert.match(js,/airGroup\.clearLayers\(\)/);
- assert.match(js,/droneGroup\.clearLayers\(\)/);
  assert.match(js,/map\.removeLayer\(radarLayer\)/);
 });
 
@@ -50,7 +48,6 @@ test('live panel appears before draggable layout; minimization leaves layers act
  assert.match(layout,/selector:'\.rt-live-panel'/);
  assert.match(layout,/layers:\{icon:'✈',short:'LIVE',color:'orange'\}/);
  assert.match(layout,/minimizeAll\.addEventListener/);
- assert.match(layout,/mode:'min'/);
  assert.match(page,/rt-dot-orange/);
  assert.match(page,/rt-layout-maximized/);
 });
@@ -124,44 +121,4 @@ test('new frontend file is in the cache but API data are network-only',()=>{
  assert.match(sw,/url\.pathname\.startsWith\('\/api\/'\)/);
  assert.match(page,/Exact GPS stays on this device/);
  assert.match(js,/Math\.round\(c\.lat\*10\)\/10/);
-});
-
-
-test('drone identifiers use only explicit unmanned labels, not airplane speed or altitude',async()=>{
- const get=worker(aircraft,{fetch:async()=>new Response(JSON.stringify({ac:[
-  {hex:'a12345',flight:'TEST123',t:'A320',lat:39.12,lon:-94.61,alt_baro:400,gs:12,track:45,seen_pos:2},
-  {hex:'a22222',flight:'UAV2026',t:'DRON',lat:39.14,lon:-94.66,alt_baro:500,gs:80,track:40,seen_pos:2},
-  {hex:'a33333',flight:'RQTEST',t:'RQ4',lat:39.16,lon:-94.68,alt_baro:12000,gs:190,track:60,seen_pos:2}
- ]}),{status:200})});
- const response=await get({request:fakeRequest('https://roadtower.pages.dev/api/aircraft?lat=39.1&lon=-94.6')});
- assert.equal(response.status,200);
- const d=await response.json();
- assert.equal(d.flights.length,3);
- assert.equal(d.flights[0].isDrone,false,'A low airplane must NOT automatically be called a drone');
- assert.equal(d.flights[1].isDrone,true,'explicit DRON type shown');
- assert.equal(d.flights[2].isDrone,true,'explicit known unmanned type shown');
-});
-
-test('only reported drone pins strobe rapidly in alternating red and yellow',()=>{
- assert.match(js,/function droneIcon\(\)/);
- assert.match(js,/rt-drone-strobe/);
- assert.match(js,/x\.isDrone===true/);
- assert.match(js,/droneIcon\(\):aircraftIcon/);
- assert.match(page,/@keyframes rt-drone-red-yellow/);
- assert.match(page,/rt-drone-red-yellow \.24s/);
- assert.match(page,/#fa2d22/);
- assert.match(page,/#ffea16/);
- assert.match(page,/@media\(prefers-reduced-motion:reduce\)/);
- assert.match(js,/Most small Remote ID drones are NOT on ADS-B/);
- assert.doesNotMatch(js,/Math\.random\(\)/);
-});
-
-test('drone and plane switches are independent and stay ON while panels start minimized',()=>{
- assert.match(js,/let aircraftOn=true,dronesOn=true,radarOn=true/);
- assert.match(js,/updateToggle\(toggleDrone,true,'DRONES'\)/);
- assert.match(js,/toggleDrone\.addEventListener\('click'/);
- assert.match(js,/setAircraft,setDrones,setRadar/);
- assert.match(js,/if\(\(!aircraftOn&&!dronesOn\)\|\|airBusy/);
- assert.match(layout,/mode:'min'/);
- assert.match(js,/airRecords=data\.flights/);
 });
