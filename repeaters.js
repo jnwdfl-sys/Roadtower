@@ -178,7 +178,9 @@ var LOCAL_CLUB=[
 var data=[],gmrsData=[],customRecords=[],selected=null,follow=true,wideOnly=false,bandFilter='both',radioService='both',directoryState='loading',gmrsState='loading',markers=L.layerGroup().addTo(map);
 const BASELINE_AMATEUR=5044;
 var completeHamRefresh=false;
-try{const pref=localStorage.getItem('roadtower-radio-view-v1');if(['ham','gmrs','both'].includes(pref))radioService=pref}catch(e){}
+// Always launch with both HAM and GMRS visible. An older saved HAM-only
+// preference must never silently hide the purple GMRS sites on next startup.
+radioService='both';
 const GMRS_OPEN_URL='./gmrs-directory.json';
 
 const GMRS_STARTER_ROWS=[["WRNW944",462.65,39.0267,-94.6569,"123.0 Hz","Mission, KS","KS","N9TPB public GMRS listings","https://n9tpb.com/uls/call/WRNW944","Published as open; city-center map reference, not an antenna position.",false],["WSHC585",462.6,38.96611,-94.73389,"136.5 Hz","Lenexa, KS","KS","N9TPB public GMRS listings","https://n9tpb.com/uls/call/WSHC585","Published as open; city-center map reference, not an antenna position.",false],["KAF4575",462.7,39.0417,-94.7202,"110.9 Hz","Shawnee, KS","KS","N9TPB public GMRS listings","https://n9tpb.com/uls/call/KAF4575","Published as open; city-center map reference, not an antenna position.",false],["WRZE330",462.575,40.9987,-74.3471,"Not published","Butler, NJ","NJ","SSRF-Lite Butler GMRS (Apache-2.0)","https://github.com/Chicago-Offline/ssrf-lite/blob/main/ssrf/systems/US/NJ/Morris/Butler/gmrs/butler_gmrs_repeater.yml","Open listing; tone unpublished; city reference point.",false],["KAA8142",462.675,42.0432,-87.8477,"141.3 Hz","Park Ridge, IL","IL","SSRF-Lite NSEA GMRS (Apache-2.0)","https://github.com/Chicago-Offline/ssrf-lite/blob/main/ssrf/systems/US/IL/Cook/_Countywide/gmrs/nsea_gmrs_repeaters.yml","NSEA 675; permission required; hospital-area reference.",true],["KAE2050",462.65,42.1073,-87.8495,"107.2 Hz","Northbrook, IL","IL","SSRF-Lite NSEA GMRS (Apache-2.0)","https://github.com/Chicago-Offline/ssrf-lite/blob/main/ssrf/systems/US/IL/Cook/_Countywide/gmrs/nsea_gmrs_repeaters.yml","NSEA 650; permission required; golf-course-area reference.",true],["WRAF954",462.575,27.9518,-82.4572,"141.3 Hz","Downtown Tampa, FL","FL","SSRF-Lite Florida Simulcast Group (Apache-2.0)","https://github.com/Chicago-Offline/ssrf-lite/blob/main/ssrf/systems/US/FL/_Regional/florida_simulcast_group.yml","Tampa city-area reference; owner permission and operation unconfirmed.",false]];
@@ -578,9 +580,18 @@ function drawMarkers(list,p){
  var bounds=map.getBounds().pad(.15);
  // Always put club-confirmed nearby locations ahead of bulk directory markers.
  // The user should not lose the library reference marker among thousands of results.
- var visible=list.filter(function(it){return bounds.contains(coord(it.x))})
-   .sort(function(a,b){return Number(Boolean(isGMRS(b.x)||b.x.officialLocal))-Number(Boolean(isGMRS(a.x)||a.x.officialLocal))||a.dist-b.dist})
-   .slice(0,90);
+ var inBounds=list.filter(function(it){return bounds.contains(coord(it.x))});
+ // Reserve map-pin space for BOTH services, so a large HAM directory cannot
+ // crowd out GMRS markers (or vice versa). Existing local sites get priority.
+ function byPriority(a,b){
+  return Number(Boolean(b.x.officialLocal))-Number(Boolean(a.x.officialLocal))||a.dist-b.dist;
+ }
+ var visible;
+ if(radioService==='both'){
+  const ham=inBounds.filter(it=>!isGMRS(it.x)).sort(byPriority).slice(0,55);
+  const gmrs=inBounds.filter(it=>isGMRS(it.x)).sort(byPriority).slice(0,55);
+  visible=[...ham,...gmrs];
+ }else visible=inBounds.sort(byPriority).slice(0,110);
  var labels=0;
  visible.forEach(function(it){
   var x=it.x;
@@ -817,8 +828,12 @@ el('rtDownload').onclick=async function(){
   say('Download blocked or unavailable ('+e.message+'). Use the HearHam JSON link below to save the file, then tap Import JSON file while online.');
  }finally{loading=false;el('rtDownload').disabled=false}
 };
-map.on('moveend zoomend',function(){if(getAllStations().length)redraw()});
+map.on('moveend zoomend resize',function(){if(getAllStations().length)redraw()});
 API.onGps=function(){updateStatuses();if(getAllStations().length)redraw()};
+// Paint all bundled HAM and GMRS references immediately. IndexedDB may be
+// empty, blocked, or slow; don't wait for any download to draw local dots.
+redraw();
+updateStatuses();
 (async function(){
  try{
   var c=await readKey('custom-radio-v1');
@@ -835,7 +850,7 @@ API.onGps=function(){updateStatuses();if(getAllStations().length)redraw()};
    say('Offline directory ready • '+new Date(saved.savedAt).toLocaleDateString()+' • '+saved.origin);
    redraw();
   }else{directoryState='empty';updateStatuses();redraw();say('The club-confirmed local stations are included. Tap Download USA 2m list while online to add nationwide listings.')}
- }catch(e){directoryState='error';updateStatuses();el('rtCount').textContent='Offline storage unavailable';say('This browser cannot access offline repeater storage: '+e.message)}
+ }catch(e){directoryState='error';updateStatuses();redraw();say('Saved storage unavailable, but bundled HAM and GMRS site references are still visible. '+e.message)}
 })();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(function(){});
 })();
