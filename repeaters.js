@@ -44,6 +44,44 @@ panel.innerHTML=
  '<a id="rtSource" href="https://hearham.com/api/repeaters/v1" rel="noopener noreferrer" target="_blank">HearHam JSON download (manual backup)</a>'+
  '<div class="rt-muted">Data: HearHam, user-contributed. ★ KC Wide from the 2026-10-30 published roster or matching network metadata; not a live link indicator. Check radio programming and coverage before use.</div><a href="https://www.kansascityroom-wide.com/repeater-list/" target="_blank" rel="noopener noreferrer">KC Wide official repeater roster</a></div>';
 HOST.appendChild(panel);
+
+var nearDock=document.createElement('aside');
+nearDock.id='rtNearestDock';nearDock.className='rt-nearest-dock';
+nearDock.setAttribute('aria-label','Nearby radio repeaters sorted by distance');
+nearDock.innerHTML='<div class="rt-near-head"><strong id="rtNearHeading">NEAREST HAM</strong><button id="rtNearToggle" type="button">Hide</button></div>'+
+ '<div id="rtNearRows"><span class="rt-near-empty">Start GPS for nearest-to-farthest mile distances.</span></div>'+
+ '<div class="rt-near-foot" id="rtNearSource">Distances from map center until GPS is on</div>';
+HOST.appendChild(nearDock);
+L.DomEvent.disableClickPropagation(nearDock);
+L.DomEvent.disableScrollPropagation(nearDock);
+const nearEl=id=>nearDock.querySelector('#'+id);
+let nearCollapsed=false;
+nearEl('rtNearToggle').onclick=function(){
+ nearCollapsed=!nearCollapsed;
+ nearDock.classList.toggle('rt-nearest-collapsed',nearCollapsed);
+ this.textContent=nearCollapsed?'Show':'Hide';
+};
+function renderNearestSide(list,point){
+ nearEl('rtNearHeading').textContent=radioService==='gmrs'?'NEAREST GMRS':'NEAREST HAM';
+ nearEl('rtNearSource').textContent=point.gps?'Straight-line miles from GPS':'Straight-line miles from map center • Start GPS';
+ const root=nearEl('rtNearRows');root.replaceChildren();
+ if(!list.length){
+  const empty=document.createElement('span');empty.className='rt-near-empty';
+  empty.textContent='No '+(radioService==='gmrs'?'GMRS':'amateur')+' sites in the selected list.';
+  root.appendChild(empty);return
+ }
+ list.slice(0,7).forEach((item,index)=>{
+  const btn=document.createElement('button');btn.type='button';btn.className='rt-near-row';
+  const number=document.createElement('span');number.className='rt-near-rank';number.textContent=(index+1)+'.';
+  const name=document.createElement('span');name.className='rt-near-name';
+  name.textContent=item.x.call+' · '+item.x.mhz.toFixed(3);
+  const miles=document.createElement('span');miles.className='rt-near-miles';
+  miles.textContent=item.dist.toFixed(1)+' mi';
+  btn.append(number,name,miles);
+  btn.onclick=()=>choose(item.x,false);
+  root.appendChild(btn);
+ });
+}
 var hud=document.createElement('div');
 hud.id='rtStatusHUD';
 hud.className='rt-status-hud';
@@ -349,6 +387,8 @@ function showDetails(x){
  lineText('TX tone:',x.tone);
  lineText('Mode:',x.mode);
  lineText('Location:',x.city+(x.state?', '+x.state:'')+' (approx.)');
+ var nearPoint=anchor();
+ lineText('Straight-line distance:',distance(nearPoint.lat,nearPoint.lon,x.lat,x.lon).toFixed(1)+' miles '+(nearPoint.gps?'from GPS':'from map center'));
  if(radioService==='gmrs')lineText('Access:', 'GMRS license required; verify owner permission/rules.');
  if(x.source)lineText('Source:',x.source);
  if(x.approx)lineText('Pin accuracy:','Approximate area — not exact transmitter location');
@@ -375,6 +415,7 @@ function drawLine(){
 }
 function redraw(){
  if(!getAllStations().length){
+  renderNearestSide([],anchor());
   markers.clearLayers();line.setLatLngs([]);
   el('rtCount').textContent=radioService==='gmrs'?'No saved GMRS repeater sites yet. Use Download open GMRS sites or add a local station.':
     'No amateur repeater sites saved yet.';
@@ -383,6 +424,7 @@ function redraw(){
   showDetails(null);return
  }
  var list=sorted(),p=anchor(),nearest=list[0];
+ renderNearestSide(list,p);
  el('rtCount').textContent=radioService==='gmrs'?
    getAllStations().length.toLocaleString()+' GMRS sites ('+gmrsData.length.toLocaleString()+' open listings plus local entries)'+(p.gps?' • GPS active':' • map-center distances'):
    getAllStations().length.toLocaleString()+' amateur repeaters ('+data.length.toLocaleString()+' national records + verified local stations)'+(p.gps?' • GPS active':' • map-center distances');
@@ -394,9 +436,9 @@ function redraw(){
   var d=document.createElement('div');d.className='rt-distance';d.textContent=nearest.dist.toFixed(1)+' miles '+(p.gps?'from you':'from map center');closest.appendChild(d);
  }else closest.textContent='No repeaters in this filter.';
  var near=el('rtNearby');near.replaceChildren();
- list.slice(0,5).forEach(function(item){
+ list.slice(0,10).forEach(function(item,index){
   var b=document.createElement('button');b.type='button';
-  b.textContent=(item.x.wide?'★ ':'')+item.x.call+' · '+item.x.mhz.toFixed(3)+' · '+item.dist.toFixed(1)+' mi';
+  b.textContent=(index+1)+'. '+(item.x.wide?'★ ':'')+item.x.call+' · '+item.x.mhz.toFixed(3)+' · '+item.dist.toFixed(1)+' mi';
   b.onclick=function(){choose(item.x,true)};
   near.appendChild(b);
  });
