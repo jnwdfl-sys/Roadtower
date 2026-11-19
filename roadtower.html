@@ -699,7 +699,7 @@ $('map').appendChild(gpsHud);
 if(window.L){L.DomEvent.disableClickPropagation(gpsHud);L.DomEvent.disableScrollPropagation(gpsHud)}
 const gpsIcon=window.L?L.divIcon({className:'rt-self-pin-icon',html:'<div class="rt-self-beacon" role="img" aria-label="Your GPS position: visual SOS pattern, not an emergency signal"><span class="rt-self-wave"></span><span class="rt-self-core"></span><span class="rt-self-word">YOU · SOS</span></div>',iconSize:[56,70],iconAnchor:[28,35]}):null;
 function gpsHudState(state,message){
- gpsHud.className='rt-gps-hud rt-gps-'+state;
+ gpsHud.classList.remove('rt-gps-off','rt-gps-searching','rt-gps-live','rt-gps-error');gpsHud.classList.add('rt-gps-'+state);
  $('rtGpsMode').textContent=state==='live'?'GPS ON · LIVE':state==='searching'?'GPS SEARCHING':state==='error'?'GPS ERROR':'GPS OFF';
  $('rtGpsDetails').textContent=message||'GPS not started';
  $('rtGpsQuick').textContent=state==='live'?'Find Me':state==='searching'?'Locating…':state==='error'?'Retry GPS':'Start GPS';
