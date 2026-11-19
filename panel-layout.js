@@ -39,7 +39,7 @@ const BUBBLES={
  nearest:{icon:'➊',short:'NEAR',color:'amber'},
  gps:{icon:'◎',short:'GPS',color:'cyan'},
  status:{icon:'●',short:'INFO',color:'blue'},
- layers:{icon:'✈',short:'AIR',color:'orange'}
+ layers:{icon:'✈',short:'LIVE',color:'orange'}
 };
 const DOCK_KEY='roadtower-dot-position-v1';
 let dockSaved=null;
