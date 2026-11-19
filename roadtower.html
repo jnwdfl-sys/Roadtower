@@ -878,6 +878,24 @@ body.map-fullscreen #map .rt-status-hud{
 #map .rt-layout-maximized .rt-closest-gmrs{
  overflow-wrap:anywhere;line-height:1.55!important
 }
+
+/* Tap a small repeater dot to see programming information without reopening
+   the whole radio panel. Safe text-only content (no interpolated HTML). */
+#map .leaflet-popup-content-wrapper:has(.rt-radio-popup){
+ background:#0b2c40;color:#ecfaff;border:2px solid #7ccce8;border-radius:13px;
+ box-shadow:0 5px 24px #0009
+}
+#map .leaflet-popup-content:has(.rt-radio-popup){margin:12px 14px}
+#map .rt-radio-popup{color:#e7faff;font:600 clamp(14px,2.2vw,18px)/1.5 system-ui,Arial;min-width:185px;max-width:340px}
+#map .rt-radio-popup strong{display:block;color:#fff;font-size:clamp(17px,2.5vw,23px);margin-bottom:7px}
+#map .rt-radio-popup b{color:#9fece2}
+#map .rt-radio-popup div{margin:5px 0;overflow-wrap:anywhere}
+#map .rt-radio-popup button{
+ display:block;width:100%;margin-top:10px;padding:10px;
+ border:1px solid #77c6e3;border-radius:9px;color:#fff;background:#215b78;
+ font:800 15px system-ui,Arial;cursor:pointer
+}
+#map .leaflet-popup-content-wrapper:has(.rt-radio-popup) + .leaflet-popup-tip-container .leaflet-popup-tip{background:#0b2c40}
 </style></head><body><header><h1>ROADTOWER</h1><p>Free GPS • Official Weather • Road Information</p></header><main><section class="card"><h2>Live GPS Map</h2><span class="pill">Location stays on this device</span><p id="status" role="status">GPS stopped. Tap Start Live GPS.</p><div class="buttons" id="gpsActions"><button id="start">Start Live GPS</button><button id="stop" class="secondary" disabled>Stop GPS</button><button id="center" class="secondary" disabled>Center Map</button><button id="followMap" class="secondary">Follow GPS: ON</button></div><div class="buttons" id="mapToolbar"><button class="secondary" id="compactMap" type="button">Compact Map</button><button class="secondary" id="expandMap" type="button">Large Map</button><button id="fullscreenMap" type="button">Full Screen</button><button id="offlineQuickMode" class="secondary" type="button">Map: AUTO</button></div><div id="map" aria-label="Interactive road map"></div><p class="hint">Tap the map to save a location. Map tiles require internet and are subject to OpenStreetMap tile usage limits. Attribution appears on the map.</p><div class="buttons"><button id="saveCurrent" class="secondary" disabled>Save My GPS Location</button></div><div id="saveForm" class="hidden"><label for="placeName">Place name</label><input id="placeName" maxlength="80" placeholder="Home, parking, campsite..."><label for="placeType">Category</label><select id="placeType"><option value="📍">Place</option><option value="🏠">Home</option><option value="🅿️">Parking</option><option value="🏕️">Campsite</option><option value="🥾">Trailhead</option></select><p id="chosen" class="hint"></p><div class="buttons"><button id="confirmSave">Save Place</button><button id="cancelSave" class="secondary">Cancel</button></div></div></section><section class="card" id="offlineTravelCard">
 <h2>🗺️ Offline Travel Maps</h2>
 <p class="hint">Download <strong>road and town data</strong> before your trip for use without mobile service. This is a simpler vector-road view, not the detailed online street map, satellite imagery or turn-by-turn navigation. GPS and repeater distances continue working while the page stays active.</p>
