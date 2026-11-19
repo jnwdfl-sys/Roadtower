@@ -145,9 +145,9 @@ var el=function(id){return panel.querySelector('#'+id)};
 var LOCAL_CLUB=[
  {id:'kcwide-k0ham-146910-op',call:'K0HAM',mhz:146.910,lat:38.98780,lon:-94.67090,
   tx:146.310,offset:-0.600,tone:'Digital (no analog PL published)',mode:'Yaesu System Fusion (C4FM) / WIRES-X',
-  city:'78th Street & Santa Fe Drive / Metcalf area, Overland Park',state:'KS',wide:true,
-  notes:'Overland Park K0HAM repeater area near 78th and Santa Fe/Metcalf. Kansas City Wide roster dated Aug 13, 2026 lists this repeater UP and connected. Coordinates from a published repeater directory. This does NOT verify which physical water tower hosts the antenna.',
-  source:'Kansas City Wide roster (2026-08-13); RepeaterBook/N9TPB published K0HAM coordinates',
+  city:'Santa Fe Water Tower area (7745 Santa Fe Dr), 78th Street, Overland Park',state:'KS',wide:true,
+  notes:'K0HAM site coordinates from published repeater listing near 78th and Santa Fe Drive. WaterOne independently identifies the Santa Fe Water Tower at 7745 Santa Fe Dr, Overland Park. The physical water tower is a nearby reference landmark; whether K0HAM uses its antenna structures is NOT verified. Kansas City Wide August 13, 2026 roster lists K0HAM 146.910 UP and connected.',
+  source:'Kansas City Wide 2026-08-13 roster; N9TPB/RepeaterBook K0HAM published coordinates; WaterOne Santa Fe Water Tower facility address',
   sourceUrl:'https://n9tpb.com/repeaters/r/rb:20-3874',officialLocal:true,approx:true},
  {id:'jcrac-w0erh-145290',call:'W0ERH',mhz:145.290,lat:38.969826,lon:-94.699526,
   tx:144.690,offset:-0.600,tone:'151.4 Hz',mode:'FM / DMR',
