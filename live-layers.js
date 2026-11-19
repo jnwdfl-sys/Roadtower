@@ -14,13 +14,11 @@ const panel=document.createElement('aside');
 panel.className='rt-live-panel';
 panel.setAttribute('aria-label','Live aircraft and weather radar layers');
 panel.innerHTML=
- '<strong class="rt-live-title">✈ Aircraft + 🚁 Drones + 🌦 Radar</strong>'+
+ '<strong class="rt-live-title">✈ Aircraft + 🌦 Weather Radar</strong>'+
  '<div class="rt-live-switches">'+
  '<button id="rtAirToggle" type="button" aria-pressed="true">✈ AIRCRAFT: ON</button>'+
- '<button id="rtDroneToggle" type="button" aria-pressed="true">🚁 DRONES: ON</button>'+
  '<button id="rtRadarToggle" type="button" aria-pressed="true">🌦 RADAR: ON</button></div>'+
  '<div id="rtAirStatus" class="rt-live-status" role="status">Aircraft: connecting…</div>'+
- '<div id="rtDroneStatus" class="rt-live-status" role="status">Drones: checking ADS-B reports…</div>'+
  '<div id="rtRadarStatus" class="rt-live-status" role="status">Radar: connecting…</div>'+
  '<div class="rt-live-options">'+
  '<label for="rtRadarOpacity">Radar strength <output id="rtRadarOpacityValue">30%</output></label>'+
@@ -29,11 +27,8 @@ panel.innerHTML=
  '<button type="button" id="rtLayersRefresh">↻ Update</button></div>'+
  '<div class="rt-live-nearest"><strong>✈ Aircraft near map</strong>'+
  '<div id="rtAircraftList" class="rt-live-air-list">Waiting for aircraft reports…</div></div>'+
- '<div class="rt-live-nearest"><strong>🚁 Identified drones</strong>'+
- '<div id="rtDroneList" class="rt-live-air-list">Checking for drone-tagged ADS-B records…</div></div>'+
  '<div class="rt-live-credit">Aircraft © adsb.lol contributors (ODbL) · Radar © RainViewer<br>'+
- 'Drones are shown only when explicitly identified in aircraft reports. Most small Remote ID drones are NOT on ADS-B; this is not a drone detector.'+
- '<br>Aircraft data can be delayed; radar shows recent rain, not a forecast.'+
+ 'Aircraft data are delayed reports; positions can be missing. Radar shows recent rain, not a forecast.'+
  '<br>Uses internet and sends an approximate MAP CENTER (rounded to 0.1°) to the aircraft service. GPS itself stays on your phone.</div>';
 host.appendChild(panel);
 if(L.DomEvent){
@@ -41,11 +36,10 @@ if(L.DomEvent){
  L.DomEvent.disableScrollPropagation(panel);
 }
 const el=id=>panel.querySelector('#'+id);
-const toggleAir=el('rtAirToggle'),toggleDrone=el('rtDroneToggle'),toggleRadar=el('rtRadarToggle');
-const radarStatus=el('rtRadarStatus'),airStatus=el('rtAirStatus'),droneStatus=el('rtDroneStatus');
-const listRoot=el('rtAircraftList'),droneList=el('rtDroneList');
-const airGroup=L.layerGroup().addTo(map),droneGroup=L.layerGroup().addTo(map);
-let aircraftOn=true,dronesOn=true,radarOn=true,airRecords=[],airLastFetch=0,airLastSuccess=0,airLastCenter=null;
+const toggleAir=el('rtAirToggle'),toggleRadar=el('rtRadarToggle');
+const radarStatus=el('rtRadarStatus'),airStatus=el('rtAirStatus'),listRoot=el('rtAircraftList');
+const airGroup=L.layerGroup().addTo(map);
+let aircraftOn=true,radarOn=true,airRecords=[],airLastFetch=0,airLastSuccess=0,airLastCenter=null;
 let airBusy=false,radarBusy=false,radarFrames=[],radarHost='',radarLayer=null;
 let radarFrameTime=0,radarLastFetch=0,animation=null,animationIndex=0;
 const RADAR_OPACITY=.30, AIR_INTERVAL=180000, RADAR_INTERVAL=300000;
@@ -66,7 +60,7 @@ function row(label,value){
  e.appendChild(b);e.appendChild(document.createTextNode(String(value)));return e;
 }
 function updateToggle(button,on,word){
- button.textContent=(word==='AIRCRAFT'?'✈ ':word==='DRONES'?'🚁 ':'🌦 ')+word+': '+(on?'ON':'OFF');
+ button.textContent=(word==='AIRCRAFT'?'✈ ':'🌦 ')+word+': '+(on?'ON':'OFF');
  button.setAttribute('aria-pressed',String(on));
 }
 function viewCenter(){
@@ -130,12 +124,6 @@ async function loadRadar(force=false){
   else radarStatus.textContent='Radar update unavailable · last image '+new Date(radarFrameTime*1000).toLocaleTimeString();
  }finally{radarBusy=false}
 }
-// Fast red/yellow visual drone identification; NOT an emergency radio strobe.
-function droneIcon(){
- return L.divIcon({className:'rt-drone-icon',
-  html:'<span class="rt-drone-strobe" aria-hidden="true"><span class="rt-drone-glyph">✦</span></span>',
-  iconSize:[36,36],iconAnchor:[18,18]});
-}
 function aircraftIcon(record){
  const heading=record.heading===null?0:(record.heading%360+360)%360;
  return L.divIcon({className:'rt-aircraft-icon',
@@ -145,73 +133,53 @@ function aircraftIcon(record){
 function aircraftPopup(item){
  const box=document.createElement('div');box.className='rt-aircraft-popup';
  const heading=document.createElement('strong');
- heading.textContent=(item.isDrone?'🚁 DRONE · ':'✈ ')+(item.call||item.hex||'Aircraft');box.appendChild(heading);
+ heading.textContent='✈ '+(item.call||item.hex||'Aircraft');box.appendChild(heading);
  box.appendChild(row('Aircraft type',item.type||'Not reported'));
  box.appendChild(row('Altitude',item.altFt===null?'Not reported':Math.round(item.altFt).toLocaleString()+' ft'));
  box.appendChild(row('Speed',item.speedKt===null?'Not reported':Math.round(item.speedKt*1.150779)+' mph'));
  box.appendChild(row('Direction',item.heading===null?'Not reported':Math.round(item.heading)+'°'));
  box.appendChild(row('Last position',item.seenSec===null?'Not reported':Math.round(item.seenSec)+' sec before snapshot'));
- box.appendChild(row('Source',item.isDrone?'ADS-B drone-identified report; most small drones not covered':'adsb.lol • reported aircraft, not live onboard GPS'));
+ box.appendChild(row('Source','adsb.lol • reported aircraft, not live onboard GPS'));
  return box;
 }
 function renderAircraft(){
- airGroup.clearLayers();droneGroup.clearLayers();
- listRoot.replaceChildren();droneList.replaceChildren();
+ airGroup.clearLayers();listRoot.replaceChildren();
+ if(!aircraftOn){airStatus.textContent='Aircraft OFF';return}
  const c=map.getCenter();
  const sorted=airRecords.filter(x=>Number.isFinite(x.lat)&&Number.isFinite(x.lon))
   .map(x=>({x,dist:miles(c.lat,c.lng,x.lat,x.lon)}))
   .sort((a,b)=>a.dist-b.dist);
- function drawGroup(targets,on,group,root,isDrone){
-  if(!on){root.textContent=isDrone?'Drone layer OFF':'Aircraft layer OFF';return 0}
-  for(const item of targets.slice(0,110)){
-   const m=L.marker([item.x.lat,item.x.lon],{
-    icon:isDrone?droneIcon():aircraftIcon(item.x),
-    zIndexOffset:isDrone?340:250,
-    title:(isDrone?'Drone (identified in ADS-B) ':'Aircraft ')+(item.x.call||item.x.hex||'unknown')});
-   m.bindPopup(aircraftPopup(item.x),{maxWidth:310});
-   m.addTo(group);
-  }
-  if(!targets.length){
-   root.textContent=isDrone?'No drone-tagged reports in this ADS-B snapshot. Most small drones are not covered.':
-    'No aircraft positions reported nearby.';
-   return 0;
-  }
-  for(const item of targets.slice(0,7)){
-   const b=document.createElement('button');b.type='button';
-   b.className='rt-aircraft-nearby'+(isDrone?' rt-drone-nearby':'');
-   b.textContent=(isDrone?'🚁 ':'✈ ')+(item.x.call||item.x.hex||'Unknown')+
-    ' · '+item.dist.toFixed(1)+' mi'+(item.x.altFt!==null?' · '+Math.round(item.x.altFt).toLocaleString()+' ft':'');
-   b.onclick=()=>{
-    map.panTo([item.x.lat,item.x.lon],{animate:false});
-    const marker=group.getLayers().find(m=>m.getLatLng&&
-     Math.abs(m.getLatLng().lat-item.x.lat)<.00001&&
-     Math.abs(m.getLatLng().lng-item.x.lon)<.00001);
-    if(marker)marker.openPopup();
-   };
-   root.appendChild(b);
-  }
-  return targets.length;
+ for(const item of sorted.slice(0,110)){
+  const m=L.marker([item.x.lat,item.x.lon],{
+   icon:aircraftIcon(item.x),zIndexOffset:250,
+   title:'Aircraft '+(item.x.call||item.x.hex||'unknown')});
+  m.bindPopup(aircraftPopup(item.x),{maxWidth:310});
+  m.addTo(airGroup);
  }
- const planes=sorted.filter(it=>it.x.isDrone!==true);
- const drones=sorted.filter(it=>it.x.isDrone===true);
- drawGroup(planes,aircraftOn,airGroup,listRoot,false);
- const droneCount=drawGroup(drones,dronesOn,droneGroup,droneList,true);
- if(!dronesOn)droneStatus.textContent='Drones OFF';
- else droneStatus.textContent='Drones ON · '+droneCount+' explicitly identified ADS-B reports · most small drones not covered';
+ if(!sorted.length){listRoot.textContent='No aircraft positions reported nearby.';return}
+ for(const it of sorted.slice(0,7)){
+  const b=document.createElement('button');b.type='button';
+  b.className='rt-aircraft-nearby';
+  b.textContent='✈ '+(it.x.call||it.x.hex||'Aircraft')+' · '+it.dist.toFixed(1)+' mi'+
+   (it.x.altFt!==null?' · '+Math.round(it.x.altFt).toLocaleString()+' ft':'');
+  b.onclick=()=>{
+   map.panTo([it.x.lat,it.x.lon],{animate:false});
+   const layers=airGroup.getLayers();
+   const marker=layers.find(m=>m.getLatLng&&
+    Math.abs(m.getLatLng().lat-it.x.lat)<.00001&&Math.abs(m.getLatLng().lng-it.x.lon)<.00001);
+   if(marker)marker.openPopup();
+  };
+  listRoot.appendChild(b);
+ }
 }
 function setAircraft(on){
  aircraftOn=on;updateToggle(toggleAir,on,'AIRCRAFT');
- if(!on)airStatus.textContent='Aircraft OFF';
+ if(!on){airGroup.clearLayers();listRoot.textContent='Aircraft layer OFF';airStatus.textContent='Aircraft OFF';return}
  renderAircraft();
- if(on&&!airRecords.length)loadAircraft(true);
-}
-function setDrones(on){
- dronesOn=on;updateToggle(toggleDrone,on,'DRONES');
- renderAircraft();
- if(on&&!airRecords.length)loadAircraft(true);
+ if(!airRecords.length)loadAircraft(true);
 }
 async function loadAircraft(force=false){
- if((!aircraftOn&&!dronesOn)||airBusy||document.hidden)return;
+ if(!aircraftOn||airBusy||document.hidden)return;
  if(!navigator.onLine){airStatus.textContent='Aircraft waiting for internet';return}
  const c=viewCenter(),now=Date.now();
  if(!force&&now-airLastFetch<AIR_INTERVAL)return;
@@ -227,27 +195,25 @@ async function loadAircraft(force=false){
   const data=await resp.json();
   if(!Array.isArray(data.flights))throw Error('Invalid aircraft data');
   if(!Number.isFinite(data.updated)||now-data.updated>900000)throw Error('Stale aircraft snapshot');
-  if(!aircraftOn&&!dronesOn)return;
+  if(!aircraftOn)return;
   airLastSuccess=Date.now();
   airRecords=data.flights.filter(x=>x&&Number.isFinite(x.lat)&&Number.isFinite(x.lon))
    .map(x=>({call:String(x.call||'').slice(0,20),hex:String(x.hex||'').slice(0,12),
     type:String(x.type||'').slice(0,12),lat:x.lat,lon:x.lon,
     altFt:safeNumber(x.altFt),speedKt:safeNumber(x.speedKt),
-    heading:safeNumber(x.heading),seenSec:safeNumber(x.seenSec),isDrone:x.isDrone===true}));
+    heading:safeNumber(x.heading),seenSec:safeNumber(x.seenSec)}));
   renderAircraft();
-  airStatus.textContent=(aircraftOn?'Aircraft ON · '+airRecords.filter(x=>!x.isDrone).length+' reported':'Aircraft OFF')+' · '+new Date(data.updated)
+  airStatus.textContent='Aircraft ON · '+airRecords.length+' reported · '+new Date(data.updated)
    .toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+
    ' · refresh ~3 min';
  }catch(e){
   // Never keep old aircraft dots under a false LIVE label.
-  if(!aircraftOn&&!dronesOn)return;
+  if(!aircraftOn)return;
   if(now-airLastSuccess>=360000||!airRecords.length){airRecords=[];renderAircraft()}
-  if(aircraftOn)airStatus.textContent='Aircraft data unavailable · '+e.message;
-  if(dronesOn)droneStatus.textContent='Drone reports unavailable · '+e.message;
+  airStatus.textContent='Aircraft data unavailable · '+e.message;
  }finally{airBusy=false}
 }
 toggleAir.addEventListener('click',()=>setAircraft(!aircraftOn));
-toggleDrone.addEventListener('click',()=>setDrones(!dronesOn));
 toggleRadar.addEventListener('click',()=>setRadar(!radarOn));
 el('rtRadarOpacity').addEventListener('input',e=>{
  currentOpacity=Number(e.target.value)/100;
@@ -270,7 +236,7 @@ el('rtLayersRefresh').addEventListener('click',()=>{
 });
 let lastPanning=0;
 map.on('moveend',()=>{
- if(!aircraftOn&&!dronesOn)return;
+ if(!aircraftOn)return;
  renderAircraft();
  const c=viewCenter();
  if(airLastCenter&&miles(c.lat,c.lon,airLastCenter.lat,airLastCenter.lon)>30&&
@@ -283,18 +249,16 @@ document.addEventListener('visibilitychange',()=>{
 window.addEventListener('online',()=>{loadAircraft(true);loadRadar(true)});
 window.setInterval(()=>{
  if(document.hidden)return;
- if(aircraftOn||dronesOn)loadAircraft();
+ if(aircraftOn)loadAircraft();
  if(radarOn)loadRadar();
 },60000);
 window.RoadtowerLiveLayers={
- getState:()=>({aircraft:aircraftOn,drones:dronesOn,radar:radarOn,
-  planes:airRecords.filter(x=>!x.isDrone).length,
-  droneReports:airRecords.filter(x=>x.isDrone).length,radarFrameTime}),
- setAircraft,setDrones,setRadar
+ getState:()=>({aircraft:aircraftOn,radar:radarOn,planes:airRecords.length,radarFrameTime}),
+ setAircraft,setRadar
 };
 // Both layers turn ON on each fresh launch. No saved OFF preference suppresses
 // them on the next startup; the user can disable them during this session.
-updateToggle(toggleAir,true,'AIRCRAFT');updateToggle(toggleDrone,true,'DRONES');updateToggle(toggleRadar,true,'RADAR');
+updateToggle(toggleAir,true,'AIRCRAFT');updateToggle(toggleRadar,true,'RADAR');
 loadRadar(true);
 loadAircraft(true);
 })();
