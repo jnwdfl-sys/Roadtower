@@ -672,9 +672,15 @@ el('rtGmrsDownload').onclick=async function(){
   var raw=await response.json();
   var parsed=normalizeGmrs(raw).map(x=>Object.assign(x,{source:'SSRF-Lite open data (Apache-2.0)'}));
   if(!parsed.length)throw Error('No geolocated GMRS duplex repeaters were found in this open feed; existing GMRS records were kept');
-  await saveKey('gmrs-v1',parsed,'SSRF-Lite Apache-2.0');
-  gmrsData=parsed;gmrsState='ready';selected=null;follow=true;
-  say('Saved '+parsed.length+' open-data GMRS repeater sites offline. Additional repeaters may be absent. Verify tone and owner access.');
+  // Open-source refresh adds to the saved GMRS list; never erase personal imports.
+  var merged=[...gmrsData,...parsed],seen=new Set();
+  merged=merged.filter(x=>{
+   var key=x.call.toUpperCase()+'|'+x.mhz.toFixed(4)+'|'+x.lat.toFixed(2)+'|'+x.lon.toFixed(2);
+   if(seen.has(key))return false;seen.add(key);return true;
+  });
+  await saveKey('gmrs-v1',merged,'SSRF-Lite + personal GMRS entries');
+  gmrsData=merged;gmrsState='ready';selected=null;follow=true;
+  say('Downloaded '+parsed.length+' open-data GMRS sites; '+merged.length+' total saved offline. Coverage is incomplete. Personal imports were preserved.');
   redraw();updateStatuses();
  }catch(e){say('GMRS download failed: '+e.message+'. Existing saved sites are unchanged.')}
  finally{loading=false;this.disabled=false}
