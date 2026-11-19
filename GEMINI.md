@@ -17,9 +17,11 @@ Roadtower is a browser-based, offline-first map/radio companion deployed from th
 3. Display the user's marker only at actual browser GPS coordinates with a bright multicolor **visual** SOS rhythm (••• ——— •••). This animation does **not** broadcast SOS or call responders. Keep the marker visible above the repeater dots.
 4. When GPS tracking begins, use a location-centered zoom that makes nearby HAM and GMRS dots visible with the YOU marker where possible. The closest-service calculation uses straight-line distance; approximate tower pins are not surveyed antennas.
 5. Show the nearest HAM stations and nearest GMRS stations as **separate sorted groups** in a legible dock. Tapping any station reveals RX frequency, TX frequency, offset/tone, location, access notes, and service.
-6. On every launch, **start all information panels minimized** into distinctive, tappable colored-dot shortcuts, while GPS, HAM/GMRS, airplanes, and weather radar data layers remain ON and visible on the map. Provide **Minimize All**, **Show All**, and individual open, full-screen, drag and hide. Minimized and hidden panels must always be recoverable.
+6. On every launch, **start all information panels minimized** into distinctive, tappable colored-dot shortcuts, while GPS, HAM/GMRS, airplanes, reported drones, and weather radar data layers remain ON and visible on the map. Provide **Minimize All**, **Show All**, and individual open, full-screen, drag and hide. Minimized and hidden panels must always be recoverable.
 7. Keep the Johnson County library W0ERH 145.290 marker as an **ordinary small green ham dot** with full programming details, not a building icon.
 8. Include K0HAM 146.910 near the Santa Fe Water Tower (Overland Park), while making clear the exact individual antenna identity has not been independently confirmed. Repeater reference coordinates and the physical tower's address are separate pieces of evidence.
+
+9. Drones explicitly identified by the ADS-B aircraft source appear as separate map targets with a **fast red/yellow alternating visual flash**. They start ON independently of airplane and weather layers. Most small drones broadcast FAA Remote ID over Wi-Fi/Bluetooth rather than ADS-B, so do not pretend Roadtower detects every nearby drone or invent markers from speed/altitude.
 
 ## Known code locations
 - `roadtower.html`: Leaflet map, GPS watchPosition, SOS pin animation, toolbar and CSS.
