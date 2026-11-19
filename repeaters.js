@@ -849,7 +849,13 @@ updateStatuses();
    data=saved.records;completeHamRefresh=String(saved.origin||'').includes('2m+70cm');directoryState='ready';updateStatuses();updateGrowth();
    say('Offline directory ready • '+new Date(saved.savedAt).toLocaleDateString()+' • '+saved.origin);
    redraw();
-  }else{directoryState='empty';updateStatuses();redraw();say('The club-confirmed local stations are included. Tap Download USA 2m list while online to add nationwide listings.')}
+  }else{
+   directoryState='empty';updateStatuses();redraw();
+   say('Local HAM and GMRS sites are visible. '+(navigator.onLine?'Automatically loading the U.S. amateur repeater directory…':'Offline: U.S. directory not yet saved; local sites remain visible.'));
+   // First open on a fresh phone/browser: attempt the wider amateur directory
+   // without requiring a second button, while keeping bundled pins on screen.
+   if(navigator.onLine)setTimeout(()=>{if(!loading&&el('rtDownload'))el('rtDownload').click()},350);
+  }
  }catch(e){directoryState='error';updateStatuses();redraw();say('Saved storage unavailable, but bundled HAM and GMRS site references are still visible. '+e.message)}
 })();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(function(){});
