@@ -214,13 +214,15 @@ function updateStatuses(){
   'NETWORK: '+(online?'ONLINE*':'OFFLINE'),
   online?'Device reports a network connection; actual internet access is not guaranteed.':'Device reports no network connection.');
  var available=getAllStations().length;
- var state=radioService==='gmrs'?gmrsState:directoryState;
+ var state=radioService==='gmrs'?gmrsState:radioService==='both'?(gmrsState==='loading'||directoryState==='loading'?'loading':'ready'):directoryState;
  var ready=available>0;
- var prefix=radioService==='gmrs'?'GMRS':'HAM';
+ var prefix=radioService==='gmrs'?'GMRS':radioService==='both'?'HAM + GMRS':'HAM';
  var directoryText=ready?'SAVED '+available.toLocaleString():
   state==='loading'?'CHECKING':state==='error'?'STORAGE ERROR':'NOT SAVED';
  setIndicator('rtDataStatus',ready?'good':state==='loading'?'neutral':'bad',
-  prefix+': '+directoryText,
+  prefix+': '+(radioService==='both'?
+    getAllStations().filter(x=>!isGMRS(x)).length.toLocaleString()+' H / '+
+    getAllStations().filter(isGMRS).length.toLocaleString()+' G':directoryText),
   ready?'Saved '+prefix+' repeater listings available offline.':'Save this radio-service directory while online, then use GPS offline.');
  var gps=API.getGps&&API.getGps();
  setIndicator('rtGpsStatus',gps?'good':'neutral',
@@ -457,8 +459,8 @@ function serviceUI(){
  el('rtGmrsSources').hidden=radioService==='ham';
  el('rtVerifiedLocal').hidden=radioService==='gmrs';
  el('rtNewFreq').min=radioService==='gmrs'?'462.55':'144';
- el('rtNewFreq').max=radioService==='gmrs'?'462.725':'450';
- el('rtNewFreq').placeholder=radioService==='gmrs'?'462.675':'145.290';
+ el('rtNewFreq').max=radioService==='ham'?'450':'462.725';
+ el('rtNewFreq').placeholder=radioService==='gmrs'?'462.675':radioService==='both'?'145.290 or 462.675':'145.290';
  el('rtNewOffset').value=radioService==='gmrs'?'5.000':'-0.600';
  el('rtServiceInfo').textContent=radioService==='both'?
   'HAM and GMRS simultaneously. HAM green (KC Wide gold); GMRS purple. Separate licensed radio services and nearest rankings.':
@@ -522,20 +524,43 @@ function redraw(){
  }
  var list=sorted(),p=anchor(),nearest=list[0];
  renderNearestSide(list,p);
- el('rtCount').textContent=radioService==='gmrs'?
-   getAllStations().length.toLocaleString()+' GMRS reference sites ('+GMRS_STARTER.length+' starter + '+gmrsData.length.toLocaleString()+' downloaded + personal; duplicates merged)'+(p.gps?' • GPS active':' • map-center distances'):
-   getAllStations().length.toLocaleString()+' amateur repeaters ('+data.length.toLocaleString()+' national records + verified local stations)'+(p.gps?' • GPS active':' • map-center distances');
+ const allStations=getAllStations();
+ const totalGMRS=allStations.filter(isGMRS).length;
+ const totalHam=allStations.length-totalGMRS;
+ el('rtCount').textContent=radioService==='both'?
+   totalHam.toLocaleString()+' ham + '+totalGMRS.toLocaleString()+' GMRS site references • BOTH ON • '+(p.gps?'GPS distances':'map-center distances'):
+   radioService==='gmrs'?
+   totalGMRS.toLocaleString()+' GMRS references ('+GMRS_STARTER.length+' starter + '+gmrsData.length+' downloaded + personal, duplicates merged)'+(p.gps?' • GPS active':' • map-center distances'):
+   totalHam.toLocaleString()+' amateur repeaters ('+data.length.toLocaleString()+' national records + local sites)'+(p.gps?' • GPS active':' • map-center distances');
  if(follow){selected=nearest?nearest.x:null;showDetails(selected)}
  var closest=el('rtClosest');closest.replaceChildren();
  if(nearest){
-  var main=document.createElement('strong');main.textContent=nearest.x.call+'  '+nearest.x.mhz.toFixed(4)+' MHz'+(nearest.x.wide?' ★':'');
+  var main=document.createElement('strong');main.textContent=(isGMRS(nearest.x)?'🟣 GMRS · ':'🟢 HAM · ')+nearest.x.call+'  '+nearest.x.mhz.toFixed(4)+' MHz'+(nearest.x.wide?' ★':'');
   closest.appendChild(main);
   var d=document.createElement('div');d.className='rt-distance';d.textContent=nearest.dist.toFixed(1)+' miles '+(p.gps?'from you':'from map center');closest.appendChild(d);
  }else closest.textContent='No repeaters in this filter.';
+ if(radioService==='both'){
+  const bestGMRS=list.find(item=>isGMRS(item.x));
+  const group=document.createElement('div');group.className='rt-closest-gmrs';
+  if(bestGMRS){
+   const x=bestGMRS.x;
+   const t=document.createElement('strong');
+   t.textContent='🟣 CLOSEST GMRS · '+x.call+' · '+x.mhz.toFixed(3)+' MHz';
+   const info=document.createElement('div');
+   info.textContent=bestGMRS.dist.toFixed(1)+(x.approx?' mi*':' mi')+
+    (p.gps?' from GPS':' from map center')+' · TX '+(x.tx!==null?x.tx.toFixed(3)+' MHz':'unknown')+
+    ' · Tone '+x.tone+' · '+x.city;
+   const open=document.createElement('button');open.type='button';
+   open.textContent='GMRS programming details';
+   open.onclick=()=>choose(x,false);
+   group.append(t,info,open);
+  }else group.textContent='GMRS: no sites loaded.';
+  closest.appendChild(group);
+ }
  var near=el('rtNearby');near.replaceChildren();
  list.slice(0,10).forEach(function(item,index){
   var b=document.createElement('button');b.type='button';
-  b.textContent=(index+1)+'. '+(item.x.wide?'★ ':'')+item.x.call+' · '+item.x.mhz.toFixed(3)+' · '+item.dist.toFixed(1)+' mi';
+  b.textContent=(index+1)+'. '+(isGMRS(item.x)?'🟣 GMRS ':'🟢 HAM ')+(item.x.wide?'★ ':'')+item.x.call+' · '+item.x.mhz.toFixed(3)+' · '+item.dist.toFixed(1)+' mi';
   b.onclick=function(){choose(item.x,true)};
   near.appendChild(b);
  });
@@ -549,7 +574,7 @@ function drawMarkers(list,p){
  // Always put club-confirmed nearby locations ahead of bulk directory markers.
  // The user should not lose the library reference marker among thousands of results.
  var visible=list.filter(function(it){return bounds.contains(coord(it.x))})
-   .sort(function(a,b){return Number(Boolean(b.x.officialLocal))-Number(Boolean(a.x.officialLocal))||a.dist-b.dist})
+   .sort(function(a,b){return Number(Boolean(isGMRS(b.x)||b.x.officialLocal))-Number(Boolean(isGMRS(a.x)||a.x.officialLocal))||a.dist-b.dist})
    .slice(0,90);
  var labels=0;
  visible.forEach(function(it){
@@ -558,14 +583,14 @@ function drawMarkers(list,p){
   // keep the library site identification and radio details in the data,
   // but do not give this station a special building icon or a larger pin.
   var mark=L.circleMarker(coord(x),{
-   radius:radioService==='gmrs'?9:x.landmark?6:x.officialLocal?9:x.wide?8:6,
-   color:radioService==='gmrs'?'#ffe4fc':x.wide?'#f5d36c':'#ecfff4',weight:2,
-   fillColor:radioService==='gmrs'?'#b340cf':x.wide?'#e9c54a':'#35c979',
+   radius:isGMRS(x)?9:x.landmark?6:x.officialLocal?9:x.wide?8:6,
+   color:isGMRS(x)?'#ffe4fc':x.wide?'#f5d36c':'#ecfff4',weight:2,
+   fillColor:isGMRS(x)?'#b340cf':x.wide?'#e9c54a':'#35c979',
    fillOpacity:.95,bubblingMouseEvents:false
   }).addTo(markers);
   if(labels<15||x.officialLocal){
    var safeTooltip=document.createElement('span');
-   safeTooltip.textContent=(x.landmark?'LIBRARY · ':radioService==='gmrs'?'GMRS ':x.wide?'★ ':x.officialLocal?'✓ ':'')+x.call+' '+x.mhz.toFixed(3)+' • '+it.dist.toFixed(1)+'mi';
+   safeTooltip.textContent=(isGMRS(x)?'GMRS ':x.landmark?'LIBRARY · ':x.wide?'★ ':x.officialLocal?'✓ ':'')+x.call+' '+x.mhz.toFixed(3)+' • '+it.dist.toFixed(1)+'mi';
    mark.bindTooltip(safeTooltip,{
     // Normal tooltip on tap/hover, exactly like other amateur repeaters.
     permanent:false,direction:'right',offset:[7,0],className:'rt-repeater-tooltip'
@@ -605,7 +630,7 @@ function renderPersonal(){
  var mine=customRecords.filter(x=>radioService==='both'||(radioService==='gmrs'?isGMRS(x):!isGMRS(x)));
  if(!mine.length)return;
  var small=document.createElement('div');small.className='rt-muted';
- small.textContent='Personal saved '+(radioService==='gmrs'?'GMRS':'amateur')+' repeaters: '+mine.length;
+ small.textContent='Personal saved '+(radioService==='gmrs'?'GMRS':radioService==='both'?'HAM + GMRS':'amateur')+' repeaters: '+mine.length;
  root.appendChild(small);
  mine.forEach(x=>{
   var holder=document.createElement('div');holder.className='rt-buttons';
@@ -635,7 +660,7 @@ function locateClubRepeater(id){
  map.setView([x.lat,x.lon],14,{animate:false});
  redraw();
  showDetails(x);
- say('Centered on '+x.call+' '+x.mhz.toFixed(3)+' MHz. '+(x.landmark?'Pin is the library building; the tower is reported nearby.':'Pin indicates the published area, not a verified tower coordinate.')+' Select Both bands to see all nearby ham repeaters.');
+ say('Centered on '+x.call+' '+x.mhz.toFixed(3)+' MHz. Published repeater reference position; verify tower location. Keep BOTH mode for nearby GMRS as well.');
 }
 el('rtFindLibrary').onclick=function(){locateClubRepeater('jcrac-w0erh-145290')};
 el('rtFindJocoUhf').onclick=function(){locateClubRepeater('jcrac-w0erh-443725')};
