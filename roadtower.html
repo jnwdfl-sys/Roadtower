@@ -245,30 +245,64 @@ body.map-fullscreen #mapToolbar #offlineQuickMode{font-size:12px;max-width:148px
  position:absolute;top:14px;left:14px;width:28px;height:28px;
  border:4px solid white;border-radius:50%;
  background:#00d4ff;box-shadow:0 0 0 2px #093648;
- animation:rt-gps-cycle 2.8s steps(1,end) infinite;
+ animation:rt-gps-sos 10.2s steps(1,end) infinite;
 }
 #map .rt-self-wave{
  position:absolute;top:7px;left:7px;width:42px;height:42px;border-radius:50%;
- border:3px solid #16dbff;animation:rt-gps-ring 1.65s ease-out infinite;
+ border:3px solid #16dbff;animation:rt-gps-sos-wave 10.2s steps(1,end) infinite;
 }
 #map .rt-self-word{
  position:absolute;top:43px;left:9px;
- font:900 12px/1.1 system-ui,Arial;letter-spacing:.03em;
+ font:900 10px/1.1 system-ui,Arial;letter-spacing:.01em;
  background:#07374d;border:1px solid #ecfdff;border-radius:5px;
  color:#fff;padding:3px 5px;text-shadow:0 1px #000;
 }
-@keyframes rt-gps-cycle{
- 0%,100%{background:#00cfff;box-shadow:0 0 0 2px #08517d,0 0 14px #15cfff}
- 25%{background:#ee56ed;box-shadow:0 0 0 2px #6f1d80,0 0 16px #e065ff}
- 50%{background:#ffb943;box-shadow:0 0 0 2px #78500c,0 0 14px #ffcf72}
- 75%{background:#29e8a3;box-shadow:0 0 0 2px #18774a,0 0 14px #52f2bd}
+/* Morse SOS: three 0.3s short, three 0.9s long, three 0.3s short flashes.
+   10.2 second loop, then a 2.1 second pause. Decorative visual ONLY. */
+@keyframes rt-gps-sos{
+ 0.000%{opacity:1;background:#00ccff;box-shadow:0 0 0 3px #fff,0 0 19px #00ccff;}
+ 2.941%{opacity:0.42;background:#153b4e;box-shadow:0 0 0 2px #537583;}
+ 5.882%{opacity:1;background:#ea67fa;box-shadow:0 0 0 3px #fff,0 0 19px #ea67fa;}
+ 8.824%{opacity:0.42;background:#153b4e;box-shadow:0 0 0 2px #537583;}
+ 11.765%{opacity:1;background:#ffb43c;box-shadow:0 0 0 3px #fff,0 0 19px #ffb43c;}
+ 14.706%{opacity:0.42;background:#153b4e;box-shadow:0 0 0 2px #537583;}
+ 23.529%{opacity:1;background:#44eca4;box-shadow:0 0 0 3px #fff,0 0 19px #44eca4;}
+ 32.353%{opacity:0.42;background:#153b4e;box-shadow:0 0 0 2px #537583;}
+ 35.294%{opacity:1;background:#00ccff;box-shadow:0 0 0 3px #fff,0 0 19px #00ccff;}
+ 44.118%{opacity:0.42;background:#153b4e;box-shadow:0 0 0 2px #537583;}
+ 47.059%{opacity:1;background:#ea67fa;box-shadow:0 0 0 3px #fff,0 0 19px #ea67fa;}
+ 55.882%{opacity:0.42;background:#153b4e;box-shadow:0 0 0 2px #537583;}
+ 64.706%{opacity:1;background:#ffb43c;box-shadow:0 0 0 3px #fff,0 0 19px #ffb43c;}
+ 67.647%{opacity:0.42;background:#153b4e;box-shadow:0 0 0 2px #537583;}
+ 70.588%{opacity:1;background:#44eca4;box-shadow:0 0 0 3px #fff,0 0 19px #44eca4;}
+ 73.529%{opacity:0.42;background:#153b4e;box-shadow:0 0 0 2px #537583;}
+ 76.471%{opacity:1;background:#00ccff;box-shadow:0 0 0 3px #fff,0 0 19px #00ccff;}
+ 79.412%{opacity:0.42;background:#153b4e;box-shadow:0 0 0 2px #537583;}
+ 100%{opacity:.42;background:#153b4e;box-shadow:0 0 0 2px #537583}
 }
-@keyframes rt-gps-ring{
- 0%{transform:scale(.66);opacity:.96}
- 85%,100%{transform:scale(1.38);opacity:0}
+@keyframes rt-gps-sos-wave{
+ 0.000%{opacity:0.95;border-color:#00ccff;transform:scale(1);}
+ 2.941%{opacity:0;border-color:#537583;transform:scale(1.36);}
+ 5.882%{opacity:0.95;border-color:#ea67fa;transform:scale(1);}
+ 8.824%{opacity:0;border-color:#537583;transform:scale(1.36);}
+ 11.765%{opacity:0.95;border-color:#ffb43c;transform:scale(1);}
+ 14.706%{opacity:0;border-color:#537583;transform:scale(1.36);}
+ 23.529%{opacity:0.95;border-color:#44eca4;transform:scale(1);}
+ 32.353%{opacity:0;border-color:#537583;transform:scale(1.36);}
+ 35.294%{opacity:0.95;border-color:#00ccff;transform:scale(1);}
+ 44.118%{opacity:0;border-color:#537583;transform:scale(1.36);}
+ 47.059%{opacity:0.95;border-color:#ea67fa;transform:scale(1);}
+ 55.882%{opacity:0;border-color:#537583;transform:scale(1.36);}
+ 64.706%{opacity:0.95;border-color:#ffb43c;transform:scale(1);}
+ 67.647%{opacity:0;border-color:#537583;transform:scale(1.36);}
+ 70.588%{opacity:0.95;border-color:#44eca4;transform:scale(1);}
+ 73.529%{opacity:0;border-color:#537583;transform:scale(1.36);}
+ 76.471%{opacity:0.95;border-color:#00ccff;transform:scale(1);}
+ 79.412%{opacity:0;border-color:#537583;transform:scale(1.36);}
+ 100%{opacity:0;transform:scale(1.36);border-color:#537583}
 }
 @media(prefers-reduced-motion:reduce){
- #map .rt-self-core,#map .rt-self-wave{animation:none}
+ #map .rt-self-core,#map .rt-self-wave{animation:none;opacity:1}
 }
 #map .rt-status-hud{top:166px}
 body.map-fullscreen #map .rt-gps-hud{top:calc(78px + env(safe-area-inset-top,0px));left:calc(12px + env(safe-area-inset-left,0px))}
@@ -453,7 +487,7 @@ gpsHud.setAttribute('aria-label','My GPS location and status');
 gpsHud.innerHTML='<div class="rt-gps-row"><strong id="rtGpsMode">GPS OFF</strong><button id="rtGpsQuick" type="button">Start GPS</button><button id="rtGpsStopQuick" type="button" hidden>Stop</button></div><div id="rtGpsDetails">GPS not started</div>';
 $('map').appendChild(gpsHud);
 if(window.L){L.DomEvent.disableClickPropagation(gpsHud);L.DomEvent.disableScrollPropagation(gpsHud)}
-const gpsIcon=window.L?L.divIcon({className:'rt-self-pin-icon',html:'<div class="rt-self-beacon"><span class="rt-self-wave"></span><span class="rt-self-core"></span><span class="rt-self-word">YOU</span></div>',iconSize:[56,70],iconAnchor:[28,35]}):null;
+const gpsIcon=window.L?L.divIcon({className:'rt-self-pin-icon',html:'<div class="rt-self-beacon" role="img" aria-label="Your GPS position: visual SOS pattern, not an emergency signal"><span class="rt-self-wave"></span><span class="rt-self-core"></span><span class="rt-self-word">YOU · SOS</span></div>',iconSize:[56,70],iconAnchor:[28,35]}):null;
 function gpsHudState(state,message){
  gpsHud.className='rt-gps-hud rt-gps-'+state;
  $('rtGpsMode').textContent=state==='live'?'GPS ON · LIVE':state==='searching'?'GPS SEARCHING':state==='error'?'GPS ERROR':'GPS OFF';
