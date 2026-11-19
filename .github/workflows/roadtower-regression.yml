@@ -22,4 +22,4 @@ jobs:
         with:
           node-version: '22'
       - name: Check repeaters, GPS follow, panels and offline shell
-        run: node --test tests/roadtower-regression.test.cjs
+        run: node --test tests/*.test.cjs
