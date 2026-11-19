@@ -57,7 +57,11 @@ L.DomEvent.disableClickPropagation(nearDock);
 L.DomEvent.disableScrollPropagation(nearDock);
 const nearEl=id=>nearDock.querySelector('#'+id);
 let nearCollapsed=false,nearExpanded=false;
-let nearFont=Number(localStorage.getItem('rt-near-font-v1'))||16;
+let nearFont=16;
+try{
+ const savedFont=Number(localStorage.getItem('rt-near-font-v1'));
+ if(Number.isFinite(savedFont)&&savedFont>=14&&savedFont<=26)nearFont=savedFont;
+}catch(e){} // If private browsing blocks storage, the list must still work.
 nearFont=Math.max(14,Math.min(26,nearFont));
 function setNearFont(px){
  nearFont=Math.max(14,Math.min(26,px));
@@ -85,7 +89,9 @@ function renderNearestSide(list,point){
  nearEl('rtNearHeading').textContent=radioService==='gmrs'?'NEAREST GMRS':'NEAREST HAM';
  nearEl('rtNearOrigin').textContent=point.gps?'FROM YOUR GPS • LIVE':'FROM MAP CENTER • GPS OFF';
  nearEl('rtNearSource').textContent=point.gps?'Straight-line miles from GPS':'Straight-line miles from map center • Start GPS';
- const root=nearEl('rtNearRows');root.replaceChildren();
+ const root=nearEl('rtNearRows');
+ const previousScroll=nearDock.scrollTop;
+ root.replaceChildren();
  if(!list.length){
   const empty=document.createElement('span');empty.className='rt-near-empty';
   empty.textContent='No '+(radioService==='gmrs'?'GMRS':'amateur')+' sites in the selected list.';
@@ -102,6 +108,7 @@ function renderNearestSide(list,point){
   btn.onclick=()=>choose(item.x,false);
   root.appendChild(btn);
  });
+ nearDock.scrollTop=previousScroll;
 }
 var hud=document.createElement('div');
 hud.id='rtStatusHUD';
