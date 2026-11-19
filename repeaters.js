@@ -14,7 +14,7 @@ panel.className='rt-repeater-panel';
 panel.setAttribute('aria-label','Amateur and GMRS repeaters');
 panel.innerHTML=
  '<div class="rt-head"><strong>📡 RADIO REPEATERS</strong><button id="rtHide" type="button">Hide</button></div>'+
- '<div id="rtContent"><div class="rt-buttons rt-service-pick"><button id="rtHam" type="button" aria-pressed="true">HAM • GREEN</button><button id="rtGMRS" type="button" aria-pressed="false">GMRS • PURPLE</button></div>'+
+ '<div id="rtContent"><div class="rt-buttons rt-service-pick"><button id="rtHam" type="button" aria-pressed="false">HAM • GREEN</button><button id="rtGMRS" type="button" aria-pressed="false">GMRS • PURPLE</button><button id="rtBoth" type="button" aria-pressed="true">BOTH • ON</button></div>'+
  '<div class="rt-muted" id="rtServiceInfo">Amateur radio repeaters: 2m and 70cm. Ham license required to transmit.</div>'+
  '<div class="rt-buttons rt-joco-shortcuts"><button id="rtFindLibrary" type="button">📍 Library 2m · 145.290</button><button id="rtFindJocoUhf" type="button">★ Johnson Co. 70cm</button></div>'+
  '<label class="rt-band-row" id="rtBandRow">HAM band <select id="rtBand"><option value="both">Both 2m + 70cm</option><option value="2m">2m only</option><option value="70cm">70cm only</option></select></label>'+
@@ -162,7 +162,7 @@ var LOCAL_CLUB=[
   notes:'Kansas City Room digital site; exact tower location unverified.',
   source:'JCRAC / KC Room listings',officialLocal:true,approx:true}
 ];
-var data=[],gmrsData=[],customRecords=[],selected=null,follow=true,wideOnly=false,bandFilter='both',radioService='ham',directoryState='loading',gmrsState='loading',markers=L.layerGroup().addTo(map);
+var data=[],gmrsData=[],customRecords=[],selected=null,follow=true,wideOnly=false,bandFilter='both',radioService='both',directoryState='loading',gmrsState='loading',markers=L.layerGroup().addTo(map);
 const BASELINE_AMATEUR=5044;
 var completeHamRefresh=false;
 const GMRS_OPEN_URL='./gmrs-directory.json';
@@ -178,13 +178,16 @@ const GMRS_STARTER=GMRS_STARTER_ROWS.map((r,i)=>({
 function hamBand(mhz){return mhz>=144&&mhz<=148?'2m':mhz>=420&&mhz<=450?'70cm':null}
 function gmrsOutput(mhz){return [462.55,462.575,462.600,462.625,462.650,462.675,462.700,462.725].some(f=>Math.abs(f-mhz)<.0003)}
 
+function isGMRS(x){return !!(x&&(x.service==='gmrs'||gmrsOutput(x.mhz)))}
 function getAllStations(){
- var combined=radioService==='gmrs'?[...customRecords.filter(x=>x.service==='gmrs'),...gmrsData,...GMRS_STARTER]:[...customRecords.filter(x=>x.service!=='gmrs'),...LOCAL_CLUB,...data],answer=[],seen=new Map();
+ var ham=[...customRecords.filter(x=>!isGMRS(x)),...LOCAL_CLUB,...data];
+ var gmrs=[...customRecords.filter(isGMRS),...gmrsData,...GMRS_STARTER];
+ var combined=radioService==='gmrs'?gmrs:radioService==='ham'?ham:[...ham,...gmrs],answer=[],seen=new Map();
  for(var i=0;i<combined.length;i++){
   var x=combined[i],key=x.call.toUpperCase()+'|'+x.mhz.toFixed(4);
-  var group=seen.get(key)||[];
+  var group=seen.get((isGMRS(x)?'gmrs|':'ham|')+key)||[];
   if(group.some(old=>Math.abs(old.lat-x.lat)<.015&&Math.abs(old.lon-x.lon)<.015))continue;
-  group.push(x);seen.set(key,group);answer.push(x);
+  group.push(x);seen.set((isGMRS(x)?'gmrs|':'ham|')+key,group);answer.push(x);
  }
  return answer;
 }
@@ -413,7 +416,7 @@ function current(){return API.getGps?API.getGps():null}
 function anchor(){var p=current();return p?{lat:p.latitude,lon:p.longitude,gps:true}:{lat:map.getCenter().lat,lon:map.getCenter().lng,gps:false}}
 function sorted(){
  var point=anchor();
- return getAllStations().filter(function(x){return (radioService==='gmrs'||!wideOnly||x.wide)&&(radioService==='gmrs'||bandFilter==='both'||hamBand(x.mhz)===bandFilter)}).map(function(x){
+ return getAllStations().filter(function(x){return isGMRS(x)||((!wideOnly||x.wide)&&(bandFilter==='both'||hamBand(x.mhz)===bandFilter))}).map(function(x){
   return {x:x,dist:distance(point.lat,point.lon,x.lat,x.lon)};
  }).sort(function(a,b){return a.dist-b.dist});
 }
@@ -432,22 +435,26 @@ function updateGrowth(){
 }
 function serviceUI(){
  panel.classList.toggle('rt-gmrs-mode',radioService==='gmrs');
+ panel.classList.toggle('rt-both-mode',radioService==='both');
  el('rtHam').setAttribute('aria-pressed',String(radioService==='ham'));
  el('rtGMRS').setAttribute('aria-pressed',String(radioService==='gmrs'));
+ el('rtBoth').setAttribute('aria-pressed',String(radioService==='both'));
  el('rtBandRow').hidden=radioService==='gmrs';
  el('rtWide').hidden=radioService==='gmrs';
  el('rtDownload').hidden=radioService==='gmrs';
- el('rtGmrsDownload').hidden=radioService!=='gmrs';
+ el('rtGmrsDownload').hidden=radioService==='ham';
  el('rtGrowth').hidden=radioService==='gmrs';
- el('rtGmrsSources').hidden=radioService!=='gmrs';
+ el('rtGmrsSources').hidden=radioService==='ham';
  el('rtVerifiedLocal').hidden=radioService==='gmrs';
  el('rtNewFreq').min=radioService==='gmrs'?'462.55':'144';
  el('rtNewFreq').max=radioService==='gmrs'?'462.725':'450';
  el('rtNewFreq').placeholder=radioService==='gmrs'?'462.675':'145.290';
  el('rtNewOffset').value=radioService==='gmrs'?'5.000':'-0.600';
- el('rtServiceInfo').textContent=radioService==='gmrs'?
-  'GMRS repeater sites • 462 MHz receive / +5 MHz input. Purple markers. FCC GMRS license required to transmit.':
-  'Amateur repeater sites • 2m and 70cm. Green markers, gold stars for Kansas City Wide. Amateur license required to transmit.';
+ el('rtServiceInfo').textContent=radioService==='both'?
+  'HAM and GMRS simultaneously. HAM green (KC Wide gold); GMRS purple. Separate licensed radio services and nearest rankings.':
+  radioService==='gmrs'?
+  'GMRS repeaters • 462 MHz output / +5 MHz input. Purple markers. GMRS license required to transmit.':
+  'Amateur repeaters • 2m + 70cm. Green markers, gold stars for KC Wide. Amateur license required.';
  updateGrowth();
 }
 function switchService(name){
@@ -460,7 +467,7 @@ function showDetails(x){
  if(!x){d.textContent='Select a repeater for frequency, offset, TX tone and location.';return}
  function lineText(label,value){var p=document.createElement('div');var b=document.createElement('strong');b.textContent=label+' ';p.appendChild(b);p.appendChild(document.createTextNode(String(value)));d.appendChild(p)}
  lineText('Callsign:',x.call+(x.wide?' ★ KC Wide':''));
- lineText('Service:',radioService==='gmrs'?'GMRS • separate 462/467 MHz service':'Ham • '+hamBand(x.mhz));
+ lineText('Service:',isGMRS(x)?'GMRS • 462 / 467 MHz, +5 MHz':'Ham • '+hamBand(x.mhz));
  lineText('Output (RX):',localMhz(x.mhz));
  lineText('Input (TX):',x.tx!==null?localMhz(x.tx):'Not listed');
  lineText('Offset:',x.offset!==null?(x.offset>0?'+':'')+x.offset.toFixed(3)+' MHz':'Not listed');
@@ -469,7 +476,7 @@ function showDetails(x){
  lineText('Location:',x.city+(x.state?', '+x.state:'')+' (approx.)');
  var nearPoint=anchor();
  lineText('Straight-line distance:',distance(nearPoint.lat,nearPoint.lon,x.lat,x.lon).toFixed(1)+' miles '+(nearPoint.gps?'from GPS':'from map center'));
- if(radioService==='gmrs')lineText('Access:', x.restricted?'GMRS license AND repeater-owner permission REQUIRED.':'GMRS license required; verify repeater-owner access rules.');
+ if(isGMRS(x))lineText('Access:', x.restricted?'GMRS license AND repeater-owner permission REQUIRED.':'GMRS license required; verify repeater-owner access rules.');
  if(x.source)lineText('Source:',x.source);
  if(x.approx)lineText('Pin accuracy:','APPROXIMATE reference area, NOT a surveyed repeater antenna. Mileage is approximate.');
  if(x.notes)lineText('Notes:',x.notes);
@@ -486,11 +493,11 @@ function drawLine(){
  if(!current()||!selected){line.setLatLngs([]);if(middle){map.removeLayer(middle);middle=null}return}
  var p=current();
  line.setLatLngs([[p.latitude,p.longitude],coord(selected)]);
- line.setStyle({color:radioService==='gmrs'?'#c56bea':'#35c979'});
+ line.setStyle({color:isGMRS(selected)?'#c56bea':'#35c979'});
  if(middle)map.removeLayer(middle);
  var d=distance(p.latitude,p.longitude,selected.lat,selected.lon);
  middle=L.marker([(p.latitude+selected.lat)/2,(p.longitude+selected.lon)/2],{
-  interactive:false,icon:L.divIcon({className:radioService==='gmrs'?'rt-mile-icon rt-mile-gmrs':'rt-mile-icon rt-mile-ham',html:'<span>'+d.toFixed(1)+' mi</span>',iconSize:[75,22],iconAnchor:[38,11]})
+  interactive:false,icon:L.divIcon({className:isGMRS(selected)?'rt-mile-icon rt-mile-gmrs':'rt-mile-icon rt-mile-ham',html:'<span>'+d.toFixed(1)+' mi</span>',iconSize:[75,22],iconAnchor:[38,11]})
  }).addTo(map);
 }
 function redraw(){
@@ -567,6 +574,7 @@ async function install(raw,source){
 }
 el('rtHam').onclick=function(){switchService('ham')};
 el('rtGMRS').onclick=function(){switchService('gmrs')};
+el('rtBoth').onclick=function(){switchService('both')};
 el('rtBand').onchange=function(){bandFilter=this.value;selected=null;follow=true;redraw()};
 serviceUI();
 el('rtHide').onclick=function(){
@@ -584,7 +592,7 @@ el('rtWide').onclick=function(){
 el('rtImport').onclick=function(){el('rtFile').click()};
 function renderPersonal(){
  var root=el('rtMyStations');root.replaceChildren();
- var mine=customRecords.filter(x=>x.service===radioService);
+ var mine=customRecords.filter(x=>radioService==='both'||(radioService==='gmrs'?isGMRS(x):!isGMRS(x)));
  if(!mine.length)return;
  var small=document.createElement('div');small.className='rt-muted';
  small.textContent='Personal saved '+(radioService==='gmrs'?'GMRS':'amateur')+' repeaters: '+mine.length;
@@ -609,7 +617,7 @@ function renderPersonal(){
 function locateClubRepeater(id){
  var x=LOCAL_CLUB.find(a=>a.id===id);
  if(!x){say('Club repeater not found');return}
- if(radioService!=='ham')switchService('ham');
+ if(radioService==='gmrs')switchService('ham');
  wideOnly=false;el('rtWide').textContent='★ KC Wide: All';
  bandFilter=hamBand(x.mhz);el('rtBand').value=bandFilter;
  selected=null;follow=false;
@@ -644,12 +652,13 @@ el('rtCustomForm').onsubmit=async function(event){
  event.preventDefault();
  var mhz=number(el('rtNewFreq').value),lat=number(el('rtNewLat').value),lon=number(el('rtNewLon').value);
  var call=el('rtNewCall').value.trim(),off=number(el('rtNewOffset').value);
- if(!call||!isUS(lat,lon)||!(radioService==='gmrs'?gmrsOutput(mhz):!!hamBand(mhz))){
+ var customService=radioService==='both'?(gmrsOutput(mhz)?'gmrs':'ham'):radioService;
+ if(!call||!isUS(lat,lon)||!(customService==='gmrs'?gmrsOutput(mhz):!!hamBand(mhz))){
   say('Check callsign, United States tower coordinates and the selected radio band.');return;
  }
- if(radioService==='gmrs')off=5;
+ if(customService==='gmrs')off=5;
  else if(!isFinite(off)||Math.abs(off)>12)off=NaN;
- var rec={service:radioService,id:'custom|'+radioService+'|'+Date.now()+'|'+call,
+ var rec={service:customService,id:'custom|'+customService+'|'+Date.now()+'|'+call,
   call:call.slice(0,70),mhz:mhz,lat:lat,lon:lon,tx:isFinite(off)?mhz+off:null,
   offset:isFinite(off)?off:null,tone:el('rtNewTone').value.trim()||'Not listed',
   city:el('rtNewCity').value.trim()||'User-added tower',state:'',mode:'Not specified',
