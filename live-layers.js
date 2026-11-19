@@ -39,7 +39,7 @@ const el=id=>panel.querySelector('#'+id);
 const toggleAir=el('rtAirToggle'),toggleRadar=el('rtRadarToggle');
 const radarStatus=el('rtRadarStatus'),airStatus=el('rtAirStatus'),listRoot=el('rtAircraftList');
 const airGroup=L.layerGroup().addTo(map);
-let aircraftOn=true,radarOn=true,airRecords=[],airLastFetch=0,airLastCenter=null;
+let aircraftOn=true,radarOn=true,airRecords=[],airLastFetch=0,airLastSuccess=0,airLastCenter=null;
 let airBusy=false,radarBusy=false,radarFrames=[],radarHost='',radarLayer=null;
 let radarFrameTime=0,radarLastFetch=0,animation=null,animationIndex=0;
 const RADAR_OPACITY=.30, AIR_INTERVAL=180000, RADAR_INTERVAL=300000;
@@ -79,6 +79,11 @@ function radarTile(frame){
   attribution:'Weather radar © RainViewer',
   className:'rt-radar-tile-layer'
  }).addTo(map);
+ let radarTileErrors=0;
+ radarLayer.on('tileerror',()=>{
+  if(!radarOn||++radarTileErrors<4)return;
+  radarStatus.textContent='Radar imagery unavailable at this zoom or from the provider. Roads and GPS still work.';
+ });
  radarFrameTime=frame.time;
  const observed=new Date(frame.time*1000);
  radarStatus.textContent='Radar ON · observed '+observed.toLocaleTimeString([],{
@@ -110,9 +115,11 @@ async function loadRadar(force=false){
   const frames=data.frames.filter(f=>Number.isSafeInteger(f.time)&&
    /^\/v2\/radar\/[a-zA-Z0-9_-]+$/.test(f.path||''));
   if(!frames.length)throw Error('No radar frames');
+  if(!radarOn)return;
   radarFrames=frames;radarHost=data.host;
   if(!animation)radarTile(frames[frames.length-1]);
  }catch(e){
+  if(!radarOn)return;
   if(!radarFrames.length)radarStatus.textContent='Radar unavailable · '+e.message;
   else radarStatus.textContent='Radar update unavailable · last image '+new Date(radarFrameTime*1000).toLocaleTimeString();
  }finally{radarBusy=false}
@@ -188,6 +195,8 @@ async function loadAircraft(force=false){
   const data=await resp.json();
   if(!Array.isArray(data.flights))throw Error('Invalid aircraft data');
   if(!Number.isFinite(data.updated)||now-data.updated>900000)throw Error('Stale aircraft snapshot');
+  if(!aircraftOn)return;
+  airLastSuccess=Date.now();
   airRecords=data.flights.filter(x=>x&&Number.isFinite(x.lat)&&Number.isFinite(x.lon))
    .map(x=>({call:String(x.call||'').slice(0,20),hex:String(x.hex||'').slice(0,12),
     type:String(x.type||'').slice(0,12),lat:x.lat,lon:x.lon,
@@ -199,7 +208,8 @@ async function loadAircraft(force=false){
    ' · refresh ~3 min';
  }catch(e){
   // Never keep old aircraft dots under a false LIVE label.
-  if(now-airLastFetch>=900000||!airRecords.length){airRecords=[];renderAircraft()}
+  if(!aircraftOn)return;
+  if(now-airLastSuccess>=360000||!airRecords.length){airRecords=[];renderAircraft()}
   airStatus.textContent='Aircraft data unavailable · '+e.message;
  }finally{airBusy=false}
 }
