@@ -74,9 +74,17 @@ function refreshDock(){
  moveDock(dockSaved.x*Math.max(1,b.width-w),dockSaved.y*Math.max(1,b.height-h),false);
 }
 function colorizeDots(){
- const gmrs=!!(states.radio&&states.radio.el.classList.contains('rt-gmrs-mode'));
- for(const id of ['radio','nearest']){const p=states[id];if(p)p.restore.classList.toggle('rt-dot-gmrs',gmrs)}
- if(states.radio)states.radio.restore.querySelector('.rt-layout-dot-label').textContent=gmrs?'GMRS':'HAM';
+ const radio=states.radio&&states.radio.el;
+ const gmrs=!!(radio&&radio.classList.contains('rt-gmrs-mode'));
+ const both=!!(radio&&radio.classList.contains('rt-both-mode'));
+ for(const id of ['radio','nearest']){
+  const p=states[id];
+  if(p){
+   p.restore.classList.toggle('rt-dot-gmrs',gmrs);
+   p.restore.classList.toggle('rt-dot-both',both);
+  }
+ }
+ if(states.radio)states.radio.restore.querySelector('.rt-layout-dot-label').textContent=both?'BOTH':gmrs?'GMRS':'HAM';
 }
 
 function store(){
