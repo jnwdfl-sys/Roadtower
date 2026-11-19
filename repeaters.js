@@ -76,8 +76,11 @@ nearEl('rtNearMinus').onclick=()=>setNearFont(nearFont-2);
 nearEl('rtNearExpand').onclick=function(){
  nearExpanded=!nearExpanded;
  nearDock.classList.toggle('rt-nearest-expanded',nearExpanded);
+ // Use the right edge as a reading rail; never center a large modal over the road map.
+ HOST.classList.toggle('rt-focus-distances',nearExpanded);
  this.textContent=nearExpanded?'Compact':'Expand';
  this.setAttribute('aria-label',nearExpanded?'Return repeater list to compact view':'Expand repeater list');
+ this.setAttribute('aria-expanded',String(nearExpanded));
  if(nearExpanded&&nearCollapsed){nearEl('rtNearToggle').click()}
 };
 nearEl('rtNearToggle').onclick=function(){
@@ -552,7 +555,8 @@ function drawMarkers(list,p){
    var safeTooltip=document.createElement('span');
    safeTooltip.textContent=(x.landmark?'LIBRARY · ':radioService==='gmrs'?'GMRS ':x.wide?'★ ':x.officialLocal?'✓ ':'')+x.call+' '+x.mhz.toFixed(3)+' • '+it.dist.toFixed(1)+'mi';
    mark.bindTooltip(safeTooltip,{
-    permanent:true,direction:'right',offset:[7,0],className:'rt-repeater-tooltip'
+    // Full labels crowd the road map; show on hover/tap except the library landmark.
+    permanent:Boolean(x.landmark),direction:'right',offset:[7,0],className:'rt-repeater-tooltip'
    });
    labels++;
   }
