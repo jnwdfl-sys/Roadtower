@@ -360,6 +360,71 @@ body.map-fullscreen #map .rt-repeater-panel.rt-hidden{
  border:1px solid rgba(239,187,81,.45);
  font:800 10px/1.25 system-ui,Arial;letter-spacing:.015em;
 }
+
+/* Independent reading zoom for nearest repeaters; map zoom stays unchanged. */
+#map .rt-nearest-dock{
+ --rt-near-font:16px;
+}
+#map .rt-nearest-dock .rt-near-head{gap:8px;align-items:flex-start}
+#map .rt-nearest-dock .rt-near-head strong{
+ font-size:calc(var(--rt-near-font) * .88);line-height:1.2;
+}
+#map .rt-nearest-dock .rt-near-tools{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px}
+#map .rt-nearest-dock .rt-near-tools button{
+ font-size:13px;min-height:35px;min-width:36px;padding:6px 8px;
+ touch-action:manipulation;
+}
+#map .rt-nearest-dock .rt-near-tools button:disabled{opacity:.45}
+#map .rt-nearest-dock .rt-near-row{
+ font-size:var(--rt-near-font);line-height:1.3;
+ padding:10px 8px;min-height:48px;
+}
+#map .rt-nearest-dock .rt-near-rank{width:1.5em;flex:0 0 1.5em}
+#map .rt-nearest-dock .rt-near-miles{font-size:1em}
+#map .rt-nearest-dock .rt-near-origin,#map .rt-nearest-dock .rt-near-foot{
+ font-size:calc(var(--rt-near-font) * .76);line-height:1.4
+}
+body.map-fullscreen #map .rt-nearest-dock{
+ width:min(360px,48dvw);max-height:290px;
+}
+body.map-fullscreen #map .rt-repeater-panel:not(.rt-hidden){
+ bottom:calc(395px + env(safe-area-inset-bottom,0px));
+}
+body.map-fullscreen #map .rt-nearest-dock.rt-nearest-expanded{
+ position:fixed!important;
+ z-index:99999!important;
+ top:calc(15dvh + env(safe-area-inset-top,0px))!important;
+ bottom:auto!important;
+ left:50%!important;right:auto!important;
+ transform:translateX(-50%);
+ width:min(650px,94dvw)!important;
+ max-width:94dvw!important;
+ max-height:75dvh!important;
+ padding:14px 16px;
+ background:#092536;
+ border:2px solid #62d6f6;
+ box-shadow:0 0 0 100vmax rgba(0,10,19,.52),0 12px 36px #000c;
+ overflow-y:auto;overscroll-behavior:contain;
+}
+#map .rt-nearest-expanded .rt-near-head strong{font-size:calc(var(--rt-near-font) * 1.1)}
+#map .rt-nearest-expanded .rt-near-row{padding:12px 10px}
+@media(max-width:650px){
+ body.map-fullscreen #map .rt-nearest-dock{width:min(280px,48dvw);max-height:245px}
+ body.map-fullscreen #map .rt-repeater-panel:not(.rt-hidden){
+  bottom:calc(348px + env(safe-area-inset-bottom,0px));
+ }
+ #map .rt-nearest-dock .rt-near-tools button{min-height:34px;min-width:34px;padding:5px}
+}
+@media(max-width:430px){
+ body.map-fullscreen #map .rt-nearest-dock{width:min(210px,50dvw);max-height:210px}
+ body.map-fullscreen #map .rt-repeater-panel:not(.rt-hidden){
+  bottom:calc(315px + env(safe-area-inset-bottom,0px));
+ }
+ body.map-fullscreen #map .rt-nearest-dock.rt-nearest-expanded{
+  top:calc(8dvh + env(safe-area-inset-top,0px))!important;
+  max-height:84dvh!important;
+ }
+}
 </style></head><body><header><h1>ROADTOWER</h1><p>Free GPS • Official Weather • Road Information</p></header><main><section class="card"><h2>Live GPS Map</h2><span class="pill">Location stays on this device</span><p id="status" role="status">GPS stopped. Tap Start Live GPS.</p><div class="buttons" id="gpsActions"><button id="start">Start Live GPS</button><button id="stop" class="secondary" disabled>Stop GPS</button><button id="center" class="secondary" disabled>Center Map</button><button id="followMap" class="secondary">Follow GPS: ON</button></div><div class="buttons" id="mapToolbar"><button class="secondary" id="compactMap" type="button">Compact Map</button><button class="secondary" id="expandMap" type="button">Large Map</button><button id="fullscreenMap" type="button">Full Screen</button><button id="offlineQuickMode" class="secondary" type="button">Map: AUTO</button></div><div id="map" aria-label="Interactive road map"></div><p class="hint">Tap the map to save a location. Map tiles require internet and are subject to OpenStreetMap tile usage limits. Attribution appears on the map.</p><div class="buttons"><button id="saveCurrent" class="secondary" disabled>Save My GPS Location</button></div><div id="saveForm" class="hidden"><label for="placeName">Place name</label><input id="placeName" maxlength="80" placeholder="Home, parking, campsite..."><label for="placeType">Category</label><select id="placeType"><option value="📍">Place</option><option value="🏠">Home</option><option value="🅿️">Parking</option><option value="🏕️">Campsite</option><option value="🥾">Trailhead</option></select><p id="chosen" class="hint"></p><div class="buttons"><button id="confirmSave">Save Place</button><button id="cancelSave" class="secondary">Cancel</button></div></div></section><section class="card" id="offlineTravelCard">
 <h2>🗺️ Offline Travel Maps</h2>
 <p class="hint">Download <strong>road and town data</strong> before your trip for use without mobile service. This is a simpler vector-road view, not the detailed online street map, satellite imagery or turn-by-turn navigation. GPS and repeater distances continue working while the page stays active.</p>
