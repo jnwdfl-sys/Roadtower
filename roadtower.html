@@ -861,6 +861,23 @@ body.map-fullscreen #map .rt-status-hud{
 #map .rt-layout-maximized .rt-near-group-title{font-size:clamp(19px,2.7vw,27px)!important}
 #map .rt-layout-maximized .rt-closest-gmrs,
 #map .rt-layout-maximized .rt-closest-gmrs strong{font-size:clamp(18px,2.4vw,25px)!important}
+
+/* Tiny combined-service shortcut stays readable when radio panel is minimized. */
+#map #rtLayoutTray .rt-layout-restore.rt-dot-both{
+ --rt-dot:#c3a4ff;
+ border-color:#aeeed0!important;
+ background:linear-gradient(130deg,#124d37,#1c3840 48%,#542675 100%)!important;
+ box-shadow:0 0 0 1px #001c,0 0 12px #a773e5!important
+}
+#map #rtLayoutTray .rt-layout-restore.rt-dot-both .rt-layout-dot-label{
+ color:#fff!important;text-shadow:0 0 3px #000
+}
+#map[data-gps="live"] #rtLayoutTray .rt-dot-cyan{
+ box-shadow:0 0 0 1px #fff,0 0 15px #00e5ff!important
+}
+#map .rt-layout-maximized .rt-closest-gmrs{
+ overflow-wrap:anywhere;line-height:1.55!important
+}
 </style></head><body><header><h1>ROADTOWER</h1><p>Free GPS • Official Weather • Road Information</p></header><main><section class="card"><h2>Live GPS Map</h2><span class="pill">Location stays on this device</span><p id="status" role="status">GPS stopped. Tap Start Live GPS.</p><div class="buttons" id="gpsActions"><button id="start">Start Live GPS</button><button id="stop" class="secondary" disabled>Stop GPS</button><button id="center" class="secondary" disabled>Center Map</button><button id="followMap" class="secondary">Follow GPS: ON</button></div><div class="buttons" id="mapToolbar"><button class="secondary" id="compactMap" type="button">Compact Map</button><button class="secondary" id="expandMap" type="button">Large Map</button><button id="fullscreenMap" type="button">Full Screen</button><button id="offlineQuickMode" class="secondary" type="button">Map: AUTO</button></div><div id="map" aria-label="Interactive road map"></div><p class="hint">Tap the map to save a location. Map tiles require internet and are subject to OpenStreetMap tile usage limits. Attribution appears on the map.</p><div class="buttons"><button id="saveCurrent" class="secondary" disabled>Save My GPS Location</button></div><div id="saveForm" class="hidden"><label for="placeName">Place name</label><input id="placeName" maxlength="80" placeholder="Home, parking, campsite..."><label for="placeType">Category</label><select id="placeType"><option value="📍">Place</option><option value="🏠">Home</option><option value="🅿️">Parking</option><option value="🏕️">Campsite</option><option value="🥾">Trailhead</option></select><p id="chosen" class="hint"></p><div class="buttons"><button id="confirmSave">Save Place</button><button id="cancelSave" class="secondary">Cancel</button></div></div></section><section class="card" id="offlineTravelCard">
 <h2>🗺️ Offline Travel Maps</h2>
 <p class="hint">Download <strong>road and town data</strong> before your trip for use without mobile service. This is a simpler vector-road view, not the detailed online street map, satellite imagery or turn-by-turn navigation. GPS and repeater distances continue working while the page stays active.</p>
@@ -892,6 +909,7 @@ if(window.L){L.DomEvent.disableClickPropagation(gpsHud);L.DomEvent.disableScroll
 const gpsIcon=window.L?L.divIcon({className:'rt-self-pin-icon',html:'<div class="rt-self-beacon" role="img" aria-label="Your position: colored visual SOS rhythm, not an emergency broadcast"><span class="rt-self-wave"></span><span class="rt-self-core"></span><span class="rt-self-center"></span><span class="rt-self-word">YOU · SOS</span></div>',iconSize:[56,70],iconAnchor:[28,35]}):null;
 function gpsHudState(state,message){
  gpsHud.classList.remove('rt-gps-off','rt-gps-searching','rt-gps-live','rt-gps-error');gpsHud.classList.add('rt-gps-'+state);
+ $('map').dataset.gps=state;
  $('rtGpsMode').textContent=state==='live'?'GPS ON · LIVE':state==='searching'?'GPS SEARCHING':state==='error'?'GPS ERROR':'GPS OFF';
  $('rtGpsDetails').textContent=message||'GPS not started';
  $('rtGpsQuick').textContent=state==='live'?'Find Me':state==='searching'?'Locating…':state==='error'?'Retry GPS':'Start GPS';
