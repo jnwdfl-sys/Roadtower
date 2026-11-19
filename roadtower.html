@@ -745,6 +745,90 @@ body.map-fullscreen #map .rt-status-hud{
  #map .rt-layout-grip{font-size:11px}
  #map .rt-layout-managed.rt-layout-maximized{inset:3px!important;width:calc(100% - 6px)!important;height:calc(100% - 6px)!important}
 }
+
+/* Panel shortcut dock v2: minimized AND hidden cards become colored one-tap dots.
+   A dock bubble stays present so panels can never be lost off screen. */
+#map .rt-layout-managed.rt-layout-minimized,
+#map .rt-layout-managed.rt-layout-hidden{
+ display:none!important;
+}
+#map #rtLayoutTray{
+ display:flex!important;flex-direction:column!important;
+ align-items:center!important;justify-content:flex-start!important;
+ flex-wrap:nowrap!important;gap:5px!important;
+ position:absolute!important;z-index:2100!important;
+ left:8px!important;top:clamp(86px,30%,265px)!important;
+ right:auto!important;bottom:auto!important;transform:none!important;
+ width:65px!important;max-width:65px!important;max-height:calc(100% - 12px);
+ padding:5px!important;overflow-y:auto;overscroll-behavior:contain;
+ border:1px solid #6f96b0;border-radius:30px;
+ background:rgba(4,23,35,.87);box-shadow:0 5px 18px #0009;
+ pointer-events:auto!important;
+ scrollbar-width:none;
+}
+#map #rtLayoutTray::-webkit-scrollbar{display:none}
+#map #rtLayoutTray .rt-layout-dock-grip{
+ width:100%;font:900 10px/1.3 system-ui,Arial;color:#eef9ff;
+ text-align:center;letter-spacing:.045em;padding:4px 0 6px;
+ cursor:grab;touch-action:none;user-select:none;
+ border-bottom:1px solid #708b9a;outline-offset:-2px
+}
+#map #rtLayoutTray .rt-layout-dock-grip:active{cursor:grabbing}
+#map #rtLayoutTray button.rt-layout-restore{
+ --rt-dot:#63cdec;
+ display:flex;flex-direction:column;align-items:center;justify-content:center;
+ flex:0 0 54px!important;width:54px!important;height:54px!important;min-height:54px!important;
+ padding:2px!important;margin:0!important;
+ border:3px solid var(--rt-dot)!important;border-radius:50%!important;
+ background:#071a28f5!important;
+ box-shadow:0 0 0 1px #001b,0 0 10px color-mix(in srgb,var(--rt-dot) 50%,transparent);
+ color:#fff!important;cursor:pointer!important;
+ -webkit-tap-highlight-color:transparent;
+}
+#map #rtLayoutTray button.rt-layout-restore:focus-visible{outline:3px solid white;outline-offset:2px}
+#map #rtLayoutTray .rt-dot-green{--rt-dot:#29d891}
+#map #rtLayoutTray .rt-dot-amber{--rt-dot:#ffd072}
+#map #rtLayoutTray .rt-dot-cyan{--rt-dot:#48e4ff}
+#map #rtLayoutTray .rt-dot-blue{--rt-dot:#79aaff}
+#map #rtLayoutTray .rt-layout-restore.rt-dot-gmrs{--rt-dot:#cf7cff}
+#map #rtLayoutTray .rt-layout-restore[data-mode="hide"]{opacity:.7;border-style:dashed!important}
+#map #rtLayoutTray .rt-layout-dot-symbol{font:900 20px/1 system-ui,Arial;display:block}
+#map #rtLayoutTray .rt-layout-dot-label{font:900 10px/1.3 system-ui,Arial;display:block;margin-top:2px;color:var(--rt-dot)}
+#map .rt-layout-managed .rt-layout-header{
+ display:flex;flex-wrap:nowrap!important;align-items:center;gap:4px;
+ position:sticky;top:0;z-index:5;
+ min-height:49px;padding:4px;background:#0d2b3e;
+}
+#map .rt-layout-managed .rt-layout-grip{
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+ min-width:0;flex:1 1 auto;padding:7px 4px;
+ font:800 12px/1.3 system-ui,Arial;
+}
+#map .rt-layout-managed .rt-layout-actions{display:flex;flex-wrap:nowrap!important;flex:0 0 auto;gap:3px}
+#map .rt-layout-managed .rt-layout-actions button{
+ display:inline-flex;align-items:center;justify-content:center;
+ width:40px!important;height:40px!important;min-height:40px!important;
+ padding:0!important;margin:0!important;
+ font:900 23px/1 system-ui,Arial!important;
+ border:1px solid #8bbccc!important;border-radius:9px!important;
+ background:#2a5b71!important;color:#fff!important;
+ touch-action:manipulation;
+}
+#map .rt-layout-managed .rt-layout-actions button:first-child{background:#225e68!important}
+#map .rt-layout-managed .rt-layout-actions button:last-child{background:#623344!important}
+/* Built-in duplicate Hide buttons are superseded by the common dot controls. */
+#map .rt-layout-managed #rtHide,
+#map .rt-layout-managed #rtNearToggle{display:none!important}
+#map .rt-layout-managed.rt-repeater-panel .rt-head strong{display:none}
+/* Full panel is always on top of dots, map controls, and other overlays. */
+#map .rt-layout-managed.rt-layout-maximized{z-index:2400!important}
+#map .rt-layout-managed.rt-layout-maximized .rt-layout-actions button{width:48px!important;height:48px!important}
+@media(max-width:480px){
+ #map #rtLayoutTray{width:63px!important;max-width:63px!important}
+ #map #rtLayoutTray button.rt-layout-restore{width:52px!important;height:52px!important;flex-basis:52px!important}
+ #map .rt-layout-managed .rt-layout-actions button{width:38px!important;height:38px!important}
+ #map .rt-layout-managed .rt-layout-grip{font-size:11px}
+}
 </style></head><body><header><h1>ROADTOWER</h1><p>Free GPS • Official Weather • Road Information</p></header><main><section class="card"><h2>Live GPS Map</h2><span class="pill">Location stays on this device</span><p id="status" role="status">GPS stopped. Tap Start Live GPS.</p><div class="buttons" id="gpsActions"><button id="start">Start Live GPS</button><button id="stop" class="secondary" disabled>Stop GPS</button><button id="center" class="secondary" disabled>Center Map</button><button id="followMap" class="secondary">Follow GPS: ON</button></div><div class="buttons" id="mapToolbar"><button class="secondary" id="compactMap" type="button">Compact Map</button><button class="secondary" id="expandMap" type="button">Large Map</button><button id="fullscreenMap" type="button">Full Screen</button><button id="offlineQuickMode" class="secondary" type="button">Map: AUTO</button></div><div id="map" aria-label="Interactive road map"></div><p class="hint">Tap the map to save a location. Map tiles require internet and are subject to OpenStreetMap tile usage limits. Attribution appears on the map.</p><div class="buttons"><button id="saveCurrent" class="secondary" disabled>Save My GPS Location</button></div><div id="saveForm" class="hidden"><label for="placeName">Place name</label><input id="placeName" maxlength="80" placeholder="Home, parking, campsite..."><label for="placeType">Category</label><select id="placeType"><option value="📍">Place</option><option value="🏠">Home</option><option value="🅿️">Parking</option><option value="🏕️">Campsite</option><option value="🥾">Trailhead</option></select><p id="chosen" class="hint"></p><div class="buttons"><button id="confirmSave">Save Place</button><button id="cancelSave" class="secondary">Cancel</button></div></div></section><section class="card" id="offlineTravelCard">
 <h2>🗺️ Offline Travel Maps</h2>
 <p class="hint">Download <strong>road and town data</strong> before your trip for use without mobile service. This is a simpler vector-road view, not the detailed online street map, satellite imagery or turn-by-turn navigation. GPS and repeater distances continue working while the page stays active.</p>
