@@ -626,8 +626,13 @@ function drawMarkers(list,p){
    if(window.RoadtowerPanelLayout&&window.RoadtowerPanelLayout.open)window.RoadtowerPanelLayout.open('radio');
   };
   popup.appendChild(detail);
-  mark.bindPopup(popup,{maxWidth:340,autoPan:true});
-  mark.on('click',function(){choose(x,false)});
+  mark.on('click',function(){
+   // choose() redraws repeater markers; attach popup to MAP rather than the
+   // old marker so it survives that redraw.
+   choose(x,false);
+   L.popup({maxWidth:340,autoPan:true,closeButton:true})
+    .setLatLng(coord(x)).setContent(popup).openOn(map);
+  });
 
  });
 }
