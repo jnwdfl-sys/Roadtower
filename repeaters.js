@@ -531,36 +531,21 @@ function drawMarkers(list,p){
  var labels=0;
  visible.forEach(function(it){
   var x=it.x;
-  // The pin marks the library BUILDING as a visual reference to the nearby
-  // W0ERH 145.290 MHz repeater; it is not a surveyed antenna location.
-  var mark=x.landmark?L.marker(coord(x),{
-   bubblingMouseEvents:false,
-   icon:L.divIcon({
-    className:'rt-library-pin-icon',
-    html:'<div class="rt-library-pin" aria-label="Central Resource Library reference, nearby W0ERH 145.290 MHz repeater">'+
-     '<svg viewBox="0 0 64 66" width="64" height="66" aria-hidden="true">'+
-      '<rect x="9" y="33" width="46" height="29" rx="3" fill="#225d42" stroke="#c2ffe0" stroke-width="2"/>'+
-      '<rect x="16" y="40" width="8" height="9" rx="1" fill="#a1f3c4"/>'+
-      '<rect x="28" y="40" width="8" height="9" rx="1" fill="#a1f3c4"/>'+
-      '<rect x="40" y="40" width="8" height="9" rx="1" fill="#a1f3c4"/>'+
-      '<rect x="28" y="53" width="9" height="9" fill="#0c3326"/>'+
-      '<line x1="32" y1="33" x2="32" y2="9" stroke="#ffe589" stroke-width="3" stroke-linecap="round"/>'+
-      '<circle cx="32" cy="8" r="4" fill="#ffcc4d"/>'+
-      '<path d="M23 14q-9 7 0 14 M41 14q9 7 0 14 M18 8q-16 13 0 26 M46 8q16 13 0 26" fill="none" stroke="#b3fbd4" stroke-width="2.5" stroke-linecap="round"/>'+
-     '</svg><span>LIBRARY · 2m</span></div>',
-    iconSize:[64,77],iconAnchor:[32,65],popupAnchor:[0,-58]
-   })
-  }).addTo(markers):L.circleMarker(coord(x),{
-   radius:radioService==='gmrs'?9:x.officialLocal?9:x.wide?8:6,
+  // Same ordinary ham-repeater dot for W0ERH 145.290 near the library:
+  // keep the library site identification and radio details in the data,
+  // but do not give this station a special building icon or a larger pin.
+  var mark=L.circleMarker(coord(x),{
+   radius:radioService==='gmrs'?9:x.landmark?6:x.officialLocal?9:x.wide?8:6,
    color:radioService==='gmrs'?'#ffe4fc':x.wide?'#f5d36c':'#ecfff4',weight:2,
-   fillColor:radioService==='gmrs'?'#b340cf':x.wide?'#e9c54a':'#35c979',fillOpacity:.95,bubblingMouseEvents:false
+   fillColor:radioService==='gmrs'?'#b340cf':x.wide?'#e9c54a':'#35c979',
+   fillOpacity:.95,bubblingMouseEvents:false
   }).addTo(markers);
   if(labels<15||x.officialLocal){
    var safeTooltip=document.createElement('span');
    safeTooltip.textContent=(x.landmark?'LIBRARY · ':radioService==='gmrs'?'GMRS ':x.wide?'★ ':x.officialLocal?'✓ ':'')+x.call+' '+x.mhz.toFixed(3)+' • '+it.dist.toFixed(1)+'mi';
    mark.bindTooltip(safeTooltip,{
-    // Full labels crowd the road map; show on hover/tap except the library landmark.
-    permanent:Boolean(x.landmark),direction:'right',offset:[7,0],className:'rt-repeater-tooltip'
+    // Normal tooltip on tap/hover, exactly like other amateur repeaters.
+    permanent:false,direction:'right',offset:[7,0],className:'rt-repeater-tooltip'
    });
    labels++;
   }
