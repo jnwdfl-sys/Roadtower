@@ -620,7 +620,7 @@ body.map-fullscreen #map.rt-focus-distances .rt-repeater-panel{
   top:calc(54px + env(safe-area-inset-top,0px))!important
  }
  body.map-fullscreen #map .rt-nearest-dock .rt-near-row{
-  font-size:min(var(--rt-near-font),17px);min-height:45px;padding:7px 5px
+  font-size:var(--rt-near-font);min-height:45px;padding:7px 5px
  }
  body.map-fullscreen #gpsActions button{font-size:10px}
 }
@@ -649,6 +649,26 @@ body.map-fullscreen #map.rt-focus-distances .rt-repeater-panel{
  }
  body.map-fullscreen #gpsActions{bottom:calc(6px + env(safe-area-inset-bottom,0px))}
 }
+
+/* Keep left Leaflet zoom buttons unobstructed; size sidebar below GPS controls. */
+body.map-fullscreen #map .rt-gps-hud{
+ top:calc(88px + env(safe-area-inset-top,0px))
+}
+body.map-fullscreen #map .rt-status-hud{
+ top:calc(249px + env(safe-area-inset-top,0px))
+}
+@media(max-width:700px){
+ body.map-fullscreen #map .rt-gps-hud{
+  top:calc(88px + env(safe-area-inset-top,0px))
+ }
+ body.map-fullscreen #map .rt-status-hud{
+  top:calc(242px + env(safe-area-inset-top,0px))
+ }
+}
+@media(max-height:550px){
+ body.map-fullscreen #map .rt-gps-hud{top:calc(78px + env(safe-area-inset-top,0px))}
+ body.map-fullscreen #map .rt-status-hud{top:calc(220px + env(safe-area-inset-top,0px))}
+}
 </style></head><body><header><h1>ROADTOWER</h1><p>Free GPS • Official Weather • Road Information</p></header><main><section class="card"><h2>Live GPS Map</h2><span class="pill">Location stays on this device</span><p id="status" role="status">GPS stopped. Tap Start Live GPS.</p><div class="buttons" id="gpsActions"><button id="start">Start Live GPS</button><button id="stop" class="secondary" disabled>Stop GPS</button><button id="center" class="secondary" disabled>Center Map</button><button id="followMap" class="secondary">Follow GPS: ON</button></div><div class="buttons" id="mapToolbar"><button class="secondary" id="compactMap" type="button">Compact Map</button><button class="secondary" id="expandMap" type="button">Large Map</button><button id="fullscreenMap" type="button">Full Screen</button><button id="offlineQuickMode" class="secondary" type="button">Map: AUTO</button></div><div id="map" aria-label="Interactive road map"></div><p class="hint">Tap the map to save a location. Map tiles require internet and are subject to OpenStreetMap tile usage limits. Attribution appears on the map.</p><div class="buttons"><button id="saveCurrent" class="secondary" disabled>Save My GPS Location</button></div><div id="saveForm" class="hidden"><label for="placeName">Place name</label><input id="placeName" maxlength="80" placeholder="Home, parking, campsite..."><label for="placeType">Category</label><select id="placeType"><option value="📍">Place</option><option value="🏠">Home</option><option value="🅿️">Parking</option><option value="🏕️">Campsite</option><option value="🥾">Trailhead</option></select><p id="chosen" class="hint"></p><div class="buttons"><button id="confirmSave">Save Place</button><button id="cancelSave" class="secondary">Cancel</button></div></div></section><section class="card" id="offlineTravelCard">
 <h2>🗺️ Offline Travel Maps</h2>
 <p class="hint">Download <strong>road and town data</strong> before your trip for use without mobile service. This is a simpler vector-road view, not the detailed online street map, satellite imagery or turn-by-turn navigation. GPS and repeater distances continue working while the page stays active.</p>
@@ -674,7 +694,7 @@ body.map-fullscreen #map.rt-focus-distances .rt-repeater-panel{
 (()=>{'use strict';const $=id=>document.getElementById(id);let map,locationMarker,accuracyCircle,layer,watch=null,position=null,pending=null,lastCheck=0,checking=false,voice=false,lastSpoken='';const KEY='roadtower.savedPlaces.v1';let aheadLayer=null,checkingAhead=false,followMap=true;let places=[];window.RoadtowerRepeaters={getMap:()=>map,getGps:()=>(watch!==null?position:null),onGps:null};try{const a=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(a))places=a.filter(p=>p&&typeof p.name==='string'&&Number.isFinite(p.lat)&&Number.isFinite(p.lng)&&Math.abs(p.lat)<=90&&Math.abs(p.lng)<=180).slice(0,500)}catch(e){}const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(places));return true}catch(e){alert('Storage unavailable');return false}};try{if(!window.L)throw Error('Map library not available');map=L.map('map').setView([39.1,-94.58],9);L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);layer=L.layerGroup().addTo(map);map.on('click',e=>openSave(e.latlng.lat,e.latlng.lng));map.on('dragstart',()=>{followMap=false;$('followMap').textContent='Follow GPS: OFF'})}catch(e){$('map').textContent='Map unavailable. Check internet connection.'}const gpsHud=document.createElement('section');
 gpsHud.id='rtGpsHud';gpsHud.className='rt-gps-hud rt-gps-off';
 gpsHud.setAttribute('aria-label','My GPS location and status');
-gpsHud.innerHTML='<div class="rt-gps-row"><strong id="rtGpsMode">GPS OFF</strong><button id="rtGpsQuick" type="button">Start GPS</button><button id="rtGpsStopQuick" type="button" hidden>Stop</button></div><div id="rtGpsDetails">GPS not started</div><div class="rt-sos-note">SOS light · visual only · no radio transmission</div>';
+gpsHud.innerHTML='<div class="rt-gps-row"><strong id="rtGpsMode">GPS OFF</strong><button id="rtGpsQuick" type="button">Start GPS</button><button id="rtGpsStopQuick" type="button" hidden>Stop</button></div><div id="rtGpsDetails">GPS not started</div><div class="rt-sos-note">SOS FLASH · screen only</div>';
 $('map').appendChild(gpsHud);
 if(window.L){L.DomEvent.disableClickPropagation(gpsHud);L.DomEvent.disableScrollPropagation(gpsHud)}
 const gpsIcon=window.L?L.divIcon({className:'rt-self-pin-icon',html:'<div class="rt-self-beacon" role="img" aria-label="Your GPS position: visual SOS pattern, not an emergency signal"><span class="rt-self-wave"></span><span class="rt-self-core"></span><span class="rt-self-word">YOU · SOS</span></div>',iconSize:[56,70],iconAnchor:[28,35]}):null;
