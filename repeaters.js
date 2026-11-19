@@ -130,6 +130,12 @@ var el=function(id){return panel.querySelector('#'+id)};
 // Club operating details verified against https://www.w0erh.org/about-us/repeaters
 // Locations approximate INTERSECTIONS, not surveyed transmitter positions.
 var LOCAL_CLUB=[
+ {id:'kcwide-k0ham-146910-op',call:'K0HAM',mhz:146.910,lat:38.98780,lon:-94.67090,
+  tx:146.310,offset:-0.600,tone:'Digital (no analog PL published)',mode:'Yaesu System Fusion (C4FM) / WIRES-X',
+  city:'78th Street & Santa Fe Drive / Metcalf area, Overland Park',state:'KS',wide:true,
+  notes:'Overland Park K0HAM repeater area near 78th and Santa Fe/Metcalf. Kansas City Wide roster dated Aug 13, 2026 lists this repeater UP and connected. Coordinates from a published repeater directory. This does NOT verify which physical water tower hosts the antenna.',
+  source:'Kansas City Wide roster (2026-08-13); RepeaterBook/N9TPB published K0HAM coordinates',
+  sourceUrl:'https://n9tpb.com/repeaters/r/rb:20-3874',officialLocal:true,approx:true},
  {id:'jcrac-w0erh-145290',call:'W0ERH',mhz:145.290,lat:38.969826,lon:-94.699526,
   tx:144.690,offset:-0.600,tone:'151.4 Hz',mode:'FM / DMR',
   city:'Johnson County Central Resource Library area, 87th & Antioch',state:'KS',wide:false,
