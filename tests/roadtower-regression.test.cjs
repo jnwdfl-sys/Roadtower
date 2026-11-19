@@ -110,6 +110,7 @@ test('Follow GPS starts tracking if off and keeps the SOS position marker',()=>{
  const nodes={followMap:{textContent:''},start:{click(){starts++;watch=1}}};
  function $(id){return nodes[id]}
  function gpsHudState(){}
+ function visibleFollowZoom(){return 11}
  `+followHandler+`
  nodes.followMap.onclick();
  return {followMap,starts,centers};
