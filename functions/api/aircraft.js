@@ -24,6 +24,16 @@ export async function onRequestGet({request}) {
   if(!upstream.ok)return reply({error:'Aircraft provider currently unavailable'},502);
   const data=await upstream.json();
   if(!data||!Array.isArray(data.ac))return reply({error:'Aircraft provider returned invalid data'},502);
+  // Identify only explicit drone/UAS labels or known unmanned type codes.
+  // This ADS-B feed does not provide a general Remote ID drone detector.
+  const isReportedDrone=x=>{
+   const type=String(x.t||'').trim().toUpperCase();
+   const description=String(x.desc||'').trim().toUpperCase();
+   const call=String(x.flight||'').trim().toUpperCase();
+   return ['DRON','UAV','UAS','RPAS','MQ1','MQ9','RQ4','RQ7','RQ11'].includes(type)||
+    /\b(?:DRONE|UNMANNED|UAV|UAS|RPAS)\b/.test(description)||
+    /^(?:DRONE|UAV|UAS)[A-Z0-9-]{0,12}$/.test(call);
+  };
   const flights=data.ac.filter(x=>x&&Number.isFinite(x.lat)&&Number.isFinite(x.lon)&&
     Math.abs(x.lat)<=90&&Math.abs(x.lon)<=180&&Number(x.seen_pos??0)<=120)
    .slice(0,180).map(x=>({
@@ -34,7 +44,8 @@ export async function onRequestGet({request}) {
     altFt:Number.isFinite(x.alt_baro)?x.alt_baro:(typeof x.alt_baro==='string'?null:null),
     speedKt:Number.isFinite(x.gs)?x.gs:null,
     heading:Number.isFinite(x.track)?x.track:null,
-    seenSec:Number.isFinite(x.seen_pos)?x.seen_pos:null
+    seenSec:Number.isFinite(x.seen_pos)?x.seen_pos:null,
+    isDrone:isReportedDrone(x)
    }));
   const response=reply({source:'adsb.lol',credit:'© adsb.lol contributors (ODbL 1.0)',
    center:{lat,lon},updated:Date.now(),flights},200,'public,max-age=180,s-maxage=180');
