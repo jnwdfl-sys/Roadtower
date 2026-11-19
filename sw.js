@@ -2,8 +2,8 @@
    Repeater data lives in IndexedDB, independently of service-worker cache.
    OpenStreetMap tiles are intentionally NOT bulk cached for offline use.
 */
-const VERSION='roadtower-offline-v20';
-const SHELL=['./','./index.html','./roadtower.html','./activity.html','./repeaters.js','./gmrs-directory.json','./offline-maps.js','./panel-layout.js'];
+const VERSION='roadtower-offline-v21';
+const SHELL=['./','./index.html','./roadtower.html','./activity.html','./repeaters.js','./gmrs-directory.json','./offline-maps.js','./live-layers.js','./panel-layout.js'];
 const LEAFLET=[
  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
@@ -29,7 +29,7 @@ self.addEventListener('activate',event=>{
 self.addEventListener('fetch',event=>{
  const req=event.request, url=new URL(req.url);
  if(req.method!=='GET')return;
- if(url.pathname.includes('/api/repeaters')||url.hostname==='tile.openstreetmap.org'||
+ if(url.pathname.startsWith('/api/')||url.hostname==='tile.openstreetmap.org'||
      url.hostname.endsWith('.tile.openstreetmap.org'))return;
  const shellRequest=(url.origin===location.origin &&
   (req.mode==='navigate'||SHELL.some(p=>new URL(p,location.href).pathname===url.pathname)));
