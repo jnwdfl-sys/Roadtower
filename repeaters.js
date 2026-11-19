@@ -16,7 +16,7 @@ panel.innerHTML=
  '<div class="rt-head"><strong>📡 RADIO REPEATERS</strong><button id="rtHide" type="button">Hide</button></div>'+
  '<div id="rtContent"><div class="rt-buttons rt-service-pick"><button id="rtHam" type="button" aria-pressed="false">HAM • GREEN</button><button id="rtGMRS" type="button" aria-pressed="false">GMRS • PURPLE</button><button id="rtBoth" type="button" aria-pressed="true">BOTH • ON</button></div>'+
  '<div class="rt-muted" id="rtServiceInfo">Amateur radio repeaters: 2m and 70cm. Ham license required to transmit.</div>'+
- '<div class="rt-buttons rt-joco-shortcuts"><button id="rtFindLibrary" type="button">📍 Library 2m · 145.290</button><button id="rtFindJocoUhf" type="button">★ Johnson Co. 70cm</button><button id="rtFindOP" type="button">★ Overland Park · 146.910</button></div>'+
+ '<div class="rt-buttons rt-joco-shortcuts"><button id="rtFindLibrary" type="button">📍 Library 2m · 145.290</button><button id="rtFindJocoUhf" type="button">★ Johnson Co. 70cm</button><button id="rtFindOP" type="button">★ OP Water Tower area · 146.910</button></div>'+
  '<label class="rt-band-row" id="rtBandRow">HAM band <select id="rtBand"><option value="both">Both 2m + 70cm</option><option value="2m">2m only</option><option value="70cm">70cm only</option></select></label>'+
  '<div class="rt-muted" id="rtGrowth">Original count: 5,044 amateur repeaters. Updated percentage appears after downloading both bands.</div>'+
  '<div class="rt-muted" id="rtCount">Loading saved repeaters…</div>'+
