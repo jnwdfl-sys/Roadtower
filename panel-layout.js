@@ -50,6 +50,11 @@ function update(s,shouldSave=true){
  if(shouldSave)store();
 }
 function setMode(s,mode){
+ if(mode==='max'&&!document.body.classList.contains('map-fullscreen')){
+  // Give an individual panel the full phone screen, even if the map was compact.
+  const fullscreen=document.getElementById('fullscreenMap');
+  if(fullscreen)fullscreen.click();
+ }
  if(mode==='max'&&s.mode!=='max'){
   // Only one overlay should cover the map at a time.
   Object.values(states).forEach(other=>{if(other!==s&&other.mode==='max'){other.mode='normal';update(other,false)}});
