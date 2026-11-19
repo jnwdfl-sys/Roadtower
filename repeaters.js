@@ -16,7 +16,7 @@ panel.innerHTML=
  '<div class="rt-head"><strong>📡 RADIO REPEATERS</strong><button id="rtHide" type="button">Hide</button></div>'+
  '<div id="rtContent"><div class="rt-buttons rt-service-pick"><button id="rtHam" type="button" aria-pressed="false">HAM • GREEN</button><button id="rtGMRS" type="button" aria-pressed="false">GMRS • PURPLE</button><button id="rtBoth" type="button" aria-pressed="true">BOTH • ON</button></div>'+
  '<div class="rt-muted" id="rtServiceInfo">Amateur radio repeaters: 2m and 70cm. Ham license required to transmit.</div>'+
- '<div class="rt-buttons rt-joco-shortcuts"><button id="rtFindLibrary" type="button">📍 Library 2m · 145.290</button><button id="rtFindJocoUhf" type="button">★ Johnson Co. 70cm</button></div>'+
+ '<div class="rt-buttons rt-joco-shortcuts"><button id="rtFindLibrary" type="button">📍 Library 2m · 145.290</button><button id="rtFindJocoUhf" type="button">★ Johnson Co. 70cm</button><button id="rtFindOP" type="button">★ Overland Park · 146.910</button></div>'+
  '<label class="rt-band-row" id="rtBandRow">HAM band <select id="rtBand"><option value="both">Both 2m + 70cm</option><option value="2m">2m only</option><option value="70cm">70cm only</option></select></label>'+
  '<div class="rt-muted" id="rtGrowth">Original count: 5,044 amateur repeaters. Updated percentage appears after downloading both bands.</div>'+
  '<div class="rt-muted" id="rtCount">Loading saved repeaters…</div>'+
@@ -175,6 +175,7 @@ var LOCAL_CLUB=[
 var data=[],gmrsData=[],customRecords=[],selected=null,follow=true,wideOnly=false,bandFilter='both',radioService='both',directoryState='loading',gmrsState='loading',markers=L.layerGroup().addTo(map);
 const BASELINE_AMATEUR=5044;
 var completeHamRefresh=false;
+try{const pref=localStorage.getItem('roadtower-radio-view-v1');if(['ham','gmrs','both'].includes(pref))radioService=pref}catch(e){}
 const GMRS_OPEN_URL='./gmrs-directory.json';
 
 const GMRS_STARTER_ROWS=[["WRNW944",462.65,39.0267,-94.6569,"123.0 Hz","Mission, KS","KS","N9TPB public GMRS listings","https://n9tpb.com/uls/call/WRNW944","Published as open; city-center map reference, not an antenna position.",false],["WSHC585",462.6,38.96611,-94.73389,"136.5 Hz","Lenexa, KS","KS","N9TPB public GMRS listings","https://n9tpb.com/uls/call/WSHC585","Published as open; city-center map reference, not an antenna position.",false],["KAF4575",462.7,39.0417,-94.7202,"110.9 Hz","Shawnee, KS","KS","N9TPB public GMRS listings","https://n9tpb.com/uls/call/KAF4575","Published as open; city-center map reference, not an antenna position.",false],["WRZE330",462.575,40.9987,-74.3471,"Not published","Butler, NJ","NJ","SSRF-Lite Butler GMRS (Apache-2.0)","https://github.com/Chicago-Offline/ssrf-lite/blob/main/ssrf/systems/US/NJ/Morris/Butler/gmrs/butler_gmrs_repeater.yml","Open listing; tone unpublished; city reference point.",false],["KAA8142",462.675,42.0432,-87.8477,"141.3 Hz","Park Ridge, IL","IL","SSRF-Lite NSEA GMRS (Apache-2.0)","https://github.com/Chicago-Offline/ssrf-lite/blob/main/ssrf/systems/US/IL/Cook/_Countywide/gmrs/nsea_gmrs_repeaters.yml","NSEA 675; permission required; hospital-area reference.",true],["KAE2050",462.65,42.1073,-87.8495,"107.2 Hz","Northbrook, IL","IL","SSRF-Lite NSEA GMRS (Apache-2.0)","https://github.com/Chicago-Offline/ssrf-lite/blob/main/ssrf/systems/US/IL/Cook/_Countywide/gmrs/nsea_gmrs_repeaters.yml","NSEA 650; permission required; golf-course-area reference.",true],["WRAF954",462.575,27.9518,-82.4572,"141.3 Hz","Downtown Tampa, FL","FL","SSRF-Lite Florida Simulcast Group (Apache-2.0)","https://github.com/Chicago-Offline/ssrf-lite/blob/main/ssrf/systems/US/FL/_Regional/florida_simulcast_group.yml","Tampa city-area reference; owner permission and operation unconfirmed.",false]];
@@ -471,6 +472,7 @@ function serviceUI(){
 }
 function switchService(name){
  radioService=name;selected=null;follow=true;
+ try{localStorage.setItem('roadtower-radio-view-v1',name)}catch(e){}
  el('rtAuto').textContent='Follow nearest: ON';
  serviceUI();renderPersonal();redraw();updateStatuses();
 }
@@ -564,7 +566,7 @@ function redraw(){
   b.onclick=function(){choose(item.x,true)};
   near.appendChild(b);
  });
- if(selected&&(!wideOnly||selected.wide))drawLine();
+ if(selected&&(isGMRS(selected)||!wideOnly||selected.wide))drawLine();
  else {line.setLatLngs([]);if(middle){map.removeLayer(middle);middle=null}}
  drawMarkers(list,p);
 }
@@ -664,6 +666,7 @@ function locateClubRepeater(id){
 }
 el('rtFindLibrary').onclick=function(){locateClubRepeater('jcrac-w0erh-145290')};
 el('rtFindJocoUhf').onclick=function(){locateClubRepeater('jcrac-w0erh-443725')};
+el('rtFindOP').onclick=function(){locateClubRepeater('kcwide-k0ham-146910-op')};
 function renderVerifiedLocal(){
  var root=el('rtVerifiedLocal');root.replaceChildren();
  LOCAL_CLUB.forEach(x=>{
