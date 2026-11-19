@@ -910,7 +910,67 @@ body.map-fullscreen #map .rt-status-hud{
 }
 #map #rtLayoutTray button.rt-layout-all-button:disabled{opacity:.48!important}
 #map #rtLayoutTray button.rt-layout-all-button:focus-visible{outline:3px solid #fff!important}
-</style></head><body><header><h1>ROADTOWER</h1><p>Free GPS • Official Weather • Road Information</p></header><main><section class="card"><h2>Live GPS Map</h2><span class="pill">Location stays on this device</span><p id="status" role="status">GPS stopped. Tap Start Live GPS.</p><div class="buttons" id="gpsActions"><button id="start">Start Live GPS</button><button id="stop" class="secondary" disabled>Stop GPS</button><button id="center" class="secondary" disabled>Center Map</button><button id="followMap" class="secondary">Follow GPS: ON</button></div><div class="buttons" id="mapToolbar"><button class="secondary" id="compactMap" type="button">Compact Map</button><button class="secondary" id="expandMap" type="button">Large Map</button><button id="fullscreenMap" type="button">Full Screen</button><button id="offlineQuickMode" class="secondary" type="button">Map: AUTO</button></div><div id="map" aria-label="Interactive road map"></div><p class="hint">Tap the map to save a location. Map tiles require internet and are subject to OpenStreetMap tile usage limits. Attribution appears on the map.</p><div class="buttons"><button id="saveCurrent" class="secondary" disabled>Save My GPS Location</button></div><div id="saveForm" class="hidden"><label for="placeName">Place name</label><input id="placeName" maxlength="80" placeholder="Home, parking, campsite..."><label for="placeType">Category</label><select id="placeType"><option value="📍">Place</option><option value="🏠">Home</option><option value="🅿️">Parking</option><option value="🏕️">Campsite</option><option value="🥾">Trailhead</option></select><p id="chosen" class="hint"></p><div class="buttons"><button id="confirmSave">Save Place</button><button id="cancelSave" class="secondary">Cancel</button></div></div></section><section class="card" id="offlineTravelCard">
+
+/* Default-on aircraft and translucent radar; designed for Fold cover/inside
+   screens and the existing drag/minimize/full-screen dot manager. */
+#map .rt-live-panel{
+ position:absolute;right:10px;top:40%;z-index:1510;pointer-events:auto;
+ width:min(310px,49%);max-height:min(330px,60%);
+ padding:12px;background:#08293beF;border:2px solid #58afd1;border-radius:13px;
+ color:#ecfaff;overflow:auto;overscroll-behavior:contain;box-shadow:0 6px 22px #001a;
+ font:600 13px/1.5 system-ui,Arial
+}
+#map .rt-live-panel .rt-live-title{display:block;font-size:16px;color:#e3faff;margin-bottom:8px}
+#map .rt-live-panel .rt-live-switches{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+#map .rt-live-panel .rt-live-switches button{
+ min-height:44px;padding:8px 4px;border-radius:10px;
+ background:#184658;color:#e6f5ff;font:900 12px/1.3 system-ui,Arial;
+ border:2px solid #719eac;cursor:pointer
+}
+#map .rt-live-panel #rtAirToggle[aria-pressed="true"]{background:#295b70;color:#fff;border-color:#60d9fc}
+#map .rt-live-panel #rtRadarToggle[aria-pressed="true"]{background:#26567b;color:#fff;border-color:#85c8ff}
+#map .rt-live-panel .rt-live-switches button[aria-pressed="false"]{background:#25343c;color:#a8c3d1;border-color:#4a6574}
+#map .rt-live-panel .rt-live-status{padding:5px 6px;margin:4px 0;border-left:3px solid #3eb8dc;background:#0b344a;font-size:12px;overflow-wrap:anywhere}
+#map .rt-live-panel .rt-live-options{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:8px 0}
+#map .rt-live-panel .rt-live-options label{width:100%;display:flex;justify-content:space-between;font-size:12px;margin:0}
+#map .rt-live-panel #rtRadarOpacity{width:100%;margin:2px 0 5px;accent-color:#72c8f8;height:23px}
+#map .rt-live-panel .rt-live-options button{
+ flex:1;min-height:38px;font:800 12px/1.3 system-ui,Arial;
+ background:#245973;color:#fff;border:1px solid #7fb6d0;
+ border-radius:8px;padding:6px;cursor:pointer
+}
+#map .rt-live-panel .rt-live-nearest{border-top:1px solid #3c7892;padding-top:6px}
+#map .rt-live-panel .rt-live-air-list{display:grid;gap:4px;margin-top:6px;max-height:180px;overflow:auto}
+#map .rt-live-panel .rt-aircraft-nearby{
+ text-align:left;background:#164155;color:#fff;border:1px solid #488baf;border-radius:8px;
+ padding:7px;font:750 12px/1.4 system-ui,Arial;min-height:37px;cursor:pointer
+}
+#map .rt-live-panel .rt-live-credit{color:#a6cdda;font:500 10px/1.55 system-ui,Arial;border-top:1px solid #366880;margin-top:9px;padding-top:6px}
+#map .rt-aircraft-icon{background:transparent;border:0!important;pointer-events:auto}
+#map .rt-aircraft-icon .rt-aircraft-symbol{
+ display:flex;align-items:center;justify-content:center;width:32px;height:32px;
+ font-size:29px;color:#f8fcff;text-shadow:0 0 3px #071421,0 0 8px #00caff;
+ filter:drop-shadow(0 1px 3px #09182f);transform-origin:center center
+}
+#map .leaflet-popup .rt-aircraft-popup{color:#102f43;font:650 14px/1.6 system-ui,Arial}
+#map .rt-aircraft-popup strong{display:block;color:#06304e;font-size:18px;margin-bottom:7px}
+#map .rt-aircraft-popup div{margin:4px 0}
+#map .rt-aircraft-popup b{color:#0b5574}
+#map .rt-radar-tile-layer{pointer-events:none!important}
+#map #rtLayoutTray .rt-dot-orange{--rt-dot:#ffae59}
+#map .rt-layout-managed.rt-layout-maximized.rt-live-panel{
+ overflow:auto!important;max-width:none!important
+}
+#map .rt-layout-maximized .rt-live-title{font-size:clamp(21px,3vw,32px)!important}
+#map .rt-layout-maximized .rt-live-status,
+#map .rt-layout-maximized .rt-aircraft-nearby{font-size:clamp(16px,2.7vw,24px)!important}
+#map .rt-layout-maximized .rt-live-credit{font-size:clamp(13px,2vw,18px)!important}
+@media(max-width:570px){
+ #map .rt-live-panel{width:min(290px,76%);right:5px;top:47%;padding:8px;max-height:45%}
+ #map .rt-live-panel .rt-live-title{font-size:14px}
+ #map .rt-live-panel .rt-live-switches button{font-size:11px}
+}
+</style></head><body><header><h1>ROADTOWER</h1><p>Free GPS • Official Weather • Road Information</p></header><main><section class="card"><h2>Live GPS Map</h2><span class="pill">Exact GPS stays on this device · aircraft searches use a rounded map center</span><p id="status" role="status">GPS stopped. Tap Start Live GPS.</p><div class="buttons" id="gpsActions"><button id="start">Start Live GPS</button><button id="stop" class="secondary" disabled>Stop GPS</button><button id="center" class="secondary" disabled>Center Map</button><button id="followMap" class="secondary">Follow GPS: ON</button></div><div class="buttons" id="mapToolbar"><button class="secondary" id="compactMap" type="button">Compact Map</button><button class="secondary" id="expandMap" type="button">Large Map</button><button id="fullscreenMap" type="button">Full Screen</button><button id="offlineQuickMode" class="secondary" type="button">Map: AUTO</button></div><div id="map" aria-label="Interactive road map"></div><p class="hint">Tap the map to save a location. Map tiles require internet and are subject to OpenStreetMap tile usage limits. Attribution appears on the map.</p><div class="buttons"><button id="saveCurrent" class="secondary" disabled>Save My GPS Location</button></div><div id="saveForm" class="hidden"><label for="placeName">Place name</label><input id="placeName" maxlength="80" placeholder="Home, parking, campsite..."><label for="placeType">Category</label><select id="placeType"><option value="📍">Place</option><option value="🏠">Home</option><option value="🅿️">Parking</option><option value="🏕️">Campsite</option><option value="🥾">Trailhead</option></select><p id="chosen" class="hint"></p><div class="buttons"><button id="confirmSave">Save Place</button><button id="cancelSave" class="secondary">Cancel</button></div></div></section><section class="card" id="offlineTravelCard">
 <h2>🗺️ Offline Travel Maps</h2>
 <p class="hint">Download <strong>road and town data</strong> before your trip for use without mobile service. This is a simpler vector-road view, not the detailed online street map, satellite imagery or turn-by-turn navigation. GPS and repeater distances continue working while the page stays active.</p>
 <p id="offlinePackCount" class="pill">Checking saved travel maps…</p>
@@ -1072,4 +1132,4 @@ window.addEventListener('pageshow',e=>{
  }
 });
 })();
-</script><script src="./repeaters.js"></script><script src="./offline-maps.js"></script><script src="./panel-layout.js"></script></body></html>
+</script><script src="./repeaters.js"></script><script src="./offline-maps.js"></script><script src="./live-layers.js"></script><script src="./panel-layout.js"></script></body></html>
