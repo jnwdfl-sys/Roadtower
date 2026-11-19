@@ -459,6 +459,196 @@ body.map-fullscreen #map .rt-nearest-dock.rt-nearest-expanded{
   max-height:84dvh!important;
  }
 }
+
+/* ROADTOWER EDGE-DOCK HUD v8
+   Map center remains visible. GPS/status left; HAM/GMRS and closest distances right.
+   Expanded ranking stays against the right edge rather than covering the map's center.
+*/
+body.map-fullscreen #map{
+ --rt-left-edge:calc(7px + env(safe-area-inset-left,0px));
+ --rt-right-edge:calc(7px + env(safe-area-inset-right,0px));
+ --rt-left-rail:clamp(128px,21dvw,188px);
+ --rt-right-rail:clamp(198px,31dvw,268px);
+}
+body.map-fullscreen #map .rt-gps-hud{
+ position:absolute;left:var(--rt-left-edge);top:calc(57px + env(safe-area-inset-top,0px));
+ width:var(--rt-left-rail);max-width:var(--rt-left-rail);
+ padding:7px;border-radius:10px;
+}
+body.map-fullscreen #map .rt-gps-hud .rt-gps-row{
+ flex-direction:column;align-items:stretch;gap:5px
+}
+body.map-fullscreen #map .rt-gps-hud .rt-gps-row strong{font-size:13px}
+body.map-fullscreen #map .rt-gps-hud button{min-height:32px;text-align:center}
+body.map-fullscreen #map .rt-gps-hud #rtGpsDetails{line-height:1.3}
+body.map-fullscreen #map .rt-status-hud{
+ position:absolute;left:var(--rt-left-edge);
+ top:calc(194px + env(safe-area-inset-top,0px));
+ width:var(--rt-left-rail);max-width:var(--rt-left-rail);gap:4px;
+}
+body.map-fullscreen #map .rt-status-hud .rt-status{
+ box-sizing:border-box;width:100%;font-size:10px;padding:5px 6px;
+}
+body.map-fullscreen #gpsActions{
+ position:fixed;left:var(--rt-left-edge);right:auto;
+ bottom:calc(14px + env(safe-area-inset-bottom,0px));
+ width:var(--rt-left-rail);max-width:var(--rt-left-rail);
+ display:grid;grid-template-columns:1fr 1fr;gap:5px;
+ padding:6px;z-index:1100;
+}
+body.map-fullscreen #gpsActions button{
+ padding:7px 4px;min-height:36px;font-size:11px;white-space:normal
+}
+body.map-fullscreen #mapToolbar{
+ top:calc(8px + env(safe-area-inset-top,0px));
+ right:var(--rt-right-edge);
+ max-width:var(--rt-right-rail);
+ padding:4px;
+}
+body.map-fullscreen #mapToolbar button{padding:8px 7px;font-size:12px}
+body.map-fullscreen #map .rt-repeater-panel,
+body.map-fullscreen #map .rt-repeater-panel:not(.rt-hidden){
+ position:absolute;
+ top:calc(57px + env(safe-area-inset-top,0px));
+ right:var(--rt-right-edge);left:auto;
+ width:var(--rt-right-rail);max-width:var(--rt-right-rail);
+ bottom:calc(328px + env(safe-area-inset-bottom,0px));
+ height:auto;max-height:none;min-height:50px;
+ overflow-y:auto;overscroll-behavior:contain;
+ padding:8px;z-index:1290;
+}
+body.map-fullscreen #map .rt-repeater-panel.rt-hidden{
+ top:calc(57px + env(safe-area-inset-top,0px));bottom:auto;
+ height:auto;max-height:58px;overflow:hidden;
+}
+body.map-fullscreen #map .rt-nearest-dock{
+ position:absolute;display:block;
+ right:var(--rt-right-edge);left:auto;
+ bottom:calc(53px + env(safe-area-inset-bottom,0px));
+ top:auto;transform:none;
+ width:var(--rt-right-rail);max-width:var(--rt-right-rail);
+ max-height:264px;
+ overflow:auto;padding:7px;z-index:1320;
+ border-radius:10px;
+}
+body.map-fullscreen #map .rt-nearest-dock.rt-nearest-expanded{
+ position:absolute!important;
+ top:calc(57px + env(safe-area-inset-top,0px))!important;
+ left:auto!important;right:var(--rt-right-edge)!important;
+ bottom:calc(53px + env(safe-area-inset-bottom,0px))!important;
+ transform:none!important;
+ width:var(--rt-right-rail)!important;max-width:var(--rt-right-rail)!important;
+ max-height:none!important;height:auto!important;
+ box-shadow:0 5px 22px #001b!important;
+ padding:9px;border:2px solid #62d6f6;
+}
+body.map-fullscreen #map.rt-focus-distances .rt-repeater-panel{
+ display:none!important;
+}
+#map .rt-near-row:focus-visible,#map .rt-repeater-panel button:focus-visible{
+ outline:2px solid #ffdf90;outline-offset:2px;
+}
+#map .rt-nearest-dock .rt-near-head{flex-wrap:wrap}
+#map .rt-nearest-dock .rt-near-tools{width:100%;justify-content:flex-start}
+#map .rt-nearest-dock .rt-near-tools button{min-height:30px;padding:5px 7px}
+#map .rt-sos-note{font-size:10px;color:#b4e3ff;letter-spacing:.01em;margin-top:3px}
+#map .rt-self-core{animation:rt-sos-core 6.12s step-end infinite}
+#map .rt-self-wave{animation:rt-sos-ring 6.12s step-end infinite}
+@keyframes rt-sos-core{0%{opacity:1;background:#22d7ff;box-shadow:0 0 0 3px #ffffff99,0 0 18px #22d7ff;transform:scale(1.12)}
+2.941%{opacity:0.43;background:#123a47;box-shadow:0 0 0 2px #608a99;transform:scale(0.93)}
+5.882%{opacity:1;background:#f16bea;box-shadow:0 0 0 3px #ffffff99,0 0 18px #f16bea;transform:scale(1.12)}
+8.824%{opacity:0.43;background:#123a47;box-shadow:0 0 0 2px #608a99;transform:scale(0.93)}
+11.765%{opacity:1;background:#ffd66b;box-shadow:0 0 0 3px #ffffff99,0 0 18px #ffd66b;transform:scale(1.12)}
+14.706%{opacity:0.43;background:#123a47;box-shadow:0 0 0 2px #608a99;transform:scale(0.93)}
+23.529%{opacity:1;background:#42ecb3;box-shadow:0 0 0 3px #ffffff99,0 0 18px #42ecb3;transform:scale(1.12)}
+32.353%{opacity:0.43;background:#123a47;box-shadow:0 0 0 2px #608a99;transform:scale(0.93)}
+35.294%{opacity:1;background:#38b6ff;box-shadow:0 0 0 3px #ffffff99,0 0 18px #38b6ff;transform:scale(1.12)}
+44.118%{opacity:0.43;background:#123a47;box-shadow:0 0 0 2px #608a99;transform:scale(0.93)}
+47.059%{opacity:1;background:#f071f6;box-shadow:0 0 0 3px #ffffff99,0 0 18px #f071f6;transform:scale(1.12)}
+55.882%{opacity:0.43;background:#123a47;box-shadow:0 0 0 2px #608a99;transform:scale(0.93)}
+64.706%{opacity:1;background:#ffd265;box-shadow:0 0 0 3px #ffffff99,0 0 18px #ffd265;transform:scale(1.12)}
+67.647%{opacity:0.43;background:#123a47;box-shadow:0 0 0 2px #608a99;transform:scale(0.93)}
+70.588%{opacity:1;background:#50ffbb;box-shadow:0 0 0 3px #ffffff99,0 0 18px #50ffbb;transform:scale(1.12)}
+73.529%{opacity:0.43;background:#123a47;box-shadow:0 0 0 2px #608a99;transform:scale(0.93)}
+76.471%{opacity:1;background:#43c5ff;box-shadow:0 0 0 3px #ffffff99,0 0 18px #43c5ff;transform:scale(1.12)}
+79.412%{opacity:0.43;background:#123a47;box-shadow:0 0 0 2px #608a99;transform:scale(0.93)}
+100%{opacity:0.43;background:#123a47;box-shadow:0 0 0 2px #608a99;transform:scale(0.93)}}
+@keyframes rt-sos-ring{0%{opacity:0.9;border-color:#22d7ff;transform:scale(1.15)}
+2.941%{opacity:0;border-color:#597782;transform:scale(0.88)}
+5.882%{opacity:0.9;border-color:#f16bea;transform:scale(1.15)}
+8.824%{opacity:0;border-color:#597782;transform:scale(0.88)}
+11.765%{opacity:0.9;border-color:#ffd66b;transform:scale(1.15)}
+14.706%{opacity:0;border-color:#597782;transform:scale(0.88)}
+23.529%{opacity:0.9;border-color:#42ecb3;transform:scale(1.15)}
+32.353%{opacity:0;border-color:#597782;transform:scale(0.88)}
+35.294%{opacity:0.9;border-color:#38b6ff;transform:scale(1.15)}
+44.118%{opacity:0;border-color:#597782;transform:scale(0.88)}
+47.059%{opacity:0.9;border-color:#f071f6;transform:scale(1.15)}
+55.882%{opacity:0;border-color:#597782;transform:scale(0.88)}
+64.706%{opacity:0.9;border-color:#ffd265;transform:scale(1.15)}
+67.647%{opacity:0;border-color:#597782;transform:scale(0.88)}
+70.588%{opacity:0.9;border-color:#50ffbb;transform:scale(1.15)}
+73.529%{opacity:0;border-color:#597782;transform:scale(0.88)}
+76.471%{opacity:0.9;border-color:#43c5ff;transform:scale(1.15)}
+79.412%{opacity:0;border-color:#597782;transform:scale(0.88)}
+100%{opacity:0;border-color:#597782;transform:scale(0.88)}}
+@media(prefers-reduced-motion:reduce){
+ #map .rt-self-core{animation:none!important;opacity:1!important;background:#22d7ff!important;transform:none!important}
+ #map .rt-self-wave{animation:none!important;opacity:.55!important;transform:none!important}
+}
+@media(max-width:700px){
+ body.map-fullscreen #map{
+  --rt-left-rail:clamp(110px,29dvw,152px);
+  --rt-right-rail:clamp(165px,46dvw,215px);
+ }
+ body.map-fullscreen #map .rt-gps-hud{
+  top:calc(54px + env(safe-area-inset-top,0px));padding:5px
+ }
+ body.map-fullscreen #map .rt-status-hud{
+  top:calc(188px + env(safe-area-inset-top,0px));gap:3px
+ }
+ body.map-fullscreen #map .rt-repeater-panel,
+ body.map-fullscreen #map .rt-repeater-panel:not(.rt-hidden){
+  top:calc(54px + env(safe-area-inset-top,0px));
+  bottom:calc(293px + env(safe-area-inset-bottom,0px));
+ }
+ body.map-fullscreen #map .rt-nearest-dock{
+  max-height:231px;
+  bottom:calc(52px + env(safe-area-inset-bottom,0px))
+ }
+ body.map-fullscreen #map .rt-nearest-dock.rt-nearest-expanded{
+  top:calc(54px + env(safe-area-inset-top,0px))!important
+ }
+ body.map-fullscreen #map .rt-nearest-dock .rt-near-row{
+  font-size:min(var(--rt-near-font),17px);min-height:45px;padding:7px 5px
+ }
+ body.map-fullscreen #gpsActions button{font-size:10px}
+}
+@media(max-width:430px){
+ body.map-fullscreen #map{
+  --rt-left-rail:clamp(100px,28dvw,120px);
+  --rt-right-rail:clamp(153px,46dvw,188px);
+ }
+ body.map-fullscreen #map .rt-status-hud .rt-status{font-size:9px;padding:4px}
+ body.map-fullscreen #map .rt-gps-hud .rt-gps-row strong{font-size:11px}
+ body.map-fullscreen #map .rt-nearest-dock{max-height:198px}
+ body.map-fullscreen #map .rt-repeater-panel,
+ body.map-fullscreen #map .rt-repeater-panel:not(.rt-hidden){
+  bottom:calc(265px + env(safe-area-inset-bottom,0px));
+ }
+ body.map-fullscreen #map .rt-nearest-dock.rt-nearest-expanded{
+  bottom:calc(48px + env(safe-area-inset-bottom,0px))!important
+ }
+}
+@media(max-height:550px){
+ body.map-fullscreen #map .rt-status-hud{top:calc(160px + env(safe-area-inset-top,0px))}
+ body.map-fullscreen #map .rt-nearest-dock{max-height:155px}
+ body.map-fullscreen #map .rt-repeater-panel,
+ body.map-fullscreen #map .rt-repeater-panel:not(.rt-hidden){
+  bottom:calc(202px + env(safe-area-inset-bottom,0px))
+ }
+ body.map-fullscreen #gpsActions{bottom:calc(6px + env(safe-area-inset-bottom,0px))}
+}
 </style></head><body><header><h1>ROADTOWER</h1><p>Free GPS • Official Weather • Road Information</p></header><main><section class="card"><h2>Live GPS Map</h2><span class="pill">Location stays on this device</span><p id="status" role="status">GPS stopped. Tap Start Live GPS.</p><div class="buttons" id="gpsActions"><button id="start">Start Live GPS</button><button id="stop" class="secondary" disabled>Stop GPS</button><button id="center" class="secondary" disabled>Center Map</button><button id="followMap" class="secondary">Follow GPS: ON</button></div><div class="buttons" id="mapToolbar"><button class="secondary" id="compactMap" type="button">Compact Map</button><button class="secondary" id="expandMap" type="button">Large Map</button><button id="fullscreenMap" type="button">Full Screen</button><button id="offlineQuickMode" class="secondary" type="button">Map: AUTO</button></div><div id="map" aria-label="Interactive road map"></div><p class="hint">Tap the map to save a location. Map tiles require internet and are subject to OpenStreetMap tile usage limits. Attribution appears on the map.</p><div class="buttons"><button id="saveCurrent" class="secondary" disabled>Save My GPS Location</button></div><div id="saveForm" class="hidden"><label for="placeName">Place name</label><input id="placeName" maxlength="80" placeholder="Home, parking, campsite..."><label for="placeType">Category</label><select id="placeType"><option value="📍">Place</option><option value="🏠">Home</option><option value="🅿️">Parking</option><option value="🏕️">Campsite</option><option value="🥾">Trailhead</option></select><p id="chosen" class="hint"></p><div class="buttons"><button id="confirmSave">Save Place</button><button id="cancelSave" class="secondary">Cancel</button></div></div></section><section class="card" id="offlineTravelCard">
 <h2>🗺️ Offline Travel Maps</h2>
 <p class="hint">Download <strong>road and town data</strong> before your trip for use without mobile service. This is a simpler vector-road view, not the detailed online street map, satellite imagery or turn-by-turn navigation. GPS and repeater distances continue working while the page stays active.</p>
@@ -484,7 +674,7 @@ body.map-fullscreen #map .rt-nearest-dock.rt-nearest-expanded{
 (()=>{'use strict';const $=id=>document.getElementById(id);let map,locationMarker,accuracyCircle,layer,watch=null,position=null,pending=null,lastCheck=0,checking=false,voice=false,lastSpoken='';const KEY='roadtower.savedPlaces.v1';let aheadLayer=null,checkingAhead=false,followMap=true;let places=[];window.RoadtowerRepeaters={getMap:()=>map,getGps:()=>(watch!==null?position:null),onGps:null};try{const a=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(a))places=a.filter(p=>p&&typeof p.name==='string'&&Number.isFinite(p.lat)&&Number.isFinite(p.lng)&&Math.abs(p.lat)<=90&&Math.abs(p.lng)<=180).slice(0,500)}catch(e){}const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(places));return true}catch(e){alert('Storage unavailable');return false}};try{if(!window.L)throw Error('Map library not available');map=L.map('map').setView([39.1,-94.58],9);L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);layer=L.layerGroup().addTo(map);map.on('click',e=>openSave(e.latlng.lat,e.latlng.lng));map.on('dragstart',()=>{followMap=false;$('followMap').textContent='Follow GPS: OFF'})}catch(e){$('map').textContent='Map unavailable. Check internet connection.'}const gpsHud=document.createElement('section');
 gpsHud.id='rtGpsHud';gpsHud.className='rt-gps-hud rt-gps-off';
 gpsHud.setAttribute('aria-label','My GPS location and status');
-gpsHud.innerHTML='<div class="rt-gps-row"><strong id="rtGpsMode">GPS OFF</strong><button id="rtGpsQuick" type="button">Start GPS</button><button id="rtGpsStopQuick" type="button" hidden>Stop</button></div><div id="rtGpsDetails">GPS not started</div>';
+gpsHud.innerHTML='<div class="rt-gps-row"><strong id="rtGpsMode">GPS OFF</strong><button id="rtGpsQuick" type="button">Start GPS</button><button id="rtGpsStopQuick" type="button" hidden>Stop</button></div><div id="rtGpsDetails">GPS not started</div><div class="rt-sos-note">SOS light · visual only · no radio transmission</div>';
 $('map').appendChild(gpsHud);
 if(window.L){L.DomEvent.disableClickPropagation(gpsHud);L.DomEvent.disableScrollPropagation(gpsHud)}
 const gpsIcon=window.L?L.divIcon({className:'rt-self-pin-icon',html:'<div class="rt-self-beacon" role="img" aria-label="Your GPS position: visual SOS pattern, not an emergency signal"><span class="rt-self-wave"></span><span class="rt-self-core"></span><span class="rt-self-word">YOU · SOS</span></div>',iconSize:[56,70],iconAnchor:[28,35]}):null;
