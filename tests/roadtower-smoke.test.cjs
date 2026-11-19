@@ -46,8 +46,8 @@ test('SOS marker is a distinct visible icon',()=>{
  assert.match(page,/YOU · SOS/);
  assert.match(page,/rt-self-center/);
 });
-test('panels open at startup then minimize, maximize and restore',()=>{
- assert.match(panels,/mode:'normal'/);
+test('panels minimize at startup while support for opening, maximizing and restoring remains',()=>{
+ assert.match(panels,/mode:'min'/);
  assert.match(panels,/minimizeAll\.addEventListener\('click'/);
  assert.match(panels,/showAll\.addEventListener\('click'/);
  assert.match(panels,/function setMode\(/);
