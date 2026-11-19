@@ -37,7 +37,7 @@ panel.innerHTML=
  '<div class="rt-buttons"><button id="rtUseCenter" type="button">Use map center</button><button type="submit">Save repeater offline</button></div>'+
  '<div class="rt-muted">Coordinates must be for the repeater, not necessarily where you are. Pan to a tower, use Map center, and verify the location. Added stations stay stored when the nationwide directory updates.</div>'+
  '</form><div id="rtMyStations"></div>'+
- '<div class="rt-buttons"><button id="rtDownload" type="button">Update USA 2m + 70cm</button><button id="rtGmrsDownload" type="button" hidden>Download open GMRS sites</button><button id="rtImport" type="button">Import JSON / CSV</button></div>'+
+ '<div class="rt-buttons"><button id="rtDownload" type="button">Update USA 2m + 70cm</button><button id="rtGmrsDownload" type="button" hidden>Save GMRS site list offline</button><button id="rtImport" type="button">Import JSON / CSV</button></div>'+
  '<input type="file" accept=".json,.csv,application/json,text/csv,text/plain" id="rtFile" hidden>'+
  '<div class="rt-muted" id="rtFeedback">HAM list uses HearHam data. GMRS uses its own saved site list. Nationwide coverage cannot be guaranteed.</div>'+
  '<div class="rt-muted" id="rtGmrsSources" hidden>GMRS: limited open-data download plus your own JSON/CSV imports. For broader personal coverage, export a GMRS list with tower latitude/longitude from a directory you are authorized to use, then tap Import JSON / CSV. Data remains on your device for offline use. No nationwide completeness claim. Verify owner permission, tones and site status. <a href="https://www.repeaterbook.com/gmrs/index.php/index/0" target="_blank" rel="noopener noreferrer">Browse GMRS directory</a></div>'+
@@ -159,9 +159,9 @@ var LOCAL_CLUB=[
 var data=[],gmrsData=[],customRecords=[],selected=null,follow=true,wideOnly=false,bandFilter='both',radioService='ham',directoryState='loading',gmrsState='loading',markers=L.layerGroup().addTo(map);
 const BASELINE_AMATEUR=5044;
 var completeHamRefresh=false;
-const GMRS_OPEN_URL='https://chicago-offline.github.io/ssrf-lite/codeplug.json';
+const GMRS_OPEN_URL='./gmrs-directory.json';
 
-const GMRS_STARTER_ROWS=[["WRNW944",462.65,39.0267,-94.6569,"123.0 Hz","Mission, KS","KS","N9TPB public GMRS listings","https://n9tpb.com/uls/call/K0QJ","Published as open; city-center map reference, not an antenna position.",false],["WSHC585",462.6,38.96611,-94.73389,"136.5 Hz","Lenexa, KS","KS","N9TPB public GMRS listings","https://n9tpb.com/uls/call/KF0ICI","Published as open; city-center map reference, not an antenna position.",false],["KAF4575",462.7,39.0417,-94.7202,"110.9 Hz","Shawnee, KS","KS","N9TPB public GMRS listings","https://n9tpb.com/uls/call/K0QJ","Published as open; city-center map reference, not an antenna position.",false],["WRZE330",462.575,40.9987,-74.3471,"Not published","Butler, NJ","NJ","SSRF-Lite Butler GMRS (Apache-2.0)","https://github.com/Chicago-Offline/ssrf-lite/blob/main/ssrf/systems/US/NJ/Morris/Butler/gmrs/butler_gmrs_repeater.yml","Open listing; tone unpublished; city reference point.",false],["KAA8142",462.675,42.0432,-87.8477,"141.3 Hz","Park Ridge, IL","IL","SSRF-Lite NSEA GMRS (Apache-2.0)","https://github.com/Chicago-Offline/ssrf-lite/blob/main/ssrf/systems/US/IL/Cook/_Countywide/gmrs/nsea_gmrs_repeaters.yml","NSEA 675; permission required; hospital-area reference.",true],["KAE2050",462.65,42.1073,-87.8495,"107.2 Hz","Northbrook, IL","IL","SSRF-Lite NSEA GMRS (Apache-2.0)","https://github.com/Chicago-Offline/ssrf-lite/blob/main/ssrf/systems/US/IL/Cook/_Countywide/gmrs/nsea_gmrs_repeaters.yml","NSEA 650; permission required; golf-course-area reference.",true],["WRAF954",462.575,27.9518,-82.4572,"141.3 Hz","Downtown Tampa, FL","FL","SSRF-Lite Florida Simulcast Group (Apache-2.0)","https://github.com/Chicago-Offline/ssrf-lite/blob/main/ssrf/systems/US/FL/_Regional/florida_simulcast_group.yml","Tampa city-area reference; owner permission and operation unconfirmed.",false]];
+const GMRS_STARTER_ROWS=[["WRNW944",462.65,39.0267,-94.6569,"123.0 Hz","Mission, KS","KS","N9TPB public GMRS listings","https://n9tpb.com/uls/call/WRNW944","Published as open; city-center map reference, not an antenna position.",false],["WSHC585",462.6,38.96611,-94.73389,"136.5 Hz","Lenexa, KS","KS","N9TPB public GMRS listings","https://n9tpb.com/uls/call/WSHC585","Published as open; city-center map reference, not an antenna position.",false],["KAF4575",462.7,39.0417,-94.7202,"110.9 Hz","Shawnee, KS","KS","N9TPB public GMRS listings","https://n9tpb.com/uls/call/KAF4575","Published as open; city-center map reference, not an antenna position.",false],["WRZE330",462.575,40.9987,-74.3471,"Not published","Butler, NJ","NJ","SSRF-Lite Butler GMRS (Apache-2.0)","https://github.com/Chicago-Offline/ssrf-lite/blob/main/ssrf/systems/US/NJ/Morris/Butler/gmrs/butler_gmrs_repeater.yml","Open listing; tone unpublished; city reference point.",false],["KAA8142",462.675,42.0432,-87.8477,"141.3 Hz","Park Ridge, IL","IL","SSRF-Lite NSEA GMRS (Apache-2.0)","https://github.com/Chicago-Offline/ssrf-lite/blob/main/ssrf/systems/US/IL/Cook/_Countywide/gmrs/nsea_gmrs_repeaters.yml","NSEA 675; permission required; hospital-area reference.",true],["KAE2050",462.65,42.1073,-87.8495,"107.2 Hz","Northbrook, IL","IL","SSRF-Lite NSEA GMRS (Apache-2.0)","https://github.com/Chicago-Offline/ssrf-lite/blob/main/ssrf/systems/US/IL/Cook/_Countywide/gmrs/nsea_gmrs_repeaters.yml","NSEA 650; permission required; golf-course-area reference.",true],["WRAF954",462.575,27.9518,-82.4572,"141.3 Hz","Downtown Tampa, FL","FL","SSRF-Lite Florida Simulcast Group (Apache-2.0)","https://github.com/Chicago-Offline/ssrf-lite/blob/main/ssrf/systems/US/FL/_Regional/florida_simulcast_group.yml","Tampa city-area reference; owner permission and operation unconfirmed.",false]];
 const GMRS_STARTER=GMRS_STARTER_ROWS.map((r,i)=>({
  id:'gmrs-starter-'+i+'|'+r[0]+'|'+r[1].toFixed(3),
  service:'gmrs',call:r[0],mhz:r[1],lat:r[2],lon:r[3],tx:r[1]+5,offset:5,
@@ -309,7 +309,11 @@ function gmrsNormalize(r){
   service:'gmrs',call:call,mhz:output,tx:input,offset:5,tone:access,
   lat:lat,lon:lon,city:city,state:String(r.state||r.State||'').slice(0,35),
   mode:String(r.mode||'FM').slice(0,45),wide:false,
-  source:String(r._roadtowerSource||'GMRS user-supplied directory').slice(0,90),notes:'Owner access rules and site status unverified. Check before transmitting.'};
+  source:String(r.source||r._roadtowerSource||'GMRS user-supplied directory').slice(0,140),
+  sourceUrl:String(r.sourceUrl||'').slice(0,400),
+  approx:r.approximate!==false,
+  restricted:Boolean(r.restricted),
+  notes:String(r.notes||'Owner access rules and site status unverified. Check before transmitting.').slice(0,400)};
 }
 function normalizeGmrs(raw){
  var rows=rowsFrom(raw),out=[],seen=new Set();
@@ -672,7 +676,7 @@ renderVerifiedLocal();renderPersonal();
 el('rtGmrsDownload').onclick=async function(){
  if(loading)return;
  loading=true;this.disabled=true;
- say('Downloading public SSRF-Lite GMRS repeater sites. This is a limited open dataset, not a complete nationwide list.');
+ say('Loading Roadtower curated GMRS directory: selected published U.S. sites with approximate reference locations; not complete nationwide coverage.');
  try{
   var response;
   try{
@@ -683,17 +687,17 @@ el('rtGmrsDownload').onclick=async function(){
    if(!response.ok)throw Error('Relay HTTP '+response.status);
   }
   var raw=await response.json();
-  var parsed=normalizeGmrs(raw).map(x=>Object.assign(x,{source:'SSRF-Lite open data (Apache-2.0)'}));
-  if(!parsed.length)throw Error('No geolocated GMRS duplex repeaters were found in this open feed; existing GMRS records were kept');
+  var parsed=normalizeGmrs(raw);
+  if(!parsed.length)throw Error('No usable GMRS repeater records in the curated directory; previous saved sites were kept');
   // Open-source refresh adds to the saved GMRS list; never erase personal imports.
   var merged=[...gmrsData,...parsed],seen=new Set();
   merged=merged.filter(x=>{
    var key=x.call.toUpperCase()+'|'+x.mhz.toFixed(4)+'|'+x.lat.toFixed(2)+'|'+x.lon.toFixed(2);
    if(seen.has(key))return false;seen.add(key);return true;
   });
-  await saveKey('gmrs-v1',merged,'SSRF-Lite + personal GMRS entries');
+  await saveKey('gmrs-v1',merged,'Roadtower curated GMRS 2026-11-18 + personal imports');
   gmrsData=merged;gmrsState='ready';selected=null;follow=true;
-  say('Downloaded '+parsed.length+' open-data GMRS sites; '+merged.length+' total saved offline. Coverage is incomplete. Personal imports were preserved.');
+  say('Saved '+parsed.length+' curated GMRS site references; '+merged.length+' total saved offline. Map pins approximate; personal imports preserved.');
   redraw();updateStatuses();
  }catch(e){say('GMRS download failed: '+e.message+'. Existing saved sites are unchanged.')}
  finally{loading=false;this.disabled=false}
