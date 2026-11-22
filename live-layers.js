@@ -19,6 +19,7 @@ panel.innerHTML=
  '<button id="rtAirToggle" type="button" aria-pressed="true">✈ AIRCRAFT: ON</button>'+
  '<button id="rtRadarToggle" type="button" aria-pressed="true">🌦 RADAR: ON</button></div>'+
  '<div id="rtAirStatus" class="rt-live-status" role="status">Aircraft: connecting…</div>'+
+ '<a id="rtAirExternal" class="rt-air-external" href="https://globe.adsb.fi/" target="_blank" rel="noopener noreferrer">✈ Open separate live airplane map</a>'+
  '<div id="rtRadarStatus" class="rt-live-status" role="status">Radar: connecting…</div>'+
  '<div class="rt-live-options">'+
  '<label for="rtRadarOpacity">Radar strength <output id="rtRadarOpacityValue">30%</output></label>'+
@@ -277,6 +278,12 @@ function setAuto(on){
  if(autoEnabled){loadAircraft();loadRadar()}
 }
 autoButton.addEventListener('click',()=>setAuto(!autoEnabled));
+const airExternal=el('rtAirExternal');
+airExternal.addEventListener('click',()=>{
+ const c=viewCenter();
+ airExternal.href='https://globe.adsb.fi/?lat='+c.lat.toFixed(1)+
+  '&lon='+c.lon.toFixed(1)+'&zoom=9';
+});
 toggleAir.addEventListener('click',()=>setAircraft(!aircraftOn));
 toggleRadar.addEventListener('click',()=>setRadar(!radarOn));
 el('rtRadarOpacity').addEventListener('input',e=>{
