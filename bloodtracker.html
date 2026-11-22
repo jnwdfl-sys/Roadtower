@@ -94,7 +94,7 @@ small,.note{color:var(--muted)}.status{padding:10px 12px;border:1px solid #44697
 'use strict';
 const $=id=>document.getElementById(id);
 const canvas=$('view'),ctx=canvas.getContext('2d',{willReadFrequently:true}),video=$('camera');
-let stream=null,source=null,sourceKind=null,facing='environment',paused=false,last=0,frameId=0,photoUrl=null;
+let stream=null,source=null,sourceKind=null,facing='environment',paused=false,last=0,frameId=0,photoUrl=null,frozenSource=null;
 const defaults={mode:'red',background:'gray',highlight:'red',sensitivity:'135',boost:'170',contrast:'115',brightness:'0',dots:true};
 const ids=['mode','background','highlight','sensitivity','boost','contrast','brightness','dots'];
 const status=t=>$('status').textContent=t;
@@ -111,7 +111,7 @@ function reveal(){$('empty').classList.add('hidden')}
 function sizeCanvas(w,h,limit){const scale=Math.min(1,limit/Math.max(w,1));canvas.width=Math.max(1,Math.round(w*scale));canvas.height=Math.max(1,Math.round(h*scale))}
 async function startCamera(){
 if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){status('Camera access is unavailable. Open in Chrome over HTTPS, or select a photo.');return}
-stopCamera();cleanupPhoto();source=null;sourceKind=null;paused=false;$('freeze').textContent='⏸ Freeze';
+stopCamera();cleanupPhoto();source=null;sourceKind=null;paused=false;frozenSource=null;$('freeze').textContent='⏸ Freeze';
 try{
 status('Requesting camera permission…');
 stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:facing},width:{ideal:1280},height:{ideal:720}}});
@@ -141,7 +141,7 @@ for(let x=0;x<w;x++){
 const i=(y*w+x)*4;
 let r=clamp((d[i]-128)*contrast+128+brightness),g=clamp((d[i+1]-128)*contrast+128+brightness),b=clamp((d[i+2]-128)*contrast+128+brightness);
 const candidate=isRed(r,g,b,ratio);if(candidate)hits++;
-if(s.dots&&candidate&&x%step===step>>1&&y%step===step>>1&&markers.length<650)markers.push([x,y]);
+if(s.dots&&candidate&&x%step===Math.floor(step/2)&&y%step===Math.floor(step/2)&&markers.length<650)markers.push([x,y]);
 if(mode==='invert'){d[i]=255-r;d[i+1]=255-g;d[i+2]=255-b}
 else if(mode==='normal'){d[i]=r;d[i+1]=g;d[i+2]=b}
 else if(candidate){
@@ -162,7 +162,7 @@ const pct=(hits/(w*h)*100);$('interest').textContent=pct.toFixed(2)+'% red-like 
 }
 $('start').onclick=startCamera;
 $('switch').onclick=()=>{facing=facing==='environment'?'user':'environment';startCamera()};
-$('freeze').onclick=()=>{if(!source){status('Start the camera or open a photo first.');return}paused=!paused;$('freeze').textContent=paused?'▶ Unfreeze':'⏸ Freeze';if(!paused)render(true);status(paused?'Frame frozen. You can adjust filters and save it.':'Viewing live image.')};
+$('freeze').onclick=()=>{if(!source){status('Start the camera or open a photo first.');return}paused=!paused;if(paused&&sourceKind==='camera'){frozenSource=document.createElement('canvas');frozenSource.width=canvas.width;frozenSource.height=canvas.height;frozenSource.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);source=frozenSource}else if(!paused&&sourceKind==='camera'){source=video;frozenSource=null}$('freeze').textContent=paused?'▶ Unfreeze':'⏸ Freeze';render(true);status(paused?'Frame frozen. You can adjust filters and save it.':'Viewing live image.')};
 $('stop').onclick=()=>{stopCamera();cleanupPhoto();source=null;sourceKind=null;paused=false;$('freeze').textContent='⏸ Freeze';status('Camera stopped. You can open a photo or start again.');$('interest').textContent='—';$('bar').style.width='0%';ctx.clearRect(0,0,canvas.width,canvas.height);$('empty').classList.remove('hidden')};
 $('photo').addEventListener('change',e=>{
 const file=e.target.files&&e.target.files[0];if(!file)return;
