@@ -24,7 +24,7 @@ tray.id='rtLayoutTray';
 tray.setAttribute('aria-label','Colored map panel shortcuts');
 const grip=document.createElement('div');
 grip.className='rt-layout-dock-grip';grip.textContent='⠿ DOTS';
-grip.title='Hold to move the panel dots';grip.setAttribute('role','button');
+grip.title='Hold to move • double-tap to dock on the right';grip.setAttribute('role','button');
 grip.tabIndex=0;grip.setAttribute('aria-label','Move panel dot shortcuts');
 tray.appendChild(grip);
 // The map launches with the panels available. A single tap clears them all
@@ -49,18 +49,38 @@ const BUBBLES={
  health:{icon:'📶',short:'FEEDS',color:'health'},
  aprs:{icon:'📡',short:'APRS',color:'aprs'}
 };
-const DOCK_KEY='roadtower-dot-position-v1';
+// v2 intentionally ignores the pre-redesign dock location: an old normalized
+// center position was restored on the new Fold viewport and covered the map.
+const DOCK_KEY='roadtower-dot-position-v2';
 let dockSaved=null;
 try{const p=JSON.parse(localStorage.getItem(DOCK_KEY)||'null');if(p&&Number.isFinite(p.x)&&Number.isFinite(p.y))dockSaved=p}catch(e){}
+function dockDimensions(){
+ const b=map.getBoundingClientRect(),t=tray.getBoundingClientRect();
+ return {width:b.width,height:b.height,
+  dockWidth:t.width||tray.offsetWidth||54,
+  dockHeight:t.height||tray.offsetHeight||260};
+}
 function moveDock(x,y,store){
- const b=map.getBoundingClientRect(),w=tray.offsetWidth||66,h=tray.offsetHeight||260;
- const xx=Math.max(5,Math.min(Math.max(5,b.width-w-5),x));
- const yy=Math.max(5,Math.min(Math.max(5,b.height-h-5),y));
- tray.style.setProperty('left',xx+'px','important');tray.style.setProperty('top',yy+'px','important');
+ const d=dockDimensions();
+ const maxX=Math.max(5,d.width-d.dockWidth-7);
+ const maxY=Math.max(5,d.height-d.dockHeight-7);
+ const xx=Math.max(5,Math.min(maxX,x));
+ const yy=Math.max(5,Math.min(maxY,y));
+ tray.style.setProperty('left',xx+'px','important');
+ // An inline right:auto is necessary: the PRO stylesheet specifies a
+ // right edge with !important, which otherwise fights with the draggable left.
+ tray.style.setProperty('right','auto','important');
+ tray.style.setProperty('top',yy+'px','important');
+ tray.style.setProperty('bottom','auto','important');
  if(store){
-  dockSaved={x:xx/Math.max(1,b.width-w),y:yy/Math.max(1,b.height-h)};
+  dockSaved={x:xx/Math.max(1,maxX-5),y:yy/Math.max(1,maxY-5)};
   try{localStorage.setItem(DOCK_KEY,JSON.stringify(dockSaved))}catch(e){}
  }
+}
+function dockToRight(){
+ dockSaved=null;
+ try{localStorage.removeItem(DOCK_KEY)}catch(e){}
+ refreshDock();
 }
 let draggingDock=null;
 grip.addEventListener('pointerdown',e=>{
@@ -81,16 +101,27 @@ function endDock(e){
 }
 grip.addEventListener('pointerup',endDock);
 grip.addEventListener('pointercancel',endDock);
+// Double-tap the DOTS handle to re-dock it if it was dragged over the map.
+grip.addEventListener('dblclick',e=>{e.preventDefault();dockToRight()});
 grip.addEventListener('keydown',e=>{
+ if(e.key==='Home'){e.preventDefault();dockToRight();return}
  const d={ArrowLeft:[-20,0],ArrowRight:[20,0],ArrowUp:[0,-20],ArrowDown:[0,20]}[e.key];
  if(!d)return;e.preventDefault();
  const b=map.getBoundingClientRect(),p=tray.getBoundingClientRect();
  moveDock(p.left-b.left+d[0],p.top-b.top+d[1],true);
 });
 function refreshDock(){
- if(!dockSaved)return;
- const b=map.getBoundingClientRect(),w=tray.offsetWidth||66,h=tray.offsetHeight||260;
- moveDock(dockSaved.x*Math.max(1,b.width-w),dockSaved.y*Math.max(1,b.height-h),false);
+ const d=dockDimensions(),maxX=Math.max(5,d.width-d.dockWidth-7);
+ const maxY=Math.max(5,d.height-d.dockHeight-7);
+ if(!dockSaved){
+  // Default: slim right edge, BELOW the upper status/tool area.
+  const top=Math.min(maxY,Math.max(74,Math.min(148,Math.round(d.height*.21))));
+  moveDock(maxX,top,false);
+  return;
+ }
+ // User-moved positions still persist within the current screen bounds.
+ moveDock(5+dockSaved.x*Math.max(1,maxX-5),
+ 5+dockSaved.y*Math.max(1,maxY-5),false);
 }
 function colorizeDots(){
  const radio=states.radio&&states.radio.el;
@@ -275,7 +306,8 @@ window.addEventListener('resize',()=>requestAnimationFrame(reflowPanels));
 if(window.MutationObserver)new MutationObserver(()=>requestAnimationFrame(reflowPanels))
  .observe(document.body,{attributes:true,attributeFilter:['class']});
 window.RoadtowerPanelLayout={
- reset(){Object.values(states).forEach(s=>{s.mode='normal';s.el.style.removeProperty('left');s.el.style.removeProperty('top');s.el.style.removeProperty('right');s.el.style.removeProperty('bottom');s.el.classList.remove('rt-layout-managed','rt-layout-minimized','rt-layout-maximized','rt-layout-hidden')});try{localStorage.removeItem(KEY)}catch(e){}location.reload()},
+ reset(){Object.values(states).forEach(s=>{s.mode='normal';s.el.style.removeProperty('left');s.el.style.removeProperty('top');s.el.style.removeProperty('right');s.el.style.removeProperty('bottom');s.el.classList.remove('rt-layout-managed','rt-layout-minimized','rt-layout-maximized','rt-layout-hidden')});try{localStorage.removeItem(KEY);localStorage.removeItem(DOCK_KEY)}catch(e){}location.reload()},
+ resetDock:dockToRight,
  getModes(){return Object.fromEntries(Object.entries(states).map(([k,v])=>[k,v.mode]))},
  minimizeAll(){minimizeAll.click()},
  showAll(){showAll.click()},
