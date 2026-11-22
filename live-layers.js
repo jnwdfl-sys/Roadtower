@@ -30,7 +30,7 @@ panel.innerHTML=
  '<div class="rt-live-nearest"><strong>✈ Aircraft near map</strong>'+
  '<div id="rtAircraftList" class="rt-live-air-list">Waiting for aircraft reports…</div></div>'+
  '<div class="rt-live-credit">Aircraft: <a href="https://adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a> (personal/non-commercial), <a href="https://www.adsb.lol/" target="_blank" rel="noopener noreferrer">adsb.lol</a> (ODbL), or <a href="https://opensky-network.org/" target="_blank" rel="noopener noreferrer">OpenSky</a> · Radar © RainViewer<br>'+
- 'Aircraft auto-refreshes about every minute when open (provider reporting may lag). Radar checks about every 2 minutes; new radar frames normally arrive about every 10 minutes. Neither is an instant tracking feed or a forecast.'+
+ 'Aircraft refreshes about every 4 minutes to conserve free API quota (positions may lag). Radar checks about every 2 minutes; new radar frames normally arrive about every 10 minutes. Neither is an instant tracking feed or a forecast.'+
  '<br>Uses internet and sends an approximate GPS AREA (rounded to 0.1°, or the map center when GPS is off) to the aircraft service. Exact GPS coordinates stay on your phone.</div>';
 host.appendChild(panel);
 if(L.DomEvent){
@@ -44,10 +44,11 @@ const airGroup=L.layerGroup().addTo(map);
 let aircraftOn=true,radarOn=true,airRecords=[],airLastFetch=0,airLastSuccess=0,airLastCenter=null;
 let airBusy=false,radarBusy=false,radarFrames=[],radarHost='',radarLayer=null;
 const airMarkers=new Map();
-let airCurrentSource='',airLastError='';
+let airCurrentSource='',airLastError='',airNextAllowedAt=0;
 let autoEnabled=true,radarFramePath='';
 let radarFrameTime=0,radarLastFetch=0,radarLastSuccess=0,radarLastError='',animation=null,animationIndex=0;
-const RADAR_OPACITY=.30, AIR_INTERVAL=60000, RADAR_INTERVAL=120000;
+// 4-min aircraft checks balance useful nearby data with free API rate limits.
+const RADAR_OPACITY=.30, AIR_INTERVAL=240000, RADAR_INTERVAL=120000;
 let currentOpacity=RADAR_OPACITY;
 const radarPane=map.getPane('rtRadarPane')||map.createPane('rtRadarPane');
 radarPane.style.zIndex='325';
@@ -227,10 +228,15 @@ async function loadAircraft(force=false){
  }
  if(!navigator.onLine){airLastError='Browser offline';airStatus.textContent='Aircraft ON · waiting for internet';return}
  const c=viewCenter(),now=Date.now();
+ if(now<airNextAllowedAt){
+  if(force)airStatus.textContent='Aircraft provider cooling down · retry in '+
+   Math.ceil((airNextAllowedAt-now)/60000)+' min · external ADS-B map available.';
+  return;
+ }
  if(!force&&now-airLastFetch<AIR_INTERVAL)return;
- const minimumSpacing=force?12000:45000;
+ const minimumSpacing=force?60000:120000;
  if(now-airLastFetch<minimumSpacing){
-  if(force)airStatus.textContent='Aircraft ON · retry available in '+
+  if(force)airStatus.textContent='Aircraft ON · next permitted check in '+
    Math.ceil((minimumSpacing-(now-airLastFetch))/1000)+' seconds';
   return;
  }
@@ -241,13 +247,20 @@ async function loadAircraft(force=false){
    cache:'no-store'
   });
   if(!resp.ok){
-   let detail='';
+   let detail='',retrySeconds=0;
    try{
     const errorBody=await resp.json();
     detail=String(errorBody.error||'');
     if(Array.isArray(errorBody.diagnostics))
      detail+=' ['+errorBody.diagnostics.slice(0,2).join('; ')+']';
+    retrySeconds=Number(errorBody.retryAfterSec)||0;
    }catch(_){}
+   const headerSeconds=Number(resp.headers.get('Retry-After'))||0;
+   if(resp.status===429||resp.status===503){
+    const pause=Math.max(180,Math.min(3600,retrySeconds||headerSeconds||600));
+    airNextAllowedAt=Date.now()+pause*1000;
+    detail+=' · paused '+Math.ceil(pause/60)+' min';
+   }
    if(resp.status===404)throw Error('Aircraft API missing (404). Cloudflare Pages Functions may not be deployed.');
    throw Error(detail||'Website aircraft API returned HTTP '+resp.status);
   }
@@ -257,7 +270,7 @@ async function loadAircraft(force=false){
   if(!Array.isArray(data.flights))throw Error('Invalid aircraft data');
   if(!Number.isFinite(data.updated)||now-data.updated>900000)throw Error('Stale aircraft snapshot');
   if(!aircraftOn)return;
-  airLastSuccess=Date.now();airLastError='';airCurrentSource=data.source||'unknown';
+  airLastSuccess=Date.now();airLastError='';airNextAllowedAt=0;airCurrentSource=data.source||'unknown';
   airRecords=data.flights.filter(x=>x&&Number.isFinite(x.lat)&&Number.isFinite(x.lon))
    .map(x=>({call:String(x.call||'').slice(0,20),hex:String(x.hex||'').slice(0,12),
     type:String(x.type||'').slice(0,12),lat:x.lat,lon:x.lon,
@@ -271,6 +284,8 @@ async function loadAircraft(force=false){
   // Never keep old aircraft dots under a false LIVE label.
   if(!aircraftOn)return;
   if(now-airLastSuccess>=360000||!airRecords.length){airRecords=[];renderAircraft()}
+  // Network errors should not generate a continuous retry storm.
+  if(!airNextAllowedAt)airNextAllowedAt=Date.now()+180000;
   airLastError=String(e.message||e);
   airStatus.textContent='Aircraft ON · feed unavailable: '+airLastError+' · Retrying automatically.';
  }finally{airBusy=false}
@@ -351,6 +366,7 @@ window.RoadtowerLiveLayers={
  getState:()=>({aircraft:aircraftOn,radar:radarOn,autoRefresh:autoEnabled,
   aircraftCheckIntervalMs:AIR_INTERVAL,radarCheckIntervalMs:RADAR_INTERVAL,
   planes:airRecords.length,airLastSuccess,airLastFetch,airLastError,airCurrentSource,
+  airNextAllowedAt,
   radarFrameTime,radarLastSuccess,radarLastFetch,radarLastError}),
  setAircraft,setRadar,setAuto,
  refresh:()=>{loadAircraft(true);loadRadar(true)}
