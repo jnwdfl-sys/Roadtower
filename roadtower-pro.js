@@ -55,6 +55,7 @@ toolsPanel.innerHTML=
  '<button id="rtToolRangeSettings" type="button">📏 Range settings</button>'+
  '<button id="rtToolRadio" type="button">📡 Repeaters</button>'+
  '<button id="rtToolLive" type="button">✈ Aircraft / Radar</button>'+
+ '<button id="rtToolNearestPlane" type="button">✈ Closest airplane</button>'+
  '<button id="rtToolOffline" type="button">⬇ Offline Map Setup</button>'+
  '<button id="rtToolClear" type="button" class="rt-map-tool-clear">◱ Minimize all panels</button>'+
  '<button id="rtToolResetDots" type="button">⇥ Dock DOTS right</button>'+
@@ -139,6 +140,7 @@ tool('rtToolHAM').addEventListener('click',()=>{
 tool('rtToolRangeSettings').addEventListener('click',()=>go('cb'));
 tool('rtToolRadio').addEventListener('click',()=>go('radio'));
 tool('rtToolLive').addEventListener('click',()=>go('layers'));
+tool('rtToolNearestPlane').addEventListener('click',()=>go('nearestplane'));
 tool('rtToolClear').addEventListener('click',()=>{
  window.RoadtowerPanelLayout?.minimizeAll?.();
 });
@@ -162,7 +164,7 @@ function go(id){
 }
 $('rtCmdGps').addEventListener('click',()=>go('gps'));
 $('rtCmdRadar').addEventListener('click',()=>go('layers'));
-$('rtCmdAircraft').addEventListener('click',()=>go('layers'));
+$('rtCmdAircraft').addEventListener('click',()=>go('nearestplane'));
 $('rtCmdStorm').addEventListener('click',()=>go('storm'));
 $('rtCmdCenter').addEventListener('click',()=>{
  const center=document.getElementById('center');
@@ -226,11 +228,18 @@ function update(){
   const planeAge=age(live.airLastSuccess);
   const airState=!live.aircraft?'off':!connected||live.airLastError?'bad':
    planeAge<=180000?'good':planeAge<Infinity?'warn':'warn';
+  const nearest=window.RoadtowerNearestPlane?.getState?.();
+  const nearestAvailable=airState==='good'&&nearest&&
+   nearest.state==='reported'&&Number.isFinite(nearest.miles);
   put('rtCmdAircraft',airState,
-   !live.aircraft?'PLANES · OFF':airState==='good'?'PLANES · OK':
+   !live.aircraft?'PLANES · OFF':
+    nearestAvailable?'PLANE '+nearest.miles.toFixed(nearest.miles<1?2:1)+' MI':
+    airState==='good'?'PLANES · OK':
     airState==='bad'?'PLANES · ERROR':'PLANES · WAIT',
    !live.aircraft?'Aircraft tracking switched off':live.airLastError?
     'Aircraft feed error: '+live.airLastError:
+    nearestAvailable?(nearest.call||'Aircraft')+' · '+nearest.miles.toFixed(2)+
+     ' miles from your GPS · tap to see details':
     Number.isFinite(planeAge)?(live.planes||0)+' reported planes · last response '+
       Math.round(planeAge/60000)+' min ago':'Waiting for aircraft feed');
  }
