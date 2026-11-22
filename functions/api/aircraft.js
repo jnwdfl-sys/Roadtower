@@ -74,6 +74,9 @@ export async function onRequestGet({request}) {
   error:throttled?'Aircraft providers rate-limited or unavailable; retry later.':
    'Aircraft providers could not be reached from the website server.',
   diagnostics:failures.slice(0,2)
- },503,'no-store');
+ },503,'public,max-age=180,s-maxage=180');
+ // Cache temporary upstream failure briefly to honor provider restrictions
+ // and avoid many viewers repeatedly retrying a blocked shared server IP.
+ if(store)try{await store.put(key,output.clone())}catch(_){}
  return output;
 }
