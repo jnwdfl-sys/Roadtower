@@ -241,7 +241,13 @@ function toggle(on){
  healthRefresh();
 }
 function receiveGps(g){
- if(!valid(g)){lastGps=null;lastGpsAt=0;derivedHeading=null;healthRefresh();return}
+ if(!valid(g)){
+  lastGps=null;lastGpsAt=0;derivedHeading=null;
+  if(sampleLayer){map.removeLayer(sampleLayer);sampleLayer=null}
+  banner.hidden=true;
+  status.textContent='GPS unavailable. Automatic ahead checks paused; earlier warnings may be stale.';
+  healthRefresh();return;
+ }
  const now=Date.now();
  if(valid(lastGps)){
   const traveled=haversine(lastGps,g);
