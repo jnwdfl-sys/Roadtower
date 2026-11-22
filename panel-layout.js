@@ -13,7 +13,8 @@ const configs=[
  {id:'cb',selector:'.rt-cb-panel',title:'My radio ranges'},
  {id:'storm',selector:'.rt-storm-panel',title:'Storms Ahead warnings'},
  {id:'health',selector:'.rt-health-panel',title:'Live feed health'},
- {id:'waze',selector:'.rt-waze-panel',title:'Waze navigation companion'}
+ {id:'waze',selector:'.rt-waze-panel',title:'Waze navigation companion'},
+ {id:'aprs',selector:'.rt-aprs-panel',title:'APRS call sign tracker'}
 ];
 const KEY='roadtower-panel-layout-v2';
 let saved={};
@@ -47,7 +48,8 @@ const BUBBLES={
  cb:{icon:'📻',short:'RANGE',color:'cb'},
  storm:{icon:'⛈',short:'STORM',color:'storm'},
  health:{icon:'📶',short:'FEEDS',color:'health'},
- waze:{icon:'🚙',short:'WAZE',color:'waze'}
+ waze:{icon:'🚙',short:'WAZE',color:'waze'},
+ aprs:{icon:'📡',short:'APRS',color:'aprs'}
 };
 const DOCK_KEY='roadtower-dot-position-v1';
 let dockSaved=null;
@@ -134,6 +136,7 @@ function putAtDefault(s){
  else if(s.id==='storm'){s.x=12;s.y=Math.max(120,Math.round(b.height*.30))}
  else if(s.id==='health'){s.x=b.width-w-12;s.y=Math.max(145,Math.round(b.height*.48))}
  else if(s.id==='waze'){s.x=b.width-w-12;s.y=Math.max(115,Math.round(b.height*.28))}
+ else if(s.id==='aprs'){s.x=12;s.y=Math.max(170,Math.round(b.height*.47))}
  else {s.x=12;s.y=Math.max(160,b.height-h-106)}
  s.x=Math.max(4,s.x);s.y=Math.max(4,s.y);
 }
