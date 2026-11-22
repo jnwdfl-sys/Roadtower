@@ -41,6 +41,7 @@ small,.note{color:var(--muted)}.status{padding:10px 12px;border:1px solid #44697
 <div class="controls">
 <button id="start" type="button">📷 Start camera</button>
 <button id="switch" type="button" class="secondary">↻ Flip camera</button>
+<button id="torch" type="button" class="secondary" aria-pressed="false" disabled>🔦 Phone light: OFF</button>
 <label class="upload" for="photo">▣ Open photo</label><input id="photo" type="file" accept="image/*">
 <button id="freeze" type="button" class="secondary">⏸ Freeze</button>
 <button id="strobeToggle" type="button" class="secondary" aria-pressed="false">🔴 Red pulse: OFF</button>
@@ -98,7 +99,7 @@ small,.note{color:var(--muted)}.status{padding:10px 12px;border:1px solid #44697
 'use strict';
 const $=id=>document.getElementById(id);
 const canvas=$('view'),ctx=canvas.getContext('2d',{willReadFrequently:true}),video=$('camera');
-let stream=null,source=null,sourceKind=null,facing='environment',paused=false,last=0,frameId=0,photoUrl=null,frozenSource=null;
+let stream=null,source=null,sourceKind=null,facing='environment',paused=false,last=0,frameId=0,photoUrl=null,frozenSource=null,torchOn=false,torchBusy=false;
 const defaults={mode:'red',background:'gray',highlight:'red',sensitivity:'135',boost:'170',contrast:'115',brightness:'0',dots:true,strobe:false,strobeSpeed:'slow'};
 const ids=['mode','background','highlight','sensitivity','boost','contrast','brightness','dots','strobe','strobeSpeed'];
 const status=t=>$('status').textContent=t;
@@ -111,7 +112,37 @@ try{apply(Object.assign({},defaults,JSON.parse(localStorage.getItem('bloodtracke
 ids.forEach(id=>$(id).addEventListener('input',()=>{showValues();syncPulseButton();saveSettings();if(source)render(true);ensureLoop()}));
 $('strobeToggle').onclick=()=>{$('strobe').checked=!$('strobe').checked;$('strobe').dispatchEvent(new Event('input',{bubbles:true}))};
 $('reset').onclick=()=>{apply(defaults);saveSettings();render(true)};
-function stopCamera(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}video.srcObject=null;cancelAnimationFrame(frameId);frameId=0}
+function getTorchTrack(){
+const track=stream&&stream.getVideoTracks()[0];
+if(!track||track.readyState!=='live'||typeof track.getCapabilities!=='function')return null;
+try{return track.getCapabilities().torch===true?track:null}catch{return null}
+}
+function syncTorch(){
+const btn=$('torch'),available=!!getTorchTrack();
+btn.disabled=!available||torchBusy;
+btn.textContent=torchOn?'🔦 Phone light: ON':'🔦 Phone light: OFF';
+btn.setAttribute('aria-pressed',String(torchOn));
+btn.classList.toggle('active',torchOn);
+btn.title=available?'Turn the rear camera flashlight on or off':'Requires a Chrome-compatible phone flashlight and an active rear camera';
+}
+async function toggleTorch(){
+const track=getTorchTrack();
+if(!track){status('Phone light unavailable for this camera. Try Flip camera to the rear camera, or check Chrome support.');syncTorch();return}
+if(torchBusy)return;
+const next=!torchOn;torchBusy=true;syncTorch();
+try{
+await track.applyConstraints({advanced:[{torch:next}]});
+if(track.readyState!=='live'||track!==getTorchTrack()){torchOn=false;status('Camera changed while switching the light.');return}
+torchOn=next;
+status(torchOn?'Phone flashlight ON. Tap again to turn it off.':'Phone flashlight OFF.');
+}catch(err){status('Could not change phone flashlight: '+(err.message||'not supported on this camera.'))}
+finally{torchBusy=false;syncTorch()}
+}
+function stopCamera(){
+if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+torchOn=false;torchBusy=false;syncTorch();
+video.srcObject=null;cancelAnimationFrame(frameId);frameId=0
+}
 function cleanupPhoto(){if(photoUrl){URL.revokeObjectURL(photoUrl);photoUrl=null}}
 function reveal(){$('empty').classList.add('hidden')}
 function sizeCanvas(w,h,limit){const scale=Math.min(1,limit/Math.max(w,1));canvas.width=Math.max(1,Math.round(w*scale));canvas.height=Math.max(1,Math.round(h*scale))}
@@ -123,7 +154,8 @@ status('Requesting camera permission…');
 stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:facing},width:{ideal:1280},height:{ideal:720}}});
 video.srcObject=stream;await video.play();source=video;sourceKind='camera';reveal();
 sizeCanvas(video.videoWidth||960,video.videoHeight||600,800);
-status('Camera active. Adjust the filters for the lighting and ground color.');
+syncTorch();
+status(getTorchTrack()?'Camera active. Phone light is available.':'Camera active. Phone light is not supported by this camera/browser.');
 last=0;frameId=requestAnimationFrame(tick);
 }catch(e){stopCamera();status('Could not start camera: '+(e.message||'Check Chrome camera permission.'))}
 }
@@ -171,6 +203,7 @@ ctx.restore();
 const pct=(hits/(w*h)*100);$('interest').textContent=pct.toFixed(2)+'% red-like pixels';$('bar').style.width=Math.min(100,pct*10)+'%';
 }
 $('start').onclick=startCamera;
+$('torch').onclick=toggleTorch;
 $('switch').onclick=()=>{facing=facing==='environment'?'user':'environment';startCamera()};
 $('freeze').onclick=()=>{if(!source){status('Start the camera or open a photo first.');return}paused=!paused;if(paused&&sourceKind==='camera'){frozenSource=document.createElement('canvas');frozenSource.width=canvas.width;frozenSource.height=canvas.height;frozenSource.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);source=frozenSource}else if(!paused&&sourceKind==='camera'){source=video;frozenSource=null}$('freeze').textContent=paused?'▶ Unfreeze':'⏸ Freeze';render(true);if(!paused||$('strobe').checked)ensureLoop();status(paused?'Frame frozen. You can adjust filters and save it.':'Viewing live image.')};
 $('stop').onclick=()=>{stopCamera();cleanupPhoto();source=null;sourceKind=null;paused=false;frozenSource=null;$('freeze').textContent='⏸ Freeze';status('Camera stopped. You can open a photo or start again.');$('interest').textContent='—';$('bar').style.width='0%';ctx.clearRect(0,0,canvas.width,canvas.height);$('empty').classList.remove('hidden')};
@@ -184,6 +217,7 @@ img.src=photoUrl
 });
 $('save').onclick=()=>{if(!source){status('Open a camera or photo before saving.');return}render(true);canvas.toBlob(blob=>{if(!blob){status('Could not save the picture.');return}const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='blood-tracker-filtered-'+Date.now()+'.jpg';a.click();setTimeout(()=>URL.revokeObjectURL(u),10000);status('Filtered picture sent to Chrome downloads.')},'image/jpeg',.92)};
 window.addEventListener('pagehide',stopCamera);
+syncTorch();
 if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{})}
 })();
 </script>
