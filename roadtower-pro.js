@@ -30,6 +30,75 @@ if(window.L&&L.DomEvent){
  L.DomEvent.disableClickPropagation(strip);
  L.DomEvent.disableScrollPropagation(strip);
 }
+// All functions formerly in the permanent top / bottom screen bars
+// are preserved here. These controls act on the original ROADTOWER
+// buttons so map, CB, offline, and GPS behavior remains unchanged.
+const toolsPanel=document.createElement('section');
+toolsPanel.className='rt-map-tools-panel';
+toolsPanel.id='rtMapToolsPanel';
+toolsPanel.setAttribute('aria-label','ROADTOWER map and GPS controls');
+toolsPanel.innerHTML=
+ '<strong class="rt-map-tools-title">⚙ MAP & GPS TOOLS</strong>'+
+ '<p class="rt-map-tools-intro">Your map stays full-screen. Open only the controls you need; minimize this panel to its TOOLS dot.</p>'+
+ '<div class="rt-map-tools-grid">'+
+ '<button id="rtToolGps" type="button">◎ Start / Find GPS</button>'+
+ '<button id="rtToolStop" type="button">■ Stop GPS</button>'+
+ '<button id="rtToolFollow" type="button">↗ Follow GPS: ON</button>'+
+ '<button id="rtToolMap" type="button">🗺 Map mode: AUTO</button>'+
+ '<button id="rtToolCB" type="button">📻 CB ON/OFF</button>'+
+ '<button id="rtToolRadio" type="button">📡 Repeaters</button>'+
+ '<button id="rtToolLive" type="button">✈ Aircraft / Radar</button>'+
+ '<button id="rtToolOffline" type="button">⬇ Offline Map Setup</button>'+
+ '<button id="rtToolClear" type="button" class="rt-map-tool-clear">◱ Minimize all panels</button>'+
+ '<button id="rtToolResetDots" type="button">⇥ Dock DOTS right</button>'+
+ '</div>'+
+ '<p class="rt-map-tools-intro">Offline Map Setup temporarily opens the regular settings page. Use Full Screen there to return. Chrome’s browser bars are controlled by Android, not by this website.</p>';
+map.appendChild(toolsPanel);
+if(window.L&&L.DomEvent){
+ L.DomEvent.disableClickPropagation(toolsPanel);
+ L.DomEvent.disableScrollPropagation(toolsPanel);
+}
+const tool=id=>toolsPanel.querySelector('#'+id);
+function proxy(id){
+ const button=document.getElementById(id);
+ if(button&&!button.disabled){button.click();return true}
+ return false;
+}
+function syncTools(){
+ const follow=document.getElementById('followMap');
+ const mapMode=document.getElementById('offlineQuickMode');
+ const cb=document.getElementById('rtCbQuickToggle');
+ const stop=document.getElementById('stop');
+ tool('rtToolFollow').textContent=follow?.textContent||'Follow GPS';
+ tool('rtToolMap').textContent=mapMode?.textContent||'Map mode';
+ tool('rtToolCB').textContent=cb?.textContent||'CB range';
+ tool('rtToolStop').disabled=!stop||stop.disabled;
+}
+tool('rtToolGps').addEventListener('click',()=>{
+ const center=document.getElementById('center');
+ if(center&&!center.disabled)proxy('center');
+ else proxy('start');
+ syncTools();
+});
+tool('rtToolStop').addEventListener('click',()=>{proxy('stop');syncTools()});
+tool('rtToolFollow').addEventListener('click',()=>{proxy('followMap');syncTools()});
+tool('rtToolMap').addEventListener('click',()=>{proxy('offlineQuickMode');syncTools()});
+tool('rtToolCB').addEventListener('click',()=>{proxy('rtCbQuickToggle');syncTools()});
+tool('rtToolRadio').addEventListener('click',()=>go('radio'));
+tool('rtToolLive').addEventListener('click',()=>go('layers'));
+tool('rtToolClear').addEventListener('click',()=>{
+ window.RoadtowerPanelLayout?.minimizeAll?.();
+});
+tool('rtToolResetDots').addEventListener('click',()=>{
+ window.RoadtowerPanelLayout?.resetDock?.();
+});
+tool('rtToolOffline').addEventListener('click',()=>{
+ const fullscreen=document.getElementById('fullscreenMap');
+ if(document.body.classList.contains('map-fullscreen')&&fullscreen)fullscreen.click();
+ const offline=document.getElementById('offlineTravelCard');
+ if(offline)offline.scrollIntoView({behavior:'smooth',block:'start'});
+});
+toolsPanel.addEventListener('click',syncTools);
 const $=id=>strip.querySelector('#'+id);
 function go(id){
  const panels=window.RoadtowerPanelLayout;
@@ -71,7 +140,7 @@ function stampClock(){
  if(clock)clock.textContent=new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
 }
 function update(){
- stampClock();
+ stampClock();syncTools();
  const gps=window.RoadtowerRepeaters&&window.RoadtowerRepeaters.getGps&&window.RoadtowerRepeaters.getGps();
  const gpsStatus=map.dataset.gps||'off';
  const gpsValid=gps&&Number.isFinite(gps.latitude)&&Number.isFinite(gps.longitude);
@@ -139,8 +208,9 @@ function alignCommand(){
  }else{
   const mr=map.getBoundingClientRect();
   const tr=topToolbar&&topToolbar.getBoundingClientRect();
-  const measured=tr&&tr.height>0?tr.bottom-mr.top+10:78;
-  const safe=Math.max(62,Math.min(Math.round(measured),Math.max(110,mr.height*.33)));
+  const measured=tr&&tr.height>0?tr.bottom-mr.top+10:10;
+  const safe=tr&&tr.height>0?
+    Math.max(10,Math.min(Math.round(measured),Math.max(110,mr.height*.33))):10;
   map.style.setProperty('--rt-pro-command-top',safe+'px');
  }
  // Once the strip is measured, keep the default DOTS rail beside it instead
@@ -166,7 +236,7 @@ if(fullscreenControl)fullscreenControl.addEventListener('click',()=>{
 });
 window.addEventListener('pageshow',alignCommand);
 alignCommand();
-window.RoadtowerProUI={refresh:update,openPanel:go,align:alignCommand};
+window.RoadtowerProUI={refresh:update,openPanel:go,align:alignCommand,refreshTools:syncTools};
 update();
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)update()});
 window.addEventListener('pageshow',update);
