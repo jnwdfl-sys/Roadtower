@@ -1,7 +1,7 @@
 /* Roadtower independent live map overlays.
    These optional ONLINE layers default ON every launch. They do not replace
    the HAM/GMRS group or the user's high-priority visual SOS GPS marker.
-   Aircraft: © adsb.lol contributors (ODbL 1.0), automatic nearby snapshots.
+   Aircraft: public ADS-B data; automatic nearby snapshots.
    Radar: RainViewer observed-precipitation frames, NOT future forecasts.
 */
 (function(){
@@ -28,7 +28,7 @@ panel.innerHTML=
  '<button type="button" id="rtLayersRefresh">↻ Update now</button></div>'+
  '<div class="rt-live-nearest"><strong>✈ Aircraft near map</strong>'+
  '<div id="rtAircraftList" class="rt-live-air-list">Waiting for aircraft reports…</div></div>'+
- '<div class="rt-live-credit">Aircraft: <a href="https://adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a> (personal/non-commercial) or <a href="https://www.adsb.lol/" target="_blank" rel="noopener noreferrer">adsb.lol</a> (ODbL) · Radar © RainViewer<br>'+
+ '<div class="rt-live-credit">Aircraft: <a href="https://adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a> (personal/non-commercial), <a href="https://www.adsb.lol/" target="_blank" rel="noopener noreferrer">adsb.lol</a> (ODbL), or <a href="https://opensky-network.org/" target="_blank" rel="noopener noreferrer">OpenSky</a> · Radar © RainViewer<br>'+
  'Aircraft auto-refreshes about every minute when open (provider reporting may lag). Radar checks about every 2 minutes; new radar frames normally arrive about every 10 minutes. Neither is an instant tracking feed or a forecast.'+
  '<br>Uses internet and sends an approximate MAP CENTER (rounded to 0.1°) to the aircraft service. GPS itself stays on your phone.</div>';
 host.appendChild(panel);
@@ -43,6 +43,7 @@ const airGroup=L.layerGroup().addTo(map);
 let aircraftOn=true,radarOn=true,airRecords=[],airLastFetch=0,airLastSuccess=0,airLastCenter=null;
 let airBusy=false,radarBusy=false,radarFrames=[],radarHost='',radarLayer=null;
 const airMarkers=new Map();
+let airCurrentSource='',airLastError='';
 let autoEnabled=true,radarFramePath='';
 let radarFrameTime=0,radarLastFetch=0,animation=null,animationIndex=0;
 const RADAR_OPACITY=.30, AIR_INTERVAL=60000, RADAR_INTERVAL=120000;
@@ -151,11 +152,14 @@ function aircraftPopup(item){
  box.appendChild(row('Speed',item.speedKt===null?'Not reported':Math.round(item.speedKt*1.150779)+' mph'));
  box.appendChild(row('Direction',item.heading===null?'Not reported':Math.round(item.heading)+'°'));
  box.appendChild(row('Last position',item.seenSec===null?'Not reported':Math.round(item.seenSec)+' sec before snapshot'));
- box.appendChild(row('Source','adsb.lol • reported aircraft, not live onboard GPS'));
+ box.appendChild(row('Source',airCurrentSource+' • reported aircraft, not real-time onboard GPS'));
  return box;
 }
 function renderAircraft(){
  listRoot.replaceChildren();
+ // A stale OFF status must not survive re-enabling the aircraft layer.
+ if(aircraftOn&&airStatus.textContent==='Aircraft OFF')
+  airStatus.textContent='Aircraft ON · waiting for position reports…';
  if(!aircraftOn){airGroup.clearLayers();airMarkers.clear();
   airStatus.textContent='Aircraft OFF';return}
  const c=map.getCenter();
@@ -198,18 +202,32 @@ function renderAircraft(){
  }
 }
 function setAircraft(on){
- aircraftOn=on;updateToggle(toggleAir,on,'AIRCRAFT');
- if(!on){airGroup.clearLayers();airMarkers.clear();listRoot.textContent='Aircraft layer OFF';airStatus.textContent='Aircraft OFF';return}
+ aircraftOn=Boolean(on);updateToggle(toggleAir,aircraftOn,'AIRCRAFT');
+ if(!aircraftOn){
+  airGroup.clearLayers();airMarkers.clear();
+  listRoot.textContent='Aircraft layer OFF';airStatus.textContent='Aircraft OFF';return;
+ }
+ airStatus.textContent=airBusy?'Aircraft ON · waiting for current request…':
+  'Aircraft ON · checking live feed…';
  renderAircraft();
- if(!airRecords.length)loadAircraft(true);
+ loadAircraft(true);
 }
 async function loadAircraft(force=false){
- if(!aircraftOn||airBusy||document.hidden)return;
- if(!navigator.onLine){airStatus.textContent='Aircraft waiting for internet';return}
+ if(!aircraftOn||document.hidden)return;
+ if(airBusy){
+  if(airStatus.textContent==='Aircraft OFF')
+   airStatus.textContent='Aircraft ON · feed request in progress…';
+  return;
+ }
+ if(!navigator.onLine){airStatus.textContent='Aircraft ON · waiting for internet';return}
  const c=viewCenter(),now=Date.now();
  if(!force&&now-airLastFetch<AIR_INTERVAL)return;
- // Prevent accidental hammering the provider via tapping Refresh or panning.
- if(now-airLastFetch<45000)return;
+ const minimumSpacing=force?12000:45000;
+ if(now-airLastFetch<minimumSpacing){
+  if(force)airStatus.textContent='Aircraft ON · retry available in '+
+   Math.ceil((minimumSpacing-(now-airLastFetch))/1000)+' seconds';
+  return;
+ }
  airLastFetch=now;airLastCenter=c;airBusy=true;
  airStatus.textContent='Aircraft ON · updating reports…';
  try{
@@ -233,21 +251,22 @@ async function loadAircraft(force=false){
   if(!Array.isArray(data.flights))throw Error('Invalid aircraft data');
   if(!Number.isFinite(data.updated)||now-data.updated>900000)throw Error('Stale aircraft snapshot');
   if(!aircraftOn)return;
-  airLastSuccess=Date.now();
+  airLastSuccess=Date.now();airLastError='';airCurrentSource=data.source||'unknown';
   airRecords=data.flights.filter(x=>x&&Number.isFinite(x.lat)&&Number.isFinite(x.lon))
    .map(x=>({call:String(x.call||'').slice(0,20),hex:String(x.hex||'').slice(0,12),
     type:String(x.type||'').slice(0,12),lat:x.lat,lon:x.lon,
     altFt:safeNumber(x.altFt),speedKt:safeNumber(x.speedKt),
     heading:safeNumber(x.heading),seenSec:safeNumber(x.seenSec)}));
   renderAircraft();
-  airStatus.textContent='Aircraft AUTO ('+(data.source==='adsb.fi'?'adsb.fi':data.source==='adsb.lol'?'adsb.lol':'unknown source')+') · '+airRecords.length+' reported · checked '+new Date(data.updated)
+  airStatus.textContent='Aircraft ON · '+airRecords.length+' reported via '+airCurrentSource+' · checked '+new Date(data.updated)
    .toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'})+
    ' · next check ~1 min';
  }catch(e){
   // Never keep old aircraft dots under a false LIVE label.
   if(!aircraftOn)return;
   if(now-airLastSuccess>=360000||!airRecords.length){airRecords=[];renderAircraft()}
-  airStatus.textContent='Aircraft unavailable · '+e.message+' · Tap Update now to retry.';
+  airLastError=String(e.message||e);
+  airStatus.textContent='Aircraft ON · feed unavailable: '+airLastError+' · Retrying automatically.';
  }finally{airBusy=false}
 }
 const autoButton=el('rtAutoToggle');
@@ -301,7 +320,7 @@ window.setInterval(()=>{
 window.RoadtowerLiveLayers={
  getState:()=>({aircraft:aircraftOn,radar:radarOn,autoRefresh:autoEnabled,
   aircraftCheckIntervalMs:AIR_INTERVAL,radarCheckIntervalMs:RADAR_INTERVAL,
-  planes:airRecords.length,airLastSuccess,radarFrameTime}),
+  planes:airRecords.length,airLastSuccess,airLastError,airCurrentSource,radarFrameTime}),
  setAircraft,setRadar,setAuto
 };
 // Both layers turn ON on each fresh launch. No saved OFF preference suppresses
