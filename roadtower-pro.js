@@ -136,13 +136,20 @@ const topToolbar=document.getElementById('mapToolbar');
 function alignCommand(){
  if(!document.body.classList.contains('map-fullscreen')){
   map.style.removeProperty('--rt-pro-command-top');
-  return;
+ }else{
+  const mr=map.getBoundingClientRect();
+  const tr=topToolbar&&topToolbar.getBoundingClientRect();
+  const measured=tr&&tr.height>0?tr.bottom-mr.top+10:78;
+  const safe=Math.max(62,Math.min(Math.round(measured),Math.max(110,mr.height*.33)));
+  map.style.setProperty('--rt-pro-command-top',safe+'px');
  }
- const mr=map.getBoundingClientRect();
- const tr=topToolbar&&topToolbar.getBoundingClientRect();
- const measured=tr&&tr.height>0?tr.bottom-mr.top+10:78;
- const safe=Math.max(62,Math.min(Math.round(measured),Math.max(110,mr.height*.33)));
- map.style.setProperty('--rt-pro-command-top',safe+'px');
+ // Once the strip is measured, keep the default DOTS rail beside it instead
+ // of restoring an old centered position.
+ const manager=window.RoadtowerPanelLayout;
+ if(manager&&typeof manager.reflowDock==='function'){
+  if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>manager.reflowDock());
+  else manager.reflowDock();
+ }
 }
 window.addEventListener('resize',alignCommand);
 if(typeof ResizeObserver!=='undefined'&&topToolbar){
