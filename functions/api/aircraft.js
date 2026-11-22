@@ -3,7 +3,7 @@
 // Primary: adsb.fi (personal, non-commercial). Backup: adsb.lol (ODbL).
 // Additional fallback: OpenSky Network (anonymous, rate-limited).
 // All sources can be delayed, blocked or rate-limited. Never invent aircraft.
-export async function onRequestGet({request}) {
+export async function onRequestGet({request,env}) {
  const url=new URL(request.url),q=url.searchParams;
  const reply=(data,status=200,cache='no-store')=>new Response(JSON.stringify(data),{
   status,headers:{'Content-Type':'application/json; charset=utf-8',
@@ -20,12 +20,13 @@ export async function onRequestGet({request}) {
  const key=new Request(new URL('/api/aircraft?lat='+latStr+'&lon='+lonStr,origin).toString());
  if(store)try{const hit=await store.match(key);if(hit)return hit}catch(_){}
  const failures=[];
- const adsb=[
-  {id:'adsb.fi',url:'https://opendata.adsb.fi/api/v3/lat/'+latStr+'/lon/'+lonStr+'/dist/80'},
-  {id:'adsb.lol',url:'https://api.adsb.lol/v2/point/'+latStr+'/'+lonStr+'/80'}
- ];
- async function upstreamJson(address){
-  const resp=await fetch(address,{headers:{Accept:'application/json'},
+ const optionalKey=typeof env?.ADSB_LOL_API_KEY==='string'?env.ADSB_LOL_API_KEY.trim():'';
+ const fi={id:'adsb.fi',url:'https://opendata.adsb.fi/api/v3/lat/'+latStr+'/lon/'+lonStr+'/dist/80'};
+ const lol={id:'adsb.lol',url:'https://api.adsb.lol/v2/point/'+latStr+'/'+lonStr+'/80',
+  headers:optionalKey?{'x-api-key':optionalKey}:undefined};
+ const adsb=optionalKey?[lol,fi]:[fi,lol];
+ async function upstreamJson(address,headers){
+  const resp=await fetch(address,{headers:{Accept:'application/json',...(headers||{})},
    signal:AbortSignal.timeout(9500)});
   if(!resp.ok)throw Error('HTTP '+resp.status);
   return await resp.json();
@@ -39,13 +40,13 @@ export async function onRequestGet({request}) {
    source==='adsb.lol'?'adsb.lol contributors (ODbL 1.0)':
    'OpenSky Network (opensky-network.org)';
   const result=reply({source,credit,center:{lat,lon},updated,
-   flights:flights.slice(0,180)},200,'public,max-age=60,s-maxage=60');
+   flights:flights.slice(0,180)},200,'public,max-age=180,s-maxage=180');
   if(store)try{await store.put(key,result.clone())}catch(_){}
   return result;
  }
  for(const source of adsb){
   try{
-   const data=await upstreamJson(source.url);
+   const data=await upstreamJson(source.url,source.headers);
    if(!data||!Array.isArray(data.ac))throw Error('Invalid JSON shape');
    const now=Date.now();
    const flights=data.ac.filter(x=>x&&Number.isFinite(x.lat)&&Number.isFinite(x.lon)&&
@@ -91,12 +92,15 @@ export async function onRequestGet({request}) {
   return await publish('OpenSky',flights,upstreamTime);
  }catch(e){failures.push('OpenSky: '+String(e.message||'unavailable').slice(0,55))}
  const throttled=failures.some(x=>x.includes('429'));
+ const cooldown=throttled?900:600;
  const output=reply({
   code:throttled?'UPSTREAM_RATE_LIMIT':'UPSTREAM_UNAVAILABLE',
-  error:throttled?'Aircraft sources blocked or rate-limited.':
-   'Aircraft sources unavailable from this hosting network.',
-  diagnostics:failures
- },503,'public,max-age=60,s-maxage=60');
+  error:throttled?'Aircraft sources temporarily rate-limited or blocked.':
+   'Aircraft data unavailable from this hosting network.',
+  diagnostics:failures,
+  retryAfterSec:cooldown
+ },503,'public,max-age='+cooldown+',s-maxage='+cooldown);
+ output.headers.set('Retry-After',String(cooldown));
  if(store)try{await store.put(key,output.clone())}catch(_){}
  return output;
 }
