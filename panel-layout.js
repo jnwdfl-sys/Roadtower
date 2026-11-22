@@ -9,7 +9,8 @@ const configs=[
  {id:'nearest',selector:'.rt-nearest-dock',title:'Nearest repeaters'},
  {id:'gps',selector:'.rt-gps-hud',title:'My GPS'},
  {id:'status',selector:'.rt-status-hud',title:'Connection status'},
- {id:'layers',selector:'.rt-live-panel',title:'Airplanes and weather radar'}
+ {id:'layers',selector:'.rt-live-panel',title:'Airplanes and weather radar'},
+ {id:'cb',selector:'.rt-cb-panel',title:'CB transmit range'}
 ];
 const KEY='roadtower-panel-layout-v2';
 let saved={};
@@ -39,7 +40,8 @@ const BUBBLES={
  nearest:{icon:'➊',short:'NEAR',color:'amber'},
  gps:{icon:'◎',short:'GPS',color:'cyan'},
  status:{icon:'●',short:'INFO',color:'blue'},
- layers:{icon:'✈',short:'LIVE',color:'orange'}
+ layers:{icon:'✈',short:'LIVE',color:'orange'},
+ cb:{icon:'📻',short:'CB',color:'cb'}
 };
 const DOCK_KEY='roadtower-dot-position-v1';
 let dockSaved=null;
@@ -122,6 +124,7 @@ function putAtDefault(s){
  else if(s.id==='nearest'){s.x=b.width-w-12;s.y=b.height-h-96}
  else if(s.id==='gps'){s.x=12;s.y=88}
  else if(s.id==='layers'){s.x=b.width-w-12;s.y=Math.max(120,Math.round(b.height*.36))}
+ else if(s.id==='cb'){s.x=12;s.y=Math.max(170,Math.round(b.height*.54))}
  else {s.x=12;s.y=Math.max(160,b.height-h-106)}
  s.x=Math.max(4,s.x);s.y=Math.max(4,s.y);
 }
