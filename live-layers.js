@@ -46,7 +46,7 @@ let airBusy=false,radarBusy=false,radarFrames=[],radarHost='',radarLayer=null;
 const airMarkers=new Map();
 let airCurrentSource='',airLastError='';
 let autoEnabled=true,radarFramePath='';
-let radarFrameTime=0,radarLastFetch=0,animation=null,animationIndex=0;
+let radarFrameTime=0,radarLastFetch=0,radarLastSuccess=0,radarLastError='',animation=null,animationIndex=0;
 const RADAR_OPACITY=.30, AIR_INTERVAL=60000, RADAR_INTERVAL=120000;
 let currentOpacity=RADAR_OPACITY;
 const radarPane=map.getPane('rtRadarPane')||map.createPane('rtRadarPane');
@@ -114,7 +114,7 @@ function setRadar(on){
 }
 async function loadRadar(force=false){
  if(!radarOn||radarBusy||document.hidden)return;
- if(!navigator.onLine){radarStatus.textContent='Radar waiting for internet';return}
+ if(!navigator.onLine){radarLastError='Browser offline';radarStatus.textContent='Radar waiting for internet';return}
  const now=Date.now();
  if(!force&&now-radarLastFetch<RADAR_INTERVAL)return;
  if(now-radarLastFetch<60000)return;
@@ -130,10 +130,11 @@ async function loadRadar(force=false){
    /^\/v2\/radar\/[a-zA-Z0-9_-]+$/.test(f.path||''));
   if(!frames.length)throw Error('No radar frames');
   if(!radarOn)return;
-  radarFrames=frames;radarHost=data.host;
+  radarFrames=frames;radarHost=data.host;radarLastSuccess=Date.now();radarLastError='';
   if(!animation)radarTile(frames[frames.length-1]);
  }catch(e){
   if(!radarOn)return;
+  radarLastError=String(e.message||e);
   if(!radarFrames.length)radarStatus.textContent='Radar unavailable · '+e.message;
   else radarStatus.textContent='Radar update unavailable · last image '+new Date(radarFrameTime*1000).toLocaleTimeString();
  }finally{radarBusy=false}
@@ -220,7 +221,7 @@ async function loadAircraft(force=false){
    airStatus.textContent='Aircraft ON · feed request in progress…';
   return;
  }
- if(!navigator.onLine){airStatus.textContent='Aircraft ON · waiting for internet';return}
+ if(!navigator.onLine){airLastError='Browser offline';airStatus.textContent='Aircraft ON · waiting for internet';return}
  const c=viewCenter(),now=Date.now();
  if(!force&&now-airLastFetch<AIR_INTERVAL)return;
  const minimumSpacing=force?12000:45000;
@@ -327,8 +328,10 @@ window.setInterval(()=>{
 window.RoadtowerLiveLayers={
  getState:()=>({aircraft:aircraftOn,radar:radarOn,autoRefresh:autoEnabled,
   aircraftCheckIntervalMs:AIR_INTERVAL,radarCheckIntervalMs:RADAR_INTERVAL,
-  planes:airRecords.length,airLastSuccess,airLastError,airCurrentSource,radarFrameTime}),
- setAircraft,setRadar,setAuto
+  planes:airRecords.length,airLastSuccess,airLastFetch,airLastError,airCurrentSource,
+  radarFrameTime,radarLastSuccess,radarLastFetch,radarLastError}),
+ setAircraft,setRadar,setAuto,
+ refresh:()=>{loadAircraft(true);loadRadar(true)}
 };
 // Both layers turn ON on each fresh launch. No saved OFF preference suppresses
 // them on the next startup; the user can disable them during this session.
