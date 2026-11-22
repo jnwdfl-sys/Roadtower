@@ -19,8 +19,9 @@ panel.innerHTML=
  '<div class="rt-nearest-plane-status" id="rtPlaneNearestStatus" role="status">Waiting for GPS and public aircraft data…</div>'+
  '<div class="rt-nearest-plane-metrics" id="rtPlaneNearestMetrics" hidden></div>'+
  '<div class="rt-nearest-plane-buttons">'+
+ '<button id="rtPlaneNearestToggle" type="button" aria-pressed="false">✈ AIRCRAFT: OFF</button>'+
  '<button id="rtPlaneNearestLocate" type="button" disabled>◎ Show on map</button>'+
- '<button id="rtPlaneNearestRefresh" type="button">↻ Check aircraft</button></div>'+
+ '<button id="rtPlaneNearestRefresh" type="button">↻ Check again</button></div>'+
  '<a id="rtPlaneNearestExternal" class="rt-nearest-plane-external" href="https://globe.adsb.fi/" target="_blank" rel="noopener noreferrer">↗ Open independent ADS-B live map</a>'+
  '<p class="rt-nearest-plane-note">Distance is horizontal, straight-line distance from your phone GPS to a reported aircraft position—not its distance through the sky. Reported altitude (ft) is generally relative to sea level, not height above you. ADS-B coverage can be delayed, incomplete, or unavailable.</p>';
 host.appendChild(panel);
@@ -28,6 +29,7 @@ if(L.DomEvent){L.DomEvent.disableClickPropagation(panel);L.DomEvent.disableScrol
 const $=id=>panel.querySelector('#'+id);
 const status=$('rtPlaneNearestStatus'),metrics=$('rtPlaneNearestMetrics');
 const locate=$('rtPlaneNearestLocate'),refresh=$('rtPlaneNearestRefresh');
+const aircraftToggle=$('rtPlaneNearestToggle');
 const external=$('rtPlaneNearestExternal');
 external.addEventListener('click',()=>{
  const g=goodGps();
@@ -58,7 +60,8 @@ function getResult(){
  const g=goodGps(),snapshot=live.getAircraftSnapshot(),checkedAt=snapshot.checkedAt||0;
  const ageMs=checkedAt?Math.max(0,Date.now()-checkedAt):Infinity;
  if(!g)return {state:'gps',error:'Start Live GPS to measure the closest plane to you.'};
- if(!snapshot.aircraftOn)return {state:'off',error:'Aircraft layer is OFF. Turn it ON in LIVE.'};
+ if(!snapshot.aircraftOn)return {state:'off',
+  error:'AIRCRAFT OFF to save free API requests. Tap AIRCRAFT ON below for a nearby-plane check.'};
  if(!navigator.onLine&&ageMs>FRESH_MS)return {state:'offline',error:'Offline. Cannot verify nearby airplane positions.'};
  if(ageMs>FRESH_MS)return {state:'stale',error:snapshot.error?
   'Aircraft feed unavailable: '+snapshot.error:
@@ -105,6 +108,11 @@ function drawLine(result){
  }).addTo(map);
 }
 function render(){
+ const trackingOn=!!live.getAircraftSnapshot().aircraftOn;
+ aircraftToggle.textContent=trackingOn?'✈ AIRCRAFT: ON':'✈ AIRCRAFT: OFF';
+ aircraftToggle.setAttribute('aria-pressed',String(trackingOn));
+ aircraftToggle.dataset.active=trackingOn?'true':'false';
+ refresh.disabled=!trackingOn;
  const r=getResult();
  current=r.plane?r:null;
  metrics.replaceChildren();
@@ -148,14 +156,21 @@ function showPlane(){
  return lineEnabled;
 }
 locate.addEventListener('click',showPlane);
+aircraftToggle.addEventListener('click',()=>{
+ const on=!!live.getAircraftSnapshot().aircraftOn;
+ if(typeof live.setAircraft==='function')live.setAircraft(!on);
+ // Clicking ON triggers the aircraft fetch through the existing live layer.
+ render();
+});
 refresh.addEventListener('click',()=>{
- if(live.refreshAircraft)live.refreshAircraft();
+ if(live.getAircraftSnapshot().aircraftOn&&live.refreshAircraft)live.refreshAircraft();
  render();
 });
 let gpsWasReady=false;
 function gotGps(g){
  const ready=!!(g&&Number.isFinite(g.latitude)&&Number.isFinite(g.longitude));
- if(ready&&!gpsWasReady&&Date.now()-requestedRefreshAt>15000){
+ if(ready&&!gpsWasReady&&live.getAircraftSnapshot().aircraftOn&&
+    Date.now()-requestedRefreshAt>15000){
   requestedRefreshAt=Date.now();
   live.refreshAircraft?.();
  }
