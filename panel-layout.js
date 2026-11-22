@@ -5,6 +5,8 @@
 const map=document.getElementById('map');
 if(!map)return;
 const configs=[
+ {id:'tools',selector:'.rt-map-tools-panel',title:'Map and GPS controls'},
+ {id:'command',selector:'.rt-command-strip',title:'Field Command live status'},
  {id:'radio',selector:'.rt-repeater-panel',title:'Radio repeaters'},
  {id:'nearest',selector:'.rt-nearest-dock',title:'Nearest repeaters'},
  {id:'gps',selector:'.rt-gps-hud',title:'My GPS'},
@@ -27,6 +29,23 @@ grip.className='rt-layout-dock-grip';grip.textContent='⠿ DOTS';
 grip.title='Hold to move • double-tap to dock on the right';grip.setAttribute('role','button');
 grip.tabIndex=0;grip.setAttribute('aria-label','Move panel dot shortcuts');
 tray.appendChild(grip);
+const dockCollapse=document.createElement('button');
+dockCollapse.type='button';dockCollapse.className='rt-dock-collapse-button';
+dockCollapse.setAttribute('aria-label','Collapse the DOTS shortcuts');
+dockCollapse.title='Collapse shortcut bar to one compact button';
+dockCollapse.textContent='◀';
+tray.insertBefore(dockCollapse,grip);
+let dockIsCollapsed=false;
+function setDockCollapsed(value){
+ dockIsCollapsed=Boolean(value);
+ tray.classList.toggle('rt-dock-collapsed',dockIsCollapsed);
+ dockCollapse.textContent=dockIsCollapsed?'☰':'◀';
+ dockCollapse.title=dockIsCollapsed?'Show ROADTOWER shortcuts':'Hide shortcut dots';
+ dockCollapse.setAttribute('aria-label',dockCollapse.title);
+ if(typeof requestAnimationFrame==='function')requestAnimationFrame(refreshDock);
+ else refreshDock();
+}
+dockCollapse.addEventListener('click',()=>setDockCollapsed(!dockIsCollapsed));
 // The map launches with the panels available. A single tap clears them all
 // into the same colored shortcut dots that were already supported.
 function trayButton(label,description){
@@ -34,11 +53,13 @@ function trayButton(label,description){
  b.textContent=label;b.title=description;b.setAttribute('aria-label',description);
  tray.appendChild(b);return b;
 }
-const minimizeAll=trayButton('− ALL','Minimize all information panels into colored dots');
+const minimizeAll=trayButton('− ALL','Minimize all panels and collapse DOTS to one button');
 const showAll=trayButton('+ ALL','Open all information panels');
 map.appendChild(tray);
 if(window.L&&L.DomEvent){L.DomEvent.disableClickPropagation(tray);L.DomEvent.disableScrollPropagation(tray)}
 const BUBBLES={
+ tools:{icon:'⚙',short:'TOOLS',color:'tools'},
+ command:{icon:'▦',short:'CMD',color:'command'},
  radio:{icon:'📡',short:'HAM',color:'green'},
  nearest:{icon:'➊',short:'NEAR',color:'amber'},
  gps:{icon:'◎',short:'GPS',color:'cyan'},
@@ -161,7 +182,9 @@ function putAtDefault(s){
  const r=s.el.getBoundingClientRect();
  const w=Math.max(120,r.width||Math.min(b.width*.42,300));
  const h=Math.max(65,r.height||220);
- if(s.id==='radio'){s.x=b.width-w-12;s.y=70}
+ if(s.id==='tools'){s.x=Math.max(8,b.width-w-12);s.y=12}
+ else if(s.id==='command'){s.x=12;s.y=12}
+ else if(s.id==='radio'){s.x=b.width-w-12;s.y=70}
  else if(s.id==='nearest'){s.x=b.width-w-12;s.y=b.height-h-96}
  else if(s.id==='gps'){s.x=12;s.y=88}
  else if(s.id==='layers'){s.x=b.width-w-12;s.y=Math.max(120,Math.round(b.height*.36))}
@@ -292,7 +315,10 @@ function attach(c){
  });
 }
 configs.forEach(attach);
-minimizeAll.addEventListener('click',()=>Object.values(states).forEach(s=>setMode(s,'min')));
+minimizeAll.addEventListener('click',()=>{
+ Object.values(states).forEach(s=>setMode(s,'min'));
+ setDockCollapsed(true);
+});
 showAll.addEventListener('click',()=>Object.values(states).forEach(s=>setMode(s,'normal')));
 updateAllButtons();
 if(window.MutationObserver&&states.radio)new MutationObserver(colorizeDots).observe(states.radio.el,{attributes:true,attributeFilter:['class']});
@@ -315,7 +341,11 @@ window.RoadtowerPanelLayout={
  reflowDock:refreshDock,
  getModes(){return Object.fromEntries(Object.entries(states).map(([k,v])=>[k,v.mode]))},
  minimizeAll(){minimizeAll.click()},
- showAll(){showAll.click()},
+ showAll(){setDockCollapsed(false);showAll.click()},
+ toggleDock:()=>setDockCollapsed(!dockIsCollapsed),
+ collapseDock:()=>setDockCollapsed(true),
+ expandDock:()=>setDockCollapsed(false),
+ clearMap:()=>{Object.values(states).forEach(s=>setMode(s,'min'));setDockCollapsed(true)},
  open(id){const s=states[id];if(s)setMode(s,'normal')},
  maximize(id){const s=states[id];if(s)setMode(s,'max')},
  minimize(id){const s=states[id];if(s)setMode(s,'min')}
