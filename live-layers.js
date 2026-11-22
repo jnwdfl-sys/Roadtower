@@ -31,7 +31,7 @@ panel.innerHTML=
  '<div id="rtAircraftList" class="rt-live-air-list">Waiting for aircraft reports…</div></div>'+
  '<div class="rt-live-credit">Aircraft: <a href="https://adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a> (personal/non-commercial), <a href="https://www.adsb.lol/" target="_blank" rel="noopener noreferrer">adsb.lol</a> (ODbL), or <a href="https://opensky-network.org/" target="_blank" rel="noopener noreferrer">OpenSky</a> · Radar © RainViewer<br>'+
  'Aircraft auto-refreshes about every minute when open (provider reporting may lag). Radar checks about every 2 minutes; new radar frames normally arrive about every 10 minutes. Neither is an instant tracking feed or a forecast.'+
- '<br>Uses internet and sends an approximate MAP CENTER (rounded to 0.1°) to the aircraft service. GPS itself stays on your phone.</div>';
+ '<br>Uses internet and sends an approximate GPS AREA (rounded to 0.1°, or the map center when GPS is off) to the aircraft service. Exact GPS coordinates stay on your phone.</div>';
 host.appendChild(panel);
 if(L.DomEvent){
  L.DomEvent.disableClickPropagation(panel);
@@ -69,8 +69,12 @@ function updateToggle(button,on,word){
  button.setAttribute('aria-pressed',String(on));
 }
 function viewCenter(){
- const c=map.getCenter();
- // Never send precise phone GPS to the provider: bucket the public map center.
+ const g=api.getGps&&api.getGps();
+ const gps=g&&Number.isFinite(g.latitude)&&Number.isFinite(g.longitude)&&
+  Math.abs(g.latitude)<=90&&Math.abs(g.longitude)<=180;
+ const c=gps?{lat:g.latitude,lng:g.longitude}:map.getCenter();
+ // Use approximate GPS area for nearest-airplane searches. Only this rounded
+ // 0.1-degree location reaches the server, never exact phone coordinates.
  return {lat:Math.round(c.lat*10)/10,lon:Math.round(c.lng*10)/10};
 }
 function radarTile(frame){
@@ -325,7 +329,25 @@ window.setInterval(()=>{
  if(aircraftOn)loadAircraft();
  if(radarOn)loadRadar();
 },15000);
+let wasGpsAvailable=false;
+const oldGpsListener=api.onGps;
+api.onGps=function(g){
+ if(typeof oldGpsListener==='function')oldGpsListener(g);
+ const gpsNow=!!(g&&Number.isFinite(g.latitude)&&Number.isFinite(g.longitude));
+ if(gpsNow&&!wasGpsAvailable&&aircraftOn){
+  // The original aircraft request may have used the default map center.
+  // Re-query the rounded GPS area as soon as location becomes available.
+  loadAircraft(true);
+ }
+ wasGpsAvailable=gpsNow;
+};
 window.RoadtowerLiveLayers={
+ getAircraftSnapshot:()=>({
+  flights:airRecords,aircraftOn,source:airCurrentSource,
+  checkedAt:airLastSuccess,error:airLastError,fetchAt:airLastFetch,
+  reportCenter:airLastCenter
+ }),
+ refreshAircraft:()=>loadAircraft(true),
  getState:()=>({aircraft:aircraftOn,radar:radarOn,autoRefresh:autoEnabled,
   aircraftCheckIntervalMs:AIR_INTERVAL,radarCheckIntervalMs:RADAR_INTERVAL,
   planes:airRecords.length,airLastSuccess,airLastFetch,airLastError,airCurrentSource,
