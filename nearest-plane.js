@@ -15,18 +15,28 @@ panel.className='rt-nearest-plane-panel';
 panel.id='rtNearestPlanePanel';
 panel.setAttribute('aria-label','Closest verified aircraft to my GPS');
 panel.innerHTML=
- '<strong class="rt-nearest-plane-title">✈ NEAREST AIRCRAFT</strong>'+
+ '<strong class="rt-nearest-plane-title">✈ NEAREST REPORTED AIRCRAFT</strong>'+
  '<div class="rt-nearest-plane-status" id="rtPlaneNearestStatus" role="status">Waiting for GPS and public aircraft data…</div>'+
  '<div class="rt-nearest-plane-metrics" id="rtPlaneNearestMetrics" hidden></div>'+
  '<div class="rt-nearest-plane-buttons">'+
  '<button id="rtPlaneNearestLocate" type="button" disabled>◎ Show on map</button>'+
  '<button id="rtPlaneNearestRefresh" type="button">↻ Check aircraft</button></div>'+
+ '<a id="rtPlaneNearestExternal" class="rt-nearest-plane-external" href="https://globe.adsb.fi/" target="_blank" rel="noopener noreferrer">↗ Open independent ADS-B live map</a>'+
  '<p class="rt-nearest-plane-note">Distance is horizontal, straight-line distance from your phone GPS to a reported aircraft position—not its distance through the sky. Reported altitude (ft) is generally relative to sea level, not height above you. ADS-B coverage can be delayed, incomplete, or unavailable.</p>';
 host.appendChild(panel);
 if(L.DomEvent){L.DomEvent.disableClickPropagation(panel);L.DomEvent.disableScrollPropagation(panel)}
 const $=id=>panel.querySelector('#'+id);
 const status=$('rtPlaneNearestStatus'),metrics=$('rtPlaneNearestMetrics');
 const locate=$('rtPlaneNearestLocate'),refresh=$('rtPlaneNearestRefresh');
+const external=$('rtPlaneNearestExternal');
+external.addEventListener('click',()=>{
+ const g=goodGps();
+ if(g){
+  // Link uses rounded GPS area only, never exact GPS coordinates.
+  external.href='https://globe.adsb.fi/?lat='+(Math.round(g.latitude*10)/10).toFixed(1)+
+   '&lon='+(Math.round(g.longitude*10)/10).toFixed(1)+'&zoom=10';
+ }else external.href='https://globe.adsb.fi/';
+});
 const goodGps=()=>{
  const g=rt.getGps&&rt.getGps();
  return g&&Number.isFinite(g.latitude)&&Number.isFinite(g.longitude)&&
