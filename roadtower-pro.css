@@ -717,3 +717,19 @@ body.rt-pro-ui #map .rt-map-tools-panel.rt-layout-maximized .rt-map-tools-grid{
   min-width:38px!important;
  }
 }
+
+/* v55: Dedicated HAM simplex radio range control, 16pt accessible label. */
+body.rt-pro-ui #map .rt-map-tools-grid #rtToolHAM[data-active="true"]{
+ background:linear-gradient(135deg,#155b4b,#1b896e)!important;
+ border-color:#7af3c3!important;
+ color:#edfff5!important;
+ box-shadow:inset 0 0 0 1px rgba(100,255,195,.18)!important;
+}
+body.rt-pro-ui #map .rt-map-tools-grid #rtToolHAM[data-active="false"]{
+ background:linear-gradient(135deg,#243d42,#164b46)!important;
+ border-color:#67b6a3!important;
+ color:#e2fff2!important;
+}
+body.rt-pro-ui #map .rt-map-tools-grid #rtToolHAM:focus-visible{
+ outline:3px solid #b7ffe1!important;outline-offset:2px!important;
+}
