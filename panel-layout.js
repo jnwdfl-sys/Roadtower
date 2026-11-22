@@ -10,7 +10,7 @@ const configs=[
  {id:'gps',selector:'.rt-gps-hud',title:'My GPS'},
  {id:'status',selector:'.rt-status-hud',title:'Connection status'},
  {id:'layers',selector:'.rt-live-panel',title:'Airplanes and weather radar'},
- {id:'cb',selector:'.rt-cb-panel',title:'CB transmit range'}
+ {id:'cb',selector:'.rt-cb-panel',title:'My radio ranges'}
 ];
 const KEY='roadtower-panel-layout-v2';
 let saved={};
@@ -41,7 +41,7 @@ const BUBBLES={
  gps:{icon:'◎',short:'GPS',color:'cyan'},
  status:{icon:'●',short:'INFO',color:'blue'},
  layers:{icon:'✈',short:'LIVE',color:'orange'},
- cb:{icon:'📻',short:'CB',color:'cb'}
+ cb:{icon:'📻',short:'RANGE',color:'cb'}
 };
 const DOCK_KEY='roadtower-dot-position-v1';
 let dockSaved=null;
