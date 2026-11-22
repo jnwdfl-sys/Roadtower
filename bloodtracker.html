@@ -26,6 +26,12 @@ input[type=range]{width:100%;accent-color:#54d9ff}
 small,.note{color:var(--muted)}.status{padding:10px 12px;border:1px solid #44697a;border-radius:10px;background:#0b2533;margin:12px 0;min-height:44px}
 .meter{height:12px;border-radius:999px;background:#263f4c;overflow:hidden}.meter>span{display:block;height:100%;width:0;background:linear-gradient(90deg,#f08361,#ff323d);transition:width .15s}.meterline{display:flex;justify-content:space-between;gap:10px;margin:6px 0 2px;font-weight:700}
 .check{display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:650;margin:13px 0}.check input{width:20px;height:20px;accent-color:#36cae7}
+.check input[role=switch]{appearance:none;position:relative;width:52px;height:29px;min-width:52px;border:2px solid #7595a5;border-radius:999px;background:#314656;transition:background .12s;cursor:pointer}
+.check input[role=switch]::after{content:"";position:absolute;top:3px;left:3px;width:19px;height:19px;border-radius:50%;background:white;transition:transform .12s}
+.check input[role=switch]:checked{background:#24835b;border-color:#7beaaf}
+.check input[role=switch]:checked::after{transform:translateX(22px)}
+.check input[role=switch]:focus-visible{outline:3px solid #fff29d;outline-offset:3px}
+.check.switchline{display:flex;justify-content:space-between;align-items:center;padding:13px 12px;background:#0a2535;border:1px solid #4a7182;border-radius:12px;gap:12px}
 .note{font-size:13px;line-height:1.55}footer{padding:8px 0 35px;color:var(--muted);font-size:12px}
 @media(max-width:770px){.layout{grid-template-columns:1fr}.wrap{padding:12px}.card{padding:12px}#view{max-height:50vh}}
 </style>
@@ -44,8 +50,8 @@ small,.note{color:var(--muted)}.status{padding:10px 12px;border:1px solid #44697
 <button id="torch" type="button" class="secondary" aria-pressed="false" disabled>🔦 Phone light: OFF</button>
 <label class="upload" for="photo">▣ Open photo</label><input id="photo" type="file" accept="image/*">
 <button id="freeze" type="button" class="secondary">⏸ Freeze</button>
-<button id="strobeToggle" type="button" class="secondary" aria-pressed="false">🔴 Red pulse: OFF</button>
-<button id="trailToggle" type="button" class="secondary" aria-pressed="true">🟡 Yellow trail line: ON</button>
+<button id="strobeToggle" type="button" class="secondary" aria-pressed="false">🔴 Red strobe: OFF</button>
+<button id="trailToggle" type="button" class="secondary" aria-pressed="true">🟡 Yellow trail: ON</button>
 <button id="save" type="button" class="secondary">↓ Save picture</button>
 <button id="stop" type="button" class="secondary">■ Stop</button>
 </div>
@@ -86,10 +92,10 @@ small,.note{color:var(--muted)}.status{padding:10px 12px;border:1px solid #44697
 <label class="setting"><strong>Contrast <output id="contrastOut"></output></strong><input type="range" id="contrast" min="50" max="200" step="5" value="115"></label>
 <label class="setting"><strong>Brightness <output id="brightnessOut"></output></strong><input type="range" id="brightness" min="-80" max="80" step="5" value="0"></label>
 <label class="check"><input type="checkbox" id="dots" checked>Show dotted red-interest markers</label>
-<label class="check"><input type="checkbox" id="trailLine" checked>🟡 Draw a thin yellow line linking red-looking spots</label>
+<label class="check switchline"><span>🟡 Yellow trail-line tracker</span><input type="checkbox" role="switch" aria-label="Yellow trail-line tracker on or off" id="trailLine" checked></label>
 <label class="setting"><strong>Maximum line gap <output id="trailGapOut"></output></strong><input id="trailGap" type="range" min="15" max="65" step="5" value="35"></label>
-<p class="note">Yellow lines link separate red-colored areas from lower to higher in the image. They are guesses based on screen position, not confirmed blood or measured distance. A higher point in the picture may not be physically farther away.</p>
-<label class="check"><input type="checkbox" id="strobe">Pulse / strobe red-highlighted spots</label>
+<p class="note">When at least three separate red-looking spots form a roughly continuous upward pattern, a thin yellow line connects them. Isolated red spots or abrupt zigzags remain unconnected. Screen position is not real-world distance; the pattern is not proof of blood.</p>
+<label class="check switchline"><span>🔴 Red strobe / pulse</span><input type="checkbox" role="switch" aria-label="Red strobe on or off" id="strobe"></label>
 <label class="setting"><strong>Red pulse speed</strong><select id="strobeSpeed"><option value="slow">Slow, gentle pulse</option><option value="normal">Normal pulse</option></select></label>
 <p class="note">Optional: only red-like spots brighten and dim, not the whole screen. No rapid full-screen flashing; OFF by default.</p>
 <button id="reset" class="secondary" type="button">Restore defaults</button>
@@ -110,8 +116,8 @@ const ids=['mode','background','highlight','sensitivity','boost','contrast','bri
 const status=t=>$('status').textContent=t;
 function settings(){let s={};ids.forEach(id=>{const el=$(id);s[id]=el.type==='checkbox'?el.checked:el.value});return s}
 function apply(s){ids.forEach(id=>{const el=$(id);if(s[id]!==undefined){if(el.type==='checkbox')el.checked=!!s[id];else el.value=s[id]}});showValues();syncPulseButton();syncTrailButton()}
-function syncPulseButton(){const on=$('strobe').checked,b=$('strobeToggle');b.textContent=on?'🔴 Red pulse: ON':'🔴 Red pulse: OFF';b.setAttribute('aria-pressed',String(on));b.classList.toggle('active',on);$('strobeSpeed').disabled=!on}
-function syncTrailButton(){const on=$('trailLine').checked,b=$('trailToggle');b.textContent=on?'🟡 Yellow trail line: ON':'🟡 Yellow trail line: OFF';b.setAttribute('aria-pressed',String(on));b.classList.toggle('trail-active',on);$('trailGap').disabled=!on;if(!on)$('trailStatus').textContent='Yellow line OFF.'}
+function syncPulseButton(){const on=$('strobe').checked,b=$('strobeToggle');b.textContent=on?'🔴 Red strobe: ON':'🔴 Red strobe: OFF';b.setAttribute('aria-pressed',String(on));b.classList.toggle('active',on);$('strobeSpeed').disabled=!on}
+function syncTrailButton(){const on=$('trailLine').checked,b=$('trailToggle');b.textContent=on?'🟡 Yellow trail: ON':'🟡 Yellow trail: OFF';b.setAttribute('aria-pressed',String(on));b.classList.toggle('trail-active',on);$('trailGap').disabled=!on;if(!on)$('trailStatus').textContent='Yellow line OFF.'}
 function showValues(){['sensitivity','boost','contrast','brightness'].forEach(id=>{const v=Number($(id).value);$(id+'Out').textContent=id==='sensitivity'?(v/100).toFixed(2)+'×':id==='brightness'?(v>0?'+':'')+v:(v/100).toFixed(2)+'×'});$('trailGapOut').textContent=$('trailGap').value+'% of image diagonal'}
 function saveSettings(){try{localStorage.setItem('bloodtracker_colors_v1',JSON.stringify(settings()))}catch{}}
 try{apply(Object.assign({},defaults,JSON.parse(localStorage.getItem('bloodtracker_colors_v1')||'{}')))}catch{apply(defaults)}
@@ -194,30 +200,42 @@ if(mass>=2)groups.push({x:Math.min(w-1,sx/mass),y:Math.min(h-1,sy/mass),mass,cel
 return groups.sort((a,b)=>b.mass-a.mass).slice(0,32).sort((a,b)=>b.y-a.y);
 }
 function drawYellowGuide(groups,w,h,maxFraction){
-const maxGap=Math.hypot(w,h)*maxFraction,chain=[];
-if(groups.length){
-chain.push(groups[0]);const used=new Set([groups[0]]);
+const maxGap=Math.hypot(w,h)*maxFraction;
+const minRise=Math.max(7,h*.025);
+let best=[];
+for(const start of groups){
+const chain=[start],used=new Set([start]);
 while(chain.length<12){
-const cur=chain[chain.length-1];let best=null,bestScore=Infinity;
-for(const g of groups){
-if(used.has(g)||cur.y-g.y<Math.max(7,h*.025))continue;
-const dx=Math.abs(g.x-cur.x),dy=cur.y-g.y,dist=Math.hypot(dx,dy);
-if(dist>maxGap||dx>maxGap*.85)continue;
-const score=dist+dx*.25-Math.log1p(g.mass)*3;
-if(score<bestScore){best=g;bestScore=score}
+const current=chain[chain.length-1],previous=chain.length>1?chain[chain.length-2]:null;
+let selected=null,bestScore=Infinity;
+for(const candidate of groups){
+if(used.has(candidate))continue;
+const dx=candidate.x-current.x,dy=current.y-candidate.y;
+const dist=Math.hypot(dx,dy);
+if(dy<minRise||dist>maxGap||Math.abs(dx)>maxGap*.65||Math.abs(dx)>dy*1.45)continue;
+if(previous){
+const ax=current.x-previous.x,ay=current.y-previous.y;
+const bx=dx,by=candidate.y-current.y;
+const alignment=(ax*bx+ay*by)/(Math.hypot(ax,ay)*dist);
+if(alignment<.36)continue;
 }
-if(!best)break;
-chain.push(best);used.add(best);
+const score=dist+Math.abs(dx)*.4-Math.log1p(candidate.mass)*2;
+if(score<bestScore){selected=candidate;bestScore=score;}
 }
+if(!selected)break;
+chain.push(selected);used.add(selected);
 }
-if(chain.length>1){
+if(chain.length>best.length||
+  (chain.length===best.length&&chain.length>=3&&(chain[0].y-chain[chain.length-1].y)>(best[0].y-best[best.length-1].y))) best=chain;
+}
+// Require at least three separate detections with consistent upward direction.
+if(best.length<3)return 0;
 ctx.save();ctx.strokeStyle='#ffed38';ctx.fillStyle='#ffed38';ctx.lineWidth=2;ctx.lineJoin='round';ctx.lineCap='round';ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=3;
-ctx.beginPath();ctx.moveTo(chain[0].x,chain[0].y);
-for(let i=1;i<chain.length;i++)ctx.lineTo(chain[i].x,chain[i].y);
-ctx.stroke();for(const p of chain){ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);ctx.fill()}
+ctx.beginPath();ctx.moveTo(best[0].x,best[0].y);
+for(let i=1;i<best.length;i++)ctx.lineTo(best[i].x,best[i].y);
+ctx.stroke();for(const p of best){ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);ctx.fill()}
 ctx.restore();
-}
-return chain.length;
+return best.length;
 }
 function render(force){
 if(!source)return;
@@ -255,7 +273,7 @@ ctx.putImageData(image,0,0);
 if(redCounts){
 const groups=findRedGroups(redCounts,cols,rows,cellSize,w,h);
 const connected=drawYellowGuide(groups,w,h,Number(s.trailGap)/100);
-$('trailStatus').textContent='Red-color spots: '+groups.length+' · Yellow guide: '+(connected>1?(connected-1)+' suggested link'+(connected===2?'':'s'):'no link found');
+$('trailStatus').textContent='Red-color spots: '+groups.length+' · Yellow guide: '+(connected>=3?'possible pattern linking '+connected+' spots':'no consistent trail pattern');
 }
 if(s.dots&&(s.strobe||(mode!=='normal'&&mode!=='invert'))&&markers.length){
 ctx.save();ctx.strokeStyle='rgba(255,255,255,'+(s.strobe?(0.15+0.7*pulse):.8)+')';ctx.lineWidth=1.8;ctx.setLineDash([2,3]);
