@@ -10,8 +10,6 @@ const style=document.createElement('style');
 style.textContent=[
  '#map .rt-waze-panel{position:absolute;z-index:1475;top:43%;right:12px;width:min(315px,76%);max-height:53%;overflow:auto;padding:11px;border:2px solid #50cdd0;border-radius:13px;background:rgba(9,33,49,.97);color:#f0faff;box-shadow:0 5px 19px #001b;font:600 12px/1.5 system-ui,Arial}',
  '#map .rt-waze-title{display:block;font:900 17px/1.3 system-ui,Arial;color:#7ff3e7;margin-bottom:9px}',
- '#map .rt-waze-panel label{display:block;color:#c9e5f0;font-weight:800;margin:7px 0 5px}',
- '#map .rt-waze-panel input{display:block;width:100%;min-height:43px;padding:10px;border:1px solid #77b9c8;border-radius:8px;background:#102e43;color:#fff;font:700 14px system-ui,Arial}',
  '#map .rt-waze-panel .rt-waze-actions{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}',
  '#map .rt-waze-panel a.rt-waze-go,#map .rt-waze-panel button{display:inline-flex;justify-content:center;align-items:center;min-height:41px;flex:1 1 125px;text-align:center;padding:9px;text-decoration:none;border:1px solid #a7f1e7;border-radius:9px;background:#128e83;color:#fff;font:850 12px system-ui,Arial;cursor:pointer}',
  '#map .rt-waze-panel .rt-waze-secondary{background:#24566e!important;border-color:#7dbac9!important}',
@@ -27,40 +25,22 @@ const panel=document.createElement('section');
 panel.id='rtWazePanel';panel.className='rt-waze-panel';
 panel.setAttribute('aria-label','Waze and Roadtower together navigation companion');
 panel.innerHTML=
- '<strong class="rt-waze-title">🚙 WAZE + ROADTOWER</strong>'+
- '<label for="rtWazeDestination">Enter address or place name</label>'+
- '<input id="rtWazeDestination" type="search" autocomplete="street-address" maxlength="180" placeholder="Street address, business, or destination">'+
- '<div class="rt-waze-actions"><a id="rtWazeGo" class="rt-waze-go" href="https://waze.com/ul" target="_blank" rel="noopener noreferrer">▶ Navigate in Waze</a>'+
+ '<strong class="rt-waze-title">🚙 WAZE COMPANION</strong>'+
+ '<p class="rt-waze-notice">No duplicate address entry. Tap Open Waze, then choose your destination directly in Waze for directions, traffic, reported police, and road obstacles.</p>'+
+ '<div class="rt-waze-actions"><a id="rtWazeGo" class="rt-waze-go" href="https://waze.com/ul" target="_blank" rel="noopener noreferrer">▶ Open Waze</a>'+
  '<button id="rtWazeStormCheck" type="button" class="rt-waze-secondary">⛈ Check storms first</button></div>'+
- '<div id="rtWazeStatus" class="rt-waze-status" role="status">Waze provides directions and reported road hazards. ROADTOWER provides weather and radio.</div>'+
- '<div class="rt-waze-actions"><a id="rtWazeOpen" class="rt-waze-go rt-waze-secondary" href="https://waze.com/ul" target="_blank" rel="noopener noreferrer">Open Waze (no destination)</a></div>'+
- '<strong>Keep both visible (Android Fold):</strong>'+
- '<ol class="rt-waze-steps"><li>Open ROADTOWER in Chrome, then Waze.</li>'+
- '<li>Open Recent apps and choose Split screen from the app icon/menu.</li>'+
- '<li>Choose Chrome for the other half. Waze handles navigation and its police/obstacle reports; ROADTOWER shows weather and radios.</li>'+
- '<li>Save the app pair on your home screen if your phone offers it.</li></ol>'+
- '<p class="rt-waze-notice">Waze reports are not imported into ROADTOWER. Split-screen weather updates are best effort and depend on Android/Chrome activity. If Waze is full-screen, the ROADTOWER web app may stop receiving GPS or weather checks. Reliable background spoken weather alerts require a native Android app.</p>';
+ '<div id="rtWazeStatus" class="rt-waze-status" role="status">Waze handles navigation and community road reports; ROADTOWER handles radar, weather, and radio tools.</div>'+
+ '<strong>Use both together (Android Fold):</strong>'+
+ '<ol class="rt-waze-steps"><li>Open Waze and enter the destination there.</li>'+
+ '<li>Use Android Recent Apps → Split screen and select Chrome with ROADTOWER.</li>'+
+ '<li>Keep Waze for navigation and its alerts, ROADTOWER for weather and radios.</li></ol>'+
+ '<p class="rt-waze-notice">Waze reports do not transfer into ROADTOWER. Chrome can pause GPS and storm checks when hidden, and even split screen may limit updates. Reliable weather announcements behind Waze require a native Android background service.</p>';
 map.appendChild(panel);
 if(L.DomEvent){L.DomEvent.disableClickPropagation(panel);L.DomEvent.disableScrollPropagation(panel)}
-const destination=panel.querySelector('#rtWazeDestination');
-const link=panel.querySelector('#rtWazeGo'),msg=panel.querySelector('#rtWazeStatus');
-function navigateLink(q){
- const name=String(q||'').trim();
- return name?'https://waze.com/ul?q='+encodeURIComponent(name)+'&navigate=yes':'https://waze.com/ul';
+const msg=panel.querySelector('#rtWazeStatus');
+function navigateLink(){
+ return 'https://waze.com/ul';
 }
-function update(){
- const q=destination.value.trim();
- link.href=navigateLink(q);
- link.textContent=q?'▶ Navigate to destination':'▶ Open Waze';
- msg.textContent=q?'Waze will locate “'+q.slice(0,80)+'” and start navigation if found. Police and object alerts are delivered by Waze.':
-  'Enter an address or place name. Waze provides directions and road hazard alerts.';
-}
-destination.addEventListener('input',update);
-destination.addEventListener('keydown',e=>{
- if(e.key==='Enter'&&destination.value.trim()){
-  e.preventDefault();link.click();
- }
-});
 panel.querySelector('#rtWazeStormCheck').addEventListener('click',()=>{
  const api=window.RoadtowerStorms;
  if(api&&typeof api.check==='function'){
@@ -71,9 +51,9 @@ panel.querySelector('#rtWazeStormCheck').addEventListener('click',()=>{
 });
 update();
 window.RoadtowerWaze={
- linkFor:navigateLink,
+ linkFor:()=>navigateLink(),
  toCoordinates:(lat,lon)=>Number.isFinite(lat)&&Number.isFinite(lon)?
   'https://waze.com/ul?ll='+lat.toFixed(6)+','+lon.toFixed(6)+'&navigate=yes':null,
- navigate:(query)=>window.open(navigateLink(query),'_blank','noopener,noreferrer')
+ navigate:()=>window.open(navigateLink(),'_blank','noopener,noreferrer')
 };
 })();
