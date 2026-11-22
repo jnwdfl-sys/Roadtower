@@ -114,9 +114,13 @@ function refreshDock(){
  const d=dockDimensions(),maxX=Math.max(5,d.width-d.dockWidth-7);
  const maxY=Math.max(5,d.height-d.dockHeight-7);
  if(!dockSaved){
-  // Default: slim right edge, BELOW the upper status/tool area.
-  const top=Math.min(maxY,Math.max(74,Math.min(148,Math.round(d.height*.21))));
-  moveDock(maxX,top,false);
+  // Keep the dock on the RIGHT and below Field Command, including on Fold
+  // screens whose visible viewport changes after Chrome hides its controls.
+  const command=document.getElementById('rtCommandStrip');
+  const mr=map.getBoundingClientRect(),cr=command&&command.getBoundingClientRect();
+  const afterCommand=cr&&cr.height>0?Math.round(cr.bottom-mr.top+12):183;
+  const preferred=Math.max(174,afterCommand);
+  moveDock(maxX,Math.min(maxY,preferred),false);
   return;
  }
  // User-moved positions still persist within the current screen bounds.
@@ -308,6 +312,7 @@ if(window.MutationObserver)new MutationObserver(()=>requestAnimationFrame(reflow
 window.RoadtowerPanelLayout={
  reset(){Object.values(states).forEach(s=>{s.mode='normal';s.el.style.removeProperty('left');s.el.style.removeProperty('top');s.el.style.removeProperty('right');s.el.style.removeProperty('bottom');s.el.classList.remove('rt-layout-managed','rt-layout-minimized','rt-layout-maximized','rt-layout-hidden')});try{localStorage.removeItem(KEY);localStorage.removeItem(DOCK_KEY)}catch(e){}location.reload()},
  resetDock:dockToRight,
+ reflowDock:refreshDock,
  getModes(){return Object.fromEntries(Object.entries(states).map(([k,v])=>[k,v.mode]))},
  minimizeAll(){minimizeAll.click()},
  showAll(){showAll.click()},
