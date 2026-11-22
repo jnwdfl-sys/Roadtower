@@ -46,6 +46,8 @@ toolsPanel.innerHTML=
  '<button id="rtToolFollow" type="button">↗ Follow GPS: ON</button>'+
  '<button id="rtToolMap" type="button">🗺 Map mode: AUTO</button>'+
  '<button id="rtToolCB" type="button">📻 CB ON/OFF</button>'+
+ '<button id="rtToolHAM" type="button" aria-pressed="false">🟢 HAM RANGE: OFF</button>'+
+ '<button id="rtToolRangeSettings" type="button">📏 Range settings</button>'+
  '<button id="rtToolRadio" type="button">📡 Repeaters</button>'+
  '<button id="rtToolLive" type="button">✈ Aircraft / Radar</button>'+
  '<button id="rtToolOffline" type="button">⬇ Offline Map Setup</button>'+
@@ -68,10 +70,21 @@ function syncTools(){
  const follow=document.getElementById('followMap');
  const mapMode=document.getElementById('offlineQuickMode');
  const cb=document.getElementById('rtCbQuickToggle');
+ const radioRange=window.RoadtowerCBRange;
  const stop=document.getElementById('stop');
  tool('rtToolFollow').textContent=follow?.textContent||'Follow GPS';
  tool('rtToolMap').textContent=mapMode?.textContent||'Map mode';
  tool('rtToolCB').textContent=cb?.textContent||'CB range';
+ const ham=radioRange&&typeof radioRange.isHamOn==='function'?
+  radioRange.isHamOn():null;
+ const hamControl=tool('rtToolHAM');
+ hamControl.textContent=ham===null?'🟢 HAM RANGE: CHECK':
+  ham?'🟢 HAM RANGE: ON':'🟢 HAM RANGE: OFF';
+ hamControl.setAttribute('aria-pressed',String(ham===true));
+ hamControl.dataset.active=ham===true?'true':'false';
+ hamControl.title=ham===true?
+  'HAM 2m simplex planning circles: solid green 5 miles, dashed green 20 miles. Requires GPS.':
+  'Enable the 5 and 20 mile HAM simplex planning circles around your GPS.';
  tool('rtToolStop').disabled=!stop||stop.disabled;
 }
 tool('rtToolGps').addEventListener('click',()=>{
@@ -84,6 +97,15 @@ tool('rtToolStop').addEventListener('click',()=>{proxy('stop');syncTools()});
 tool('rtToolFollow').addEventListener('click',()=>{proxy('followMap');syncTools()});
 tool('rtToolMap').addEventListener('click',()=>{proxy('offlineQuickMode');syncTools()});
 tool('rtToolCB').addEventListener('click',()=>{proxy('rtCbQuickToggle');syncTools()});
+tool('rtToolHAM').addEventListener('click',()=>{
+ const radioRange=window.RoadtowerCBRange;
+ if(radioRange&&typeof radioRange.setHamOn==='function'){
+  radioRange.setHamOn(!radioRange.isHamOn());
+  radioRange.refresh?.();
+  syncTools();
+ }else go('cb');
+});
+tool('rtToolRangeSettings').addEventListener('click',()=>go('cb'));
 tool('rtToolRadio').addEventListener('click',()=>go('radio'));
 tool('rtToolLive').addEventListener('click',()=>go('layers'));
 tool('rtToolClear').addEventListener('click',()=>{
