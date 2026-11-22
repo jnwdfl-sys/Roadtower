@@ -465,6 +465,19 @@ body.rt-pro-ui #map #rtLayoutTray .rt-layout-dot-label{
 body.rt-pro-ui #map #rtLayoutTray .rt-layout-dock-grip{
  padding:3px 1px 5px!important;font-size:9px!important;
 }
+/* Make room BELOW the command strip on narrow Chrome/Fold screens.
+   If space is short, the dock scrolls internally rather than sitting over
+   aircraft/GPS markers or covering the top controls. */
+body.rt-pro-ui #map #rtLayoutTray{
+ max-height:max(156px,calc(100% - 216px))!important;
+ scrollbar-width:thin!important;
+ scrollbar-color:#567f91 transparent!important;
+}
+body.rt-pro-ui #map #rtLayoutTray .rt-layout-dock-grip{
+ position:sticky;top:0;z-index:2;
+ background:#0b2434;border-radius:10px 10px 0 0;
+}
+
 @media(max-width:420px){
  body.rt-pro-ui.map-fullscreen #map .rt-command-strip {
   width:calc(100% - 80px - env(safe-area-inset-left,0px))!important;
