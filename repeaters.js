@@ -18,6 +18,15 @@ panel.innerHTML=
  '<div class="rt-muted" id="rtServiceInfo">Amateur radio repeaters: 2m and 70cm. Ham license required to transmit.</div>'+
  '<div class="rt-buttons rt-joco-shortcuts"><button id="rtFindLibrary" type="button">📍 Library 2m · 145.290</button><button id="rtFindJocoUhf" type="button">★ Johnson Co. 70cm</button><button id="rtFindOP" type="button">★ Santa Fe Water Tower · 146.910</button></div>'+
  '<label class="rt-band-row" id="rtBandRow">HAM band <select id="rtBand"><option value="both">Both 2m + 70cm</option><option value="2m">2m only</option><option value="70cm">70cm only</option></select></label>'+
+ '<section class="rt-coverage-controls" aria-label="Colored repeater coverage planning overlay">'+
+ '<strong>🗺 Colored Repeater Coverage</strong>'+
+ '<div class="rt-buttons"><button id="rtCoverageToggle" type="button" aria-pressed="true">COVERAGE: ON</button></div>'+
+ '<label for="rtCoverageMiles">Planning radius per site <select id="rtCoverageMiles"><option value="5">5 miles</option><option value="10">10 miles</option><option value="20" selected>20 miles</option><option value="30">30 miles</option><option value="50">50 miles</option></select></label>'+
+ '<label for="rtCoverageOpacity">Fill strength <output id="rtCoverageOpacityValue">8%</output><input type="range" id="rtCoverageOpacity" min="3" max="18" step="1" value="8"></label>'+
+ '<div class="rt-coverage-legend"><span><i class="rt-cov-swatch ham"></i>HAM</span><span><i class="rt-cov-swatch gmrs"></i>GMRS</span><span><i class="rt-cov-swatch wide"></i>KC Wide</span></div>'+
+ '<div id="rtCoverageStatus" class="rt-muted" role="status">Preparing estimated repeater coverage circles…</div>'+
+ '<p class="rt-muted">Illustrative distance circles around listed sites, NOT measured or terrain-modeled radio coverage. Actual reach depends on terrain, antenna height, equipment and station availability. Site pins may be approximate.</p>'+
+ '</section>'+
  '<div class="rt-muted" id="rtGrowth">Original count: 5,044 amateur repeaters. Updated percentage appears after downloading both bands.</div>'+
  '<div class="rt-muted" id="rtCount">Loading saved repeaters…</div>'+
  '<div class="rt-closest" id="rtClosest">Start Live GPS for nearest repeater.</div>'+
@@ -44,6 +53,25 @@ panel.innerHTML=
  '<a id="rtSource" href="https://hearham.com/api/repeaters/v1" rel="noopener noreferrer" target="_blank">HearHam JSON download (manual backup)</a>'+
  '<div class="rt-muted">Data: HearHam, user-contributed. ★ KC Wide from the 2026-10-30 published roster or matching network metadata; not a live link indicator. Check radio programming and coverage before use.</div><a href="https://www.kansascityroom-wide.com/repeater-list/" target="_blank" rel="noopener noreferrer">KC Wide official repeater roster</a></div>';
 HOST.appendChild(panel);
+const coverageCss=document.createElement('style');
+coverageCss.textContent=[
+ '#map .rt-coverage-controls{padding:9px;margin:8px 0;background:#123343;border:1px solid #49778c;border-radius:10px}',
+ '#map .rt-coverage-controls>strong{display:block;color:#b4ebff;font-size:14px;margin:0 0 7px}',
+ '#map .rt-coverage-controls label{display:block;margin:6px 0;color:#d4f0ff;font:700 12px system-ui,Arial}',
+ '#map .rt-coverage-controls select{display:block;width:100%;margin:5px 0;padding:8px;border-radius:7px;border:1px solid #6e9bb2;background:#0b2838;color:#fff;font:700 12px system-ui,Arial}',
+ '#map .rt-coverage-controls input[type="range"]{width:100%;margin:5px 0;accent-color:#60d6a6}',
+ '#map .rt-coverage-controls output{float:right;color:#a8f6e3}',
+ '#map .rt-coverage-legend{display:flex;flex-wrap:wrap;gap:9px;margin:7px 0;font-size:11px}',
+ '#map .rt-coverage-legend span{display:inline-flex;gap:4px;align-items:center}',
+ '#map .rt-cov-swatch{display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid #fff}',
+ '#map .rt-cov-swatch.ham{background:#35c979}',
+ '#map .rt-cov-swatch.gmrs{background:#b340cf}',
+ '#map .rt-cov-swatch.wide{background:#e9c54a}',
+ '#map .rt-coverage-controls #rtCoverageToggle[aria-pressed="true"]{background:#21725c;color:#fff;border-color:#64d8a5}',
+ '#map .rt-coverage-controls #rtCoverageToggle[aria-pressed="false"]{background:#344350;color:#bbcbd2;border-color:#607c88}',
+ '#map #rtCoverageStatus{font-weight:700;color:#c4f5dd}'
+].join('\n');
+document.head.appendChild(coverageCss);
 
 var nearDock=document.createElement('aside');
 nearDock.id='rtNearestDock';nearDock.className='rt-nearest-dock';
@@ -176,6 +204,24 @@ var LOCAL_CLUB=[
   source:'JCRAC / KC Room listings',officialLocal:true,approx:true}
 ];
 var data=[],gmrsData=[],customRecords=[],selected=null,follow=true,wideOnly=false,bandFilter='both',radioService='both',directoryState='loading',gmrsState='loading',markers=L.layerGroup().addTo(map);
+// Coverage uses a separate low-z-index pane so the colored shaded areas
+// stay behind repeater dots and GPS location indicators.
+const coveragePane=map.getPane('rtCoveragePane')||map.createPane('rtCoveragePane');
+coveragePane.style.zIndex='320';
+coveragePane.style.pointerEvents='none';
+const coverageGroup=L.layerGroup().addTo(map);
+const COV_KEY='roadtower.repeater.coverage.v1';
+const COV_MILES_KEY='roadtower.repeater.coverageMiles.v1';
+const COV_SHADE_KEY='roadtower.repeater.coverageShade.v1';
+const getCov=(key,fallback)=>{try{const v=localStorage.getItem(key);return v===null?fallback:v}catch(_){return fallback}};
+const setCov=(key,value)=>{try{localStorage.setItem(key,String(value))}catch(_){}};
+let coverageOn=getCov(COV_KEY,'true')!=='false';
+let coverageMiles=Number(getCov(COV_MILES_KEY,'20'));
+if(![5,10,20,30,50].includes(coverageMiles))coverageMiles=20;
+let coverageShade=Number(getCov(COV_SHADE_KEY,'8'));
+if(!Number.isFinite(coverageShade)||coverageShade<3||coverageShade>18)coverageShade=8;
+let coverageCount=0;
+
 const BASELINE_AMATEUR=5044;
 var completeHamRefresh=false;
 // Always launch with both HAM and GMRS visible. An older saved HAM-only
@@ -495,6 +541,7 @@ function showDetails(x){
  lineText('Location:',x.city+(x.state?', '+x.state:'')+' (approx.)');
  var nearPoint=anchor();
  lineText('Straight-line distance:',distance(nearPoint.lat,nearPoint.lon,x.lat,x.lon).toFixed(1)+' miles '+(nearPoint.gps?'from GPS':'from map center'));
+ lineText('Coverage radius:',coverageOn?coverageMiles+' mi illustrative planning circle; NOT verified signal coverage':'Overlay off');
  if(isGMRS(x))lineText('Access:', x.restricted?'GMRS license AND repeater-owner permission REQUIRED.':'GMRS license required; verify repeater-owner access rules.');
  if(x.source)lineText('Source:',x.source);
  if(x.approx)lineText('Pin accuracy:','APPROXIMATE reference area, NOT a surveyed repeater antenna. Mileage is approximate.');
@@ -519,10 +566,55 @@ function drawLine(){
   interactive:false,icon:L.divIcon({className:isGMRS(selected)?'rt-mile-icon rt-mile-gmrs':'rt-mile-icon rt-mile-ham',html:'<span>'+d.toFixed(1)+' mi</span>',iconSize:[75,22],iconAnchor:[38,11]})
  }).addTo(map);
 }
+// The rings below are user-adjustable planning radii, not RF propagation
+// predictions. Limit draws to a few visible site locations to avoid flooding
+// the map with thousands of overlapping filled circles.
+function drawCoverage(list){
+ coverageGroup.clearLayers();
+ coverageCount=0;
+ const status=el('rtCoverageStatus');
+ if(!coverageOn){
+  status.textContent='Coverage OFF • repeater locations remain visible.';
+  return;
+ }
+ const bounds=map.getBounds().pad(.15);
+ const center=map.getCenter();
+ const inView=list.filter(it=>Number.isFinite(it.x.lat)&&Number.isFinite(it.x.lon)&&
+  bounds.contains(coord(it.x)));
+ const ranking=(a,b)=>Number(Boolean(b.x.officialLocal))-Number(Boolean(a.x.officialLocal))||
+  distance(center.lat,center.lng,a.x.lat,a.x.lon)-
+  distance(center.lat,center.lng,b.x.lat,b.x.lon);
+ const ham=inView.filter(it=>!isGMRS(it.x)).sort(ranking).slice(0,8);
+ const gmrs=inView.filter(it=>isGMRS(it.x)).sort(ranking).slice(0,8);
+ const display=radioService==='ham'?ham:radioService==='gmrs'?gmrs:[...ham,...gmrs];
+ if(selected&&bounds.contains(coord(selected))&&
+    (radioService==='both'||(radioService==='gmrs')===isGMRS(selected))&&
+    !display.some(it=>it.x===selected)){
+  display.push({x:selected});
+ }
+ for(const it of display){
+  const x=it.x,gmrsSite=isGMRS(x);
+  const color=gmrsSite?'#b340cf':x.wide?'#e9c54a':'#35c979';
+  const isSelected=selected===x;
+  L.circle(coord(x),{
+   radius:coverageMiles*1609.344,
+   pane:'rtCoveragePane',
+   color,weight:isSelected?2:1.25,opacity:isSelected?.85:.58,
+   dashArray:'5 8',fillColor:color,fillOpacity:coverageShade/100,
+   interactive:false
+  }).addTo(coverageGroup);
+  coverageCount++;
+ }
+ status.textContent='Showing '+coverageCount+' nearby site circle(s) • '+
+  coverageMiles+'-mile planning radius • '+
+  (radioService==='both'?'HAM + GMRS':radioService.toUpperCase())+
+  '. Zoom/pan for other repeater sites.';
+}
 function redraw(){
  if(!getAllStations().length){
   renderNearestSide([],anchor());
-  markers.clearLayers();line.setLatLngs([]);
+  markers.clearLayers();coverageGroup.clearLayers();coverageCount=0;
+  el('rtCoverageStatus').textContent='No repeater locations to draw coverage.';line.setLatLngs([]);
   el('rtCount').textContent=radioService==='gmrs'?'No saved GMRS repeater sites yet. Use Download open GMRS sites or add a local station.':
     'No amateur repeater sites saved yet.';
   el('rtClosest').textContent='No repeater sites in this service.';
@@ -574,6 +666,7 @@ function redraw(){
  if(selected&&(isGMRS(selected)||!wideOnly||selected.wide))drawLine();
  else {line.setLatLngs([]);if(middle){map.removeLayer(middle);middle=null}}
  drawMarkers(list,p);
+ drawCoverage(list);
 }
 function drawMarkers(list,p){
  markers.clearLayers();
@@ -658,6 +751,26 @@ el('rtHam').onclick=function(){switchService('ham')};
 el('rtGMRS').onclick=function(){switchService('gmrs')};
 el('rtBoth').onclick=function(){switchService('both')};
 el('rtBand').onchange=function(){bandFilter=this.value;selected=null;follow=true;redraw()};
+el('rtCoverageMiles').value=String(coverageMiles);
+el('rtCoverageOpacity').value=String(coverageShade);
+el('rtCoverageOpacityValue').textContent=coverageShade+'%';
+function updateCoverageButton(){
+ el('rtCoverageToggle').textContent='COVERAGE: '+(coverageOn?'ON':'OFF');
+ el('rtCoverageToggle').setAttribute('aria-pressed',String(coverageOn));
+}
+updateCoverageButton();
+el('rtCoverageToggle').onclick=function(){
+ coverageOn=!coverageOn;setCov(COV_KEY,coverageOn);
+ updateCoverageButton();redraw();
+};
+el('rtCoverageMiles').onchange=function(){
+ coverageMiles=Number(this.value);setCov(COV_MILES_KEY,coverageMiles);redraw();
+};
+el('rtCoverageOpacity').oninput=function(){
+ coverageShade=Number(this.value);setCov(COV_SHADE_KEY,coverageShade);
+ el('rtCoverageOpacityValue').textContent=coverageShade+'%';
+ redraw();
+};
 serviceUI();
 el('rtHide').onclick=function(){
  var hidden=panel.classList.toggle('rt-hidden');
