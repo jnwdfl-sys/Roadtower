@@ -16,9 +16,9 @@ panel.setAttribute('aria-label','Live aircraft and weather radar layers');
 panel.innerHTML=
  '<strong class="rt-live-title">✈ Aircraft + 🌦 Weather Radar</strong>'+
  '<div class="rt-live-switches">'+
- '<button id="rtAirToggle" type="button" aria-pressed="true">✈ AIRCRAFT: ON</button>'+
+ '<button id="rtAirToggle" type="button" aria-pressed="false">✈ AIRCRAFT: OFF</button>'+
  '<button id="rtRadarToggle" type="button" aria-pressed="true">🌦 RADAR: ON</button></div>'+
- '<div id="rtAirStatus" class="rt-live-status" role="status">Aircraft: connecting…</div>'+
+ '<div id="rtAirStatus" class="rt-live-status" role="status">Aircraft OFF by default to save API requests. Tap AIRCRAFT ON when needed.</div>'+
  '<a id="rtAirExternal" class="rt-air-external" href="https://globe.adsb.fi/" target="_blank" rel="noopener noreferrer">✈ Open separate live airplane map</a>'+
  '<div id="rtRadarStatus" class="rt-live-status" role="status">Radar: connecting…</div>'+
  '<div class="rt-live-options">'+
@@ -28,9 +28,9 @@ panel.innerHTML=
  '<button type="button" id="rtAutoToggle" aria-pressed="true">⟳ AUTO: ON</button>'+ 
  '<button type="button" id="rtLayersRefresh">↻ Update now</button></div>'+
  '<div class="rt-live-nearest"><strong>✈ Aircraft near map</strong>'+
- '<div id="rtAircraftList" class="rt-live-air-list">Waiting for aircraft reports…</div></div>'+
+ '<div id="rtAircraftList" class="rt-live-air-list">Airplane tracking OFF · tap AIRCRAFT ON to check nearby planes.</div></div>'+
  '<div class="rt-live-credit">Aircraft: <a href="https://adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a> (personal/non-commercial), <a href="https://www.adsb.lol/" target="_blank" rel="noopener noreferrer">adsb.lol</a> (ODbL), or <a href="https://opensky-network.org/" target="_blank" rel="noopener noreferrer">OpenSky</a> · Radar © RainViewer<br>'+
- 'Aircraft refreshes about every 4 minutes to conserve free API quota (positions may lag). Radar checks about every 2 minutes; new radar frames normally arrive about every 10 minutes. Neither is an instant tracking feed or a forecast.'+
+ 'Aircraft starts OFF to conserve your free-data allowance. Turn it ON only when needed; while ON it checks about every 4 minutes (providers may limit or delay responses). Radar stays ON and updates independently. Neither is instant tracking or a forecast.'+
  '<br>Uses internet and sends an approximate GPS AREA (rounded to 0.1°, or the map center when GPS is off) to the aircraft service. Exact GPS coordinates stay on your phone.</div>';
 host.appendChild(panel);
 if(L.DomEvent){
@@ -41,7 +41,7 @@ const el=id=>panel.querySelector('#'+id);
 const toggleAir=el('rtAirToggle'),toggleRadar=el('rtRadarToggle');
 const radarStatus=el('rtRadarStatus'),airStatus=el('rtAirStatus'),listRoot=el('rtAircraftList');
 const airGroup=L.layerGroup().addTo(map);
-let aircraftOn=true,radarOn=true,airRecords=[],airLastFetch=0,airLastSuccess=0,airLastCenter=null;
+let aircraftOn=false,radarOn=true,airRecords=[],airLastFetch=0,airLastSuccess=0,airLastCenter=null;
 let airBusy=false,radarBusy=false,radarFrames=[],radarHost='',radarLayer=null;
 const airMarkers=new Map();
 let airCurrentSource='',airLastError='',airNextAllowedAt=0;
@@ -211,8 +211,11 @@ function renderAircraft(){
 function setAircraft(on){
  aircraftOn=Boolean(on);updateToggle(toggleAir,aircraftOn,'AIRCRAFT');
  if(!aircraftOn){
-  airGroup.clearLayers();airMarkers.clear();
-  listRoot.textContent='Aircraft layer OFF';airStatus.textContent='Aircraft OFF';return;
+  airGroup.clearLayers();airMarkers.clear();airRecords=[];
+  airLastSuccess=0;airLastError='';airCurrentSource='';
+  listRoot.textContent='Aircraft OFF · no API requests while OFF.';
+  airStatus.textContent='Aircraft OFF · tap AIRCRAFT ON whenever you need nearby reports.';
+  return;
  }
  airStatus.textContent=airBusy?'Aircraft ON · waiting for current request…':
   'Aircraft ON · checking live feed…';
@@ -279,7 +282,7 @@ async function loadAircraft(force=false){
   renderAircraft();
   airStatus.textContent='Aircraft ON · '+airRecords.length+' reported via '+airCurrentSource+' · checked '+new Date(data.updated)
    .toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'})+
-   ' · next check ~1 min';
+   ' · next automatic check ~4 min';
  }catch(e){
   // Never keep old aircraft dots under a false LIVE label.
   if(!aircraftOn)return;
@@ -371,9 +374,11 @@ window.RoadtowerLiveLayers={
  setAircraft,setRadar,setAuto,
  refresh:()=>{loadAircraft(true);loadRadar(true)}
 };
-// Both layers turn ON on each fresh launch. No saved OFF preference suppresses
-// them on the next startup; the user can disable them during this session.
-updateToggle(toggleAir,true,'AIRCRAFT');updateToggle(toggleRadar,true,'RADAR');setAuto(true);
+// QUOTA-SAVING STARTUP: aircraft ALWAYS starts OFF. No provider request is
+// permitted until the user explicitly turns it ON. Radar still starts ON.
+updateToggle(toggleAir,false,'AIRCRAFT');updateToggle(toggleRadar,true,'RADAR');
+airStatus.textContent='Aircraft OFF · tap AIRCRAFT ON to start a live check.';
+listRoot.textContent='Aircraft tracking paused to preserve free-data allowance.';
+setAuto(true);
 loadRadar(true);
-loadAircraft(true);
 })();
