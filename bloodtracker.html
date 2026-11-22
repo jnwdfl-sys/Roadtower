@@ -30,7 +30,7 @@ small,.note{color:var(--muted)}.status{padding:10px 12px;border:1px solid #44697
 .check input[role=switch]::after{content:"";position:absolute;top:3px;left:3px;width:19px;height:19px;border-radius:50%;background:white;transition:transform .12s}
 .check input[role=switch]:checked{background:#24835b;border-color:#7beaaf}
 .check input[role=switch]:checked::after{transform:translateX(22px)}
-.check input[role=switch]:focus-visible{outline:3px solid #fff29d;outline-offset:3px}
+.check input[role=switch]:focus-visible{outline:3px solid #fff29d;outline-offset:3px}.quick-tuning{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0;padding:12px;border:1px solid #4689a8;background:#0a2537;border-radius:12px}.quick-tuning label{min-width:0;display:block}.quick-tuning strong{display:flex;justify-content:space-between;gap:6px;font-size:14px;color:#fff}.quick-tuning output{color:#8ae2ff;white-space:nowrap;font-variant-numeric:tabular-nums}.quick-tuning p{grid-column:1/-1;margin:0;color:#bad2e0;font-size:12px}@media(max-width:440px){.quick-tuning{grid-template-columns:1fr}}
 .check.switchline{display:flex;justify-content:space-between;align-items:center;padding:13px 12px;background:#0a2535;border:1px solid #4a7182;border-radius:12px;gap:12px}
 .note{font-size:13px;line-height:1.55}footer{padding:8px 0 35px;color:var(--muted);font-size:12px}
 @media(max-width:770px){.layout{grid-template-columns:1fr}.wrap{padding:12px}.card{padding:12px}#view{max-height:50vh}}
@@ -54,6 +54,11 @@ small,.note{color:var(--muted)}.status{padding:10px 12px;border:1px solid #44697
 <button id="trailToggle" type="button" class="secondary" aria-pressed="true">🟡 Yellow trail: ON</button>
 <button id="save" type="button" class="secondary">↓ Save picture</button>
 <button id="stop" type="button" class="secondary">■ Stop</button>
+</div>
+<div class="quick-tuning" aria-label="Quick filter tuning">
+<label for="filterStrength"><strong>🎚️ Filter Strength <output id="filterStrengthOut">1.50×</output></strong><input type="range" id="filterStrength" min="0" max="200" step="10" value="150" aria-label="Filter strength"></label>
+<label for="boost"><strong>🔴 Red Boost <output id="boostOut">1.30×</output></strong><input type="range" id="boost" min="100" max="300" step="10" value="130" aria-label="Red boost"></label>
+<p>Filter Strength controls how strongly the color filter changes the scene. Red Boost makes red-looking spots more vivid; both update live.</p>
 </div>
 <p id="torchHelp" role="status" aria-live="polite">Tap Flashlight ON to start the rear camera and request the phone light. Some phones do not allow browsers to control the flashlight.</p>
 <p id="status" class="status" role="status" aria-live="polite">Camera is off. Filters work on photos too.</p>
@@ -89,7 +94,7 @@ small,.note{color:var(--muted)}.status{padding:10px 12px;border:1px solid #44697
 <option value="yellow">Electric yellow</option>
 </select></label>
 <label class="setting"><strong>Red sensitivity <output id="sensitivityOut"></output></strong><input type="range" id="sensitivity" min="105" max="230" step="5" value="135"></label>
-<label class="setting"><strong>Red boost <output id="boostOut"></output></strong><input type="range" id="boost" min="100" max="250" step="10" value="170"></label>
+<p class="note">Filter Strength and Red Boost are directly under the camera buttons for quick changes in the field.</p>
 <label class="setting"><strong>Contrast <output id="contrastOut"></output></strong><input type="range" id="contrast" min="50" max="200" step="5" value="115"></label>
 <label class="setting"><strong>Brightness <output id="brightnessOut"></output></strong><input type="range" id="brightness" min="-80" max="80" step="5" value="0"></label>
 <label class="check"><input type="checkbox" id="dots" checked>Show dotted red-interest markers</label>
@@ -112,14 +117,14 @@ small,.note{color:var(--muted)}.status{padding:10px 12px;border:1px solid #44697
 const $=id=>document.getElementById(id);
 const canvas=$('view'),ctx=canvas.getContext('2d',{willReadFrequently:true}),video=$('camera');
 let stream=null,source=null,sourceKind=null,facing='environment',paused=false,last=0,frameId=0,photoUrl=null,frozenSource=null,torchOn=false,torchBusy=false;
-const defaults={mode:'red',background:'gray',highlight:'red',sensitivity:'135',boost:'170',contrast:'115',brightness:'0',dots:true,trailLine:true,trailGap:'35',strobe:false,strobeSpeed:'slow'};
-const ids=['mode','background','highlight','sensitivity','boost','contrast','brightness','dots','trailLine','trailGap','strobe','strobeSpeed'];
+const defaults={mode:'red',background:'gray',highlight:'red',sensitivity:'135',filterStrength:'150',boost:'130',contrast:'115',brightness:'0',dots:true,trailLine:true,trailGap:'35',strobe:false,strobeSpeed:'slow'};
+const ids=['mode','background','highlight','sensitivity','filterStrength','boost','contrast','brightness','dots','trailLine','trailGap','strobe','strobeSpeed'];
 const status=t=>$('status').textContent=t;
 function settings(){let s={};ids.forEach(id=>{const el=$(id);s[id]=el.type==='checkbox'?el.checked:el.value});return s}
 function apply(s){ids.forEach(id=>{const el=$(id);if(s[id]!==undefined){if(el.type==='checkbox')el.checked=!!s[id];else el.value=s[id]}});showValues();syncPulseButton();syncTrailButton()}
 function syncPulseButton(){const on=$('strobe').checked,b=$('strobeToggle');b.textContent=on?'🔴 Red strobe: ON':'🔴 Red strobe: OFF';b.setAttribute('aria-pressed',String(on));b.classList.toggle('active',on);$('strobeSpeed').disabled=!on}
 function syncTrailButton(){const on=$('trailLine').checked,b=$('trailToggle');b.textContent=on?'🟡 Yellow trail: ON':'🟡 Yellow trail: OFF';b.setAttribute('aria-pressed',String(on));b.classList.toggle('trail-active',on);$('trailGap').disabled=!on;if(!on)$('trailStatus').textContent='Yellow line OFF.'}
-function showValues(){['sensitivity','boost','contrast','brightness'].forEach(id=>{const v=Number($(id).value);$(id+'Out').textContent=id==='sensitivity'?(v/100).toFixed(2)+'×':id==='brightness'?(v>0?'+':'')+v:(v/100).toFixed(2)+'×'});$('trailGapOut').textContent=$('trailGap').value+'% of image diagonal'}
+function showValues(){['sensitivity','filterStrength','boost','contrast','brightness'].forEach(id=>{const v=Number($(id).value);$(id+'Out').textContent=id==='brightness'?(v>0?'+':'')+v:(v/100).toFixed(2)+'×'});$('trailGapOut').textContent=$('trailGap').value+'% of image diagonal'}
 function saveSettings(){try{localStorage.setItem('bloodtracker_colors_v1',JSON.stringify(settings()))}catch{}}
 try{apply(Object.assign({},defaults,JSON.parse(localStorage.getItem('bloodtracker_colors_v1')||'{}')))}catch{apply(defaults)}
 ids.forEach(id=>$(id).addEventListener('input',()=>{showValues();syncPulseButton();syncTrailButton();saveSettings();if(source)render(true);ensureLoop()}));
@@ -291,7 +296,7 @@ if(sourceKind==='camera'&&video.readyState<2)return;
 const w=canvas.width,h=canvas.height;
 ctx.drawImage(source,0,0,w,h);
 const image=ctx.getImageData(0,0,w,h),d=image.data;
-const s=settings(),mode=s.mode,ratio=Number(s.sensitivity)/100,boost=Number(s.boost)/100,contrast=Number(s.contrast)/100,brightness=Number(s.brightness);
+const s=settings(),mode=s.mode,ratio=Number(s.sensitivity)/100,boost=Number(s.boost)/100,filterStrength=Number(s.filterStrength)/100,contrast=Number(s.contrast)/100,brightness=Number(s.brightness);
 const tint=hues[s.background]||hues.gray,hi=highlights[s.highlight]||highlights.red;
 const period=s.strobeSpeed==='normal'?1100:1700;
 const pulse=s.strobe?(0.17+0.83*(0.5+0.5*Math.sin(2*Math.PI*performance.now()/period))):1;
@@ -301,21 +306,35 @@ const redCounts=s.trailLine?new Uint16Array(cols*rows):null;
 for(let y=0;y<h;y++){
 for(let x=0;x<w;x++){
 const i=(y*w+x)*4;
-let r=clamp((d[i]-128)*contrast+128+brightness),g=clamp((d[i+1]-128)*contrast+128+brightness),b=clamp((d[i+2]-128)*contrast+128+brightness);
+const origR=d[i],origG=d[i+1],origB=d[i+2];
+let r=clamp((origR-128)*contrast+128+brightness),g=clamp((origG-128)*contrast+128+brightness),b=clamp((origB-128)*contrast+128+brightness);
 const candidate=isRed(r,g,b,ratio);if(candidate)hits++;
 if(s.dots&&candidate&&x%step===Math.floor(step/2)&&y%step===Math.floor(step/2)&&markers.length<650)markers.push([x,y]);
 if(redCounts&&candidate&&x%3===0&&y%3===0)redCounts[Math.floor(y/cellSize)*cols+Math.floor(x/cellSize)]++;
 if(mode==='invert'&&!s.strobe){d[i]=255-r;d[i+1]=255-g;d[i+2]=255-b}
 else if(mode==='normal'&&!s.strobe){d[i]=r;d[i+1]=g;d[i+2]=b}
 else if(candidate){
-const strength=Math.min(1,Math.max(.22,((r-Math.max(g,b))*boost)/170));
+const hueMix=Math.min(1,.30+.45*(boost-1)); // stronger boost = stronger chosen highlight color
+const redLift=clamp(r*boost),greenLift=g/Math.max(1,boost),blueLift=b/Math.max(1,boost);
+const baseR=redLift*(1-hueMix)+hi[0]*hueMix;
+const baseG=greenLift*(1-hueMix)+hi[1]*hueMix;
+const baseB=blueLift*(1-hueMix)+hi[2]*hueMix;
 const fade=1-pulse;
-d[i]=clamp(hi[0]*(.6+.4*strength)*pulse+r*.1*fade);
-d[i+1]=clamp((hi[1]+(1-strength)*28)*pulse+g*.1*fade);
-d[i+2]=clamp((hi[2]+(1-strength)*20)*pulse+b*.1*fade);
+d[i]=clamp(baseR*pulse+r*.1*fade);
+d[i+1]=clamp(baseG*pulse+g*.1*fade);
+d[i+2]=clamp(baseB*pulse+b*.1*fade);
 }else if(mode==='invert'||mode==='opposite'){d[i]=255-r;d[i+1]=255-g;d[i+2]=255-b}
 else if(mode==='normal'){d[i]=r;d[i+1]=g;d[i+2]=b}
 else{const gray=r*.299+g*.587+b*.114;const shade=mode==='mono'?[1,1,1]:tint;d[i]=clamp(gray*shade[0]);d[i+1]=clamp(gray*shade[1]);d[i+2]=clamp(gray*shade[2])}
+// Filter Strength: 0 = original camera, 1 = full filter, 2 = full filter + deeper non-red background.
+const mix=Math.min(1,filterStrength),extra=Math.max(0,filterStrength-1);
+if(extra&&!candidate&&mode!=='normal'){
+ const darken=1-extra*.38;
+ d[i]*=darken;d[i+1]*=darken;d[i+2]*=darken;
+}
+d[i]=clamp(origR*(1-mix)+d[i]*mix);
+d[i+1]=clamp(origG*(1-mix)+d[i+1]*mix);
+d[i+2]=clamp(origB*(1-mix)+d[i+2]*mix);
 }}
 ctx.putImageData(image,0,0);
 if(redCounts){
