@@ -164,16 +164,12 @@ try{
 await track.applyConstraints({advanced:[{torch:on}]});
 if(getVideoTrack()!==track){torchOn=false;status('Camera changed before the flashlight was updated.');return false}
 const actual=typeof track.getSettings==='function'?track.getSettings().torch:undefined;
-if(actual===!on){
-torchOn=false;status('Chrome did not switch the flashlight. Try Android Quick Settings or a different rear camera.');
-return false
-}
-if(on&&actual===undefined&&capability!=='supported'){
-torchOn=false;status('Flashlight support could not be confirmed in Chrome. Check whether the light came on; if not, try Android Quick Settings.');
+if(typeof actual==='boolean'&&actual!==on){
+torchOn=actual;status('Chrome did not change the phone light. Try Android Quick Settings or another rear camera.');
 return false
 }
 torchOn=on;
-status(on?'Flashlight ON requested. Tap Flashlight again to turn it OFF.':'Flashlight OFF.');
+status(on?(actual===undefined?'Flashlight ON requested. Please confirm the light came on; tap again to request OFF.':'Flashlight ON. Tap again for OFF.'):'Flashlight OFF requested.');
 return true
 }catch(e){
 torchOn=false;
