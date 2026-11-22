@@ -24,7 +24,7 @@ export async function onRequestGet({request}) {
   const response=reply({
    source:'RainViewer',host:data.host,frames,generated:data.generated||null,
    note:'Observed precipitation radar. Free API has no future nowcast; tiles limited to zoom 7.'
-  },200,'public,max-age=300,s-maxage=300');
+  },200,'public,max-age=120,s-maxage=120');
   if(store)try{await store.put(key,response.clone())}catch(_){}
   return response;
  }catch(e){return reply({error:'Weather radar temporarily unavailable'},503)}
