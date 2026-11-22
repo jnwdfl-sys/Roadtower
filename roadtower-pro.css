@@ -1019,3 +1019,15 @@ body.rt-pro-ui #map .rt-nearest-plane-panel.rt-layout-managed:not(.rt-layout-min
   grid-template-columns:minmax(0,1fr)!important
  }
 }
+
+body.rt-pro-ui #map .rt-nearest-plane-panel .rt-nearest-plane-external{
+ display:block;
+ margin:8px 0;padding:11px;
+ border:1px solid #6199b3;border-radius:9px;
+ text-align:center;text-decoration:none;
+ background:#123e55;color:#b5efff;
+ font:800 13px/1.4 system-ui,Arial;
+}
+body.rt-pro-ui #map .rt-nearest-plane-panel .rt-nearest-plane-external:focus-visible{
+ outline:3px solid #9ef2ef;outline-offset:2px;
+}
