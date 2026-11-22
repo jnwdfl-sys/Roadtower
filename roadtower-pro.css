@@ -652,3 +652,68 @@ body.rt-pro-ui #map #rtLayoutTray .rt-dock-collapse-button:focus-visible{
   grid-column:1/-1!important;
  }
 }
+
+/* v54 readable MAP & GPS TOOLS: 16pt = about 21.3 CSS px.
+ * Keep compact DOTS and map status markers small to preserve map visibility.
+ * Enlarge actionable text and explanatory text in the actual open panel. */
+body.rt-pro-ui #map .rt-map-tools-panel:not(.rt-layout-minimized):not(.rt-layout-hidden){
+ font-size:16pt!important;
+ line-height:1.5!important;
+}
+body.rt-pro-ui #map .rt-map-tools-panel .rt-map-tools-title{
+ font-size:19pt!important;
+ line-height:1.25!important;
+ margin:7px 0 12px!important;
+}
+body.rt-pro-ui #map .rt-map-tools-panel .rt-map-tools-intro{
+ font-size:16pt!important;
+ line-height:1.48!important;
+ font-weight:500!important;
+ margin:10px 0 16px!important;
+}
+body.rt-pro-ui #map .rt-map-tools-panel .rt-map-tools-grid{
+ gap:12px!important;
+ margin-top:14px!important;
+}
+body.rt-pro-ui #map .rt-map-tools-panel .rt-map-tools-grid button{
+ font-size:16pt!important;
+ line-height:1.25!important;
+ font-weight:750!important;
+ min-height:67px!important;
+ padding:12px 13px!important;
+ white-space:normal!important;
+ overflow-wrap:break-word!important;
+ text-wrap:balance!important;
+}
+body.rt-pro-ui #map .rt-map-tools-panel .rt-layout-header{
+ padding:10px!important;
+ gap:10px!important;
+}
+body.rt-pro-ui #map .rt-map-tools-panel .rt-layout-grip{
+ font-size:16pt!important;
+ line-height:1.35!important;
+ white-space:normal!important;
+}
+body.rt-pro-ui #map .rt-map-tools-panel .rt-layout-actions button{
+ font-size:16pt!important;
+ min-height:48px!important;
+ min-width:48px!important;
+ padding:5px!important;
+}
+/* In the smaller floating window, a single column avoids narrow or
+ * cut-off text; two columns remain in maximized unfolded view. */
+body.rt-pro-ui #map .rt-map-tools-panel:not(.rt-layout-maximized) .rt-map-tools-grid{
+ grid-template-columns:minmax(0,1fr)!important;
+}
+body.rt-pro-ui #map .rt-map-tools-panel.rt-layout-maximized .rt-map-tools-grid{
+ grid-template-columns:repeat(2,minmax(0,1fr))!important;
+}
+@media(max-width:550px){
+ body.rt-pro-ui #map .rt-map-tools-panel.rt-layout-maximized .rt-map-tools-grid{
+  grid-template-columns:minmax(0,1fr)!important;
+ }
+ body.rt-pro-ui #map .rt-map-tools-panel .rt-layout-actions button{
+  min-height:42px!important;
+  min-width:38px!important;
+ }
+}
