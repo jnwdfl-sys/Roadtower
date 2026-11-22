@@ -40,6 +40,11 @@ toolsPanel.setAttribute('aria-label','ROADTOWER map and GPS controls');
 toolsPanel.innerHTML=
  '<strong class="rt-map-tools-title">⚙ MAP & GPS TOOLS</strong>'+
  '<p class="rt-map-tools-intro">Your map stays full-screen. Open only the controls you need; minimize this panel to its TOOLS dot.</p>'+
+ '<div class="rt-font-controls" role="group" aria-label="ROADTOWER text size">'+
+ '<span class="rt-font-label">Text size</span>'+
+ '<button id="rtFontSmaller" type="button" aria-label="Make all panel text smaller">A−</button>'+
+ '<output id="rtFontValue" aria-live="polite">18 pt</output>'+
+ '<button id="rtFontLarger" type="button" aria-label="Make all panel text larger">A+</button></div>'+
  '<div class="rt-map-tools-grid">'+
  '<button id="rtToolGps" type="button">◎ Start / Find GPS</button>'+
  '<button id="rtToolStop" type="button">■ Stop GPS</button>'+
@@ -61,6 +66,32 @@ if(window.L&&L.DomEvent){
  L.DomEvent.disableScrollPropagation(toolsPanel);
 }
 const tool=id=>toolsPanel.querySelector('#'+id);
+// Persist the same readable typography across MAP TOOLS, HAM/GMRS, APRS,
+// aircraft, radar, Storms Ahead and every other information panel.
+// A single default is larger than the previous 11-13px panel styles.
+const FONT_KEY='roadtower.ui.fontPointSize.v1';
+const FONT_OPTIONS=[16,18,20,22,24];
+let fontPoints=18;
+try{
+ const n=Number(localStorage.getItem(FONT_KEY));
+ if(FONT_OPTIONS.includes(n))fontPoints=n;
+}catch(_){}
+function syncReadableFont(){
+ document.body.style.setProperty('--rt-readable-size',fontPoints+'pt');
+ document.body.style.setProperty('--rt-readable-title',(fontPoints+3)+'pt');
+ tool('rtFontValue').textContent=fontPoints+' pt';
+ tool('rtFontSmaller').disabled=fontPoints===FONT_OPTIONS[0];
+ tool('rtFontLarger').disabled=fontPoints===FONT_OPTIONS[FONT_OPTIONS.length-1];
+}
+function changeFont(delta){
+ const idx=FONT_OPTIONS.indexOf(fontPoints);
+ fontPoints=FONT_OPTIONS[Math.min(FONT_OPTIONS.length-1,Math.max(0,idx+delta))];
+ try{localStorage.setItem(FONT_KEY,String(fontPoints))}catch(_){}
+ syncReadableFont();
+}
+tool('rtFontSmaller').addEventListener('click',()=>changeFont(-1));
+tool('rtFontLarger').addEventListener('click',()=>changeFont(1));
+syncReadableFont();
 function proxy(id){
  const button=document.getElementById(id);
  if(button&&!button.disabled){button.click();return true}
