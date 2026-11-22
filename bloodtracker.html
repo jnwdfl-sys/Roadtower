@@ -19,7 +19,7 @@ header h1{font-size:clamp(27px,6vw,41px);margin:8px 0 3px;color:#88e1ff}header p
 #empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;color:#bdd3dd;pointer-events:none;background:radial-gradient(circle at center,#213c49 0%,#08131e 75%)}
 #empty.hidden{display:none}.controls{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 3px}
 button,.upload{background:#27bfe6;color:#05202c;border:1px solid #27bfe6;padding:10px 13px;border-radius:10px;font-weight:750;cursor:pointer;min-height:43px;display:inline-flex;align-items:center;justify-content:center;text-align:center}
-button.secondary,.upload{background:#244c62;color:#f0f8fb;border-color:#47738a}button.active{background:#b32336!important;color:white!important;border-color:#ff8890!important}button.trail-active{background:#e7d227!important;color:#182527!important;border-color:#fff48b!important}button:disabled{opacity:.5;cursor:not-allowed}
+button.secondary,.upload{background:#244c62;color:#f0f8fb;border-color:#47738a}button.active{background:#b32336!important;color:white!important;border-color:#ff8890!important}button.trail-active{background:#e7d227!important;color:#182527!important;border-color:#fff48b!important}#torch{font-size:16px;min-width:185px;border:2px solid #f4cf64;background:#373325;color:#fff2b0}#torch[aria-pressed=true]{background:#ffd447!important;color:#201b0b!important;border-color:#fff4a6!important}#torch[disabled]{opacity:.7}#torchHelp{margin:8px 0 0;color:#f0ddaa;font-size:13px}button:disabled{opacity:.5;cursor:not-allowed}
 input[type=file]{display:none}label.setting{display:block;margin:12px 0}.setting strong{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:5px}
 select{width:100%;background:#071d2d;border:1px solid #527386;border-radius:10px;color:var(--ink);padding:10px}
 input[type=range]{width:100%;accent-color:#54d9ff}
@@ -47,7 +47,7 @@ small,.note{color:var(--muted)}.status{padding:10px 12px;border:1px solid #44697
 <div class="controls">
 <button id="start" type="button">📷 Start camera</button>
 <button id="switch" type="button" class="secondary">↻ Flip camera</button>
-<button id="torch" type="button" class="secondary" aria-pressed="false" disabled>🔦 Phone light: OFF</button>
+<button id="torch" type="button" aria-pressed="false">🔦 Flashlight: OFF</button>
 <label class="upload" for="photo">▣ Open photo</label><input id="photo" type="file" accept="image/*">
 <button id="freeze" type="button" class="secondary">⏸ Freeze</button>
 <button id="strobeToggle" type="button" class="secondary" aria-pressed="false">🔴 Red strobe: OFF</button>
@@ -55,6 +55,7 @@ small,.note{color:var(--muted)}.status{padding:10px 12px;border:1px solid #44697
 <button id="save" type="button" class="secondary">↓ Save picture</button>
 <button id="stop" type="button" class="secondary">■ Stop</button>
 </div>
+<p id="torchHelp" role="status" aria-live="polite">Tap Flashlight ON to start the rear camera and request the phone light. Some phones do not allow browsers to control the flashlight.</p>
 <p id="status" class="status" role="status" aria-live="polite">Camera is off. Filters work on photos too.</p>
 <div class="meterline"><span>Red-color interest</span><span id="interest">—</span></div>
 <div class="meter"><span id="bar"></span></div>
@@ -125,42 +126,93 @@ ids.forEach(id=>$(id).addEventListener('input',()=>{showValues();syncPulseButton
 $('trailToggle').onclick=()=>{$('trailLine').checked=!$('trailLine').checked;$('trailLine').dispatchEvent(new Event('input',{bubbles:true}))};
 $('strobeToggle').onclick=()=>{$('strobe').checked=!$('strobe').checked;$('strobe').dispatchEvent(new Event('input',{bubbles:true}))};
 $('reset').onclick=()=>{apply(defaults);saveSettings();render(true)};
-function getTorchTrack(){
+function getVideoTrack(){
 const track=stream&&stream.getVideoTracks()[0];
-if(!track||track.readyState!=='live'||typeof track.getCapabilities!=='function')return null;
-try{return track.getCapabilities().torch===true?track:null}catch{return null}
+return track&&track.readyState==='live'?track:null
+}
+function torchCapability(track){
+if(!track||typeof track.getCapabilities!=='function')return 'unknown';
+try{const caps=track.getCapabilities();return caps.torch===true?'supported':caps.torch===false?'unsupported':'unknown'}catch{return 'unknown'}
 }
 function syncTorch(){
-const btn=$('torch'),available=!!getTorchTrack();
-btn.disabled=!available||torchBusy;
-btn.textContent=torchOn?'🔦 Phone light: ON':'🔦 Phone light: OFF';
+const btn=$('torch');
+btn.disabled=torchBusy;
+btn.textContent=torchOn?'🔦 Flashlight: ON':'🔦 Flashlight: OFF';
 btn.setAttribute('aria-pressed',String(torchOn));
 btn.classList.toggle('active',torchOn);
-btn.title=available?'Turn the rear camera flashlight on or off':'Requires a Chrome-compatible phone flashlight and an active rear camera';
+const track=getVideoTrack();
+const capability=torchCapability(track);
+$('torchHelp').textContent=torchOn?
+  'Phone light requested ON. Tap again for OFF. Light turns off when you stop the camera.':
+  !track?'Tap Flashlight ON to start the rear camera. Chrome may ask for camera permission.':
+  capability==='unsupported'?'This camera does not report flashlight support in Chrome. Try another rear camera or Android Quick Settings.':
+  capability==='supported'?'Rear-camera flashlight supported. Tap the button to turn it ON.':
+  'Flashlight availability is unconfirmed on this camera. Tap ON to test.';
+}
+async function setTorch(on){
+const track=getVideoTrack();
+if(!track||typeof track.applyConstraints!=='function'){
+status('Flashlight needs an active camera in Chrome. Tap Start Camera first.');
+return false
+}
+const capability=torchCapability(track);
+if(capability==='unsupported'){
+torchOn=false;status('Flashlight is not available on this camera in Chrome. Try a different rear camera or use Android Quick Settings.');
+syncTorch();return false
+}
+try{
+await track.applyConstraints({advanced:[{torch:on}]});
+if(getVideoTrack()!==track){torchOn=false;status('Camera changed before the flashlight was updated.');return false}
+const actual=typeof track.getSettings==='function'?track.getSettings().torch:undefined;
+if(actual===!on){
+torchOn=false;status('Chrome did not switch the flashlight. Try Android Quick Settings or a different rear camera.');
+return false
+}
+if(on&&actual===undefined&&capability!=='supported'){
+torchOn=false;status('Flashlight support could not be confirmed in Chrome. Check whether the light came on; if not, try Android Quick Settings.');
+return false
+}
+torchOn=on;
+status(on?'Flashlight ON requested. Tap Flashlight again to turn it OFF.':'Flashlight OFF.');
+return true
+}catch(e){
+torchOn=false;
+status('Flashlight could not be controlled by Chrome: '+(e.message||'unsupported camera')+'. Try Android Quick Settings.');
+return false
+}
 }
 async function toggleTorch(){
-const track=getTorchTrack();
-if(!track){status('Phone light unavailable for this camera. Try Flip camera to the rear camera, or check Chrome support.');syncTorch();return}
 if(torchBusy)return;
-const next=!torchOn;torchBusy=true;syncTorch();
+torchBusy=true;syncTorch();
 try{
-await track.applyConstraints({advanced:[{torch:next}]});
-if(track.readyState!=='live'||track!==getTorchTrack()){torchOn=false;status('Camera changed while switching the light.');return}
-torchOn=next;
-status(torchOn?'Phone flashlight ON. Tap again to turn it off.':'Phone flashlight OFF.');
-}catch(err){status('Could not change phone flashlight: '+(err.message||'not supported on this camera.'))}
-finally{torchBusy=false;syncTorch()}
+if(torchOn){await setTorch(false);return}
+if(!getVideoTrack()){
+if(sourceKind==='photo'){
+status('Flashlight works with a live rear camera, not a still photo. Tap Start Camera to switch.');
+return
+}
+facing='environment';
+const success=await startCamera();
+if(!success)return
+}
+const track=getVideoTrack();
+if(track&&typeof track.getSettings==='function'&&track.getSettings().facingMode==='user'){
+status('Flashlight needs the rear camera. Tap Flip camera, then try again.');
+return
+}
+await setTorch(true);
+}finally{torchBusy=false;syncTorch()}
 }
 function stopCamera(){
 if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
-torchOn=false;torchBusy=false;syncTorch();
-video.srcObject=null;cancelAnimationFrame(frameId);frameId=0
+torchOn=false;
+video.srcObject=null;cancelAnimationFrame(frameId);frameId=0;syncTorch()
 }
 function cleanupPhoto(){if(photoUrl){URL.revokeObjectURL(photoUrl);photoUrl=null}}
 function reveal(){$('empty').classList.add('hidden')}
 function sizeCanvas(w,h,limit){const scale=Math.min(1,limit/Math.max(w,1));canvas.width=Math.max(1,Math.round(w*scale));canvas.height=Math.max(1,Math.round(h*scale))}
 async function startCamera(){
-if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){status('Camera access is unavailable. Open in Chrome over HTTPS, or select a photo.');return}
+if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){status('Camera access is unavailable. Open in Chrome over HTTPS, or select a photo.');return false}
 stopCamera();cleanupPhoto();source=null;sourceKind=null;paused=false;frozenSource=null;$('freeze').textContent='⏸ Freeze';
 try{
 status('Requesting camera permission…');
@@ -168,9 +220,9 @@ stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:
 video.srcObject=stream;await video.play();source=video;sourceKind='camera';reveal();
 sizeCanvas(video.videoWidth||960,video.videoHeight||600,800);
 syncTorch();
-status(getTorchTrack()?'Camera active. Phone light is available.':'Camera active. Phone light is not supported by this camera/browser.');
-last=0;frameId=requestAnimationFrame(tick);
-}catch(e){stopCamera();status('Could not start camera: '+(e.message||'Check Chrome camera permission.'))}
+status('Camera active. Use the Flashlight ON/OFF button to request the rear-camera light.');
+last=0;frameId=requestAnimationFrame(tick);return true;
+}catch(e){stopCamera();status('Could not start camera: '+(e.message||'Check Chrome camera permission.'));return false}
 }
 function ensureLoop(){if(source&&!frameId){last=0;frameId=requestAnimationFrame(tick)}}
 function tick(t){if(!source){frameId=0;return}const pulsing=$('strobe').checked,live=sourceKind==='camera'&&!paused;if(!pulsing&&!live){frameId=0;return}if(t-last>=(sourceKind==='photo'?150:90)){render(false);last=t}frameId=requestAnimationFrame(tick)}
