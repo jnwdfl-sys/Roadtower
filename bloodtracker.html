@@ -19,7 +19,7 @@ header h1{font-size:clamp(27px,6vw,41px);margin:8px 0 3px;color:#88e1ff}header p
 #empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;color:#bdd3dd;pointer-events:none;background:radial-gradient(circle at center,#213c49 0%,#08131e 75%)}
 #empty.hidden{display:none}.controls{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 3px}
 button,.upload{background:#27bfe6;color:#05202c;border:1px solid #27bfe6;padding:10px 13px;border-radius:10px;font-weight:750;cursor:pointer;min-height:43px;display:inline-flex;align-items:center;justify-content:center;text-align:center}
-button.secondary,.upload{background:#244c62;color:#f0f8fb;border-color:#47738a}button:disabled{opacity:.5;cursor:not-allowed}
+button.secondary,.upload{background:#244c62;color:#f0f8fb;border-color:#47738a}button.active{background:#b32336!important;color:white!important;border-color:#ff8890!important}button:disabled{opacity:.5;cursor:not-allowed}
 input[type=file]{display:none}label.setting{display:block;margin:12px 0}.setting strong{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:5px}
 select{width:100%;background:#071d2d;border:1px solid #527386;border-radius:10px;color:var(--ink);padding:10px}
 input[type=range]{width:100%;accent-color:#54d9ff}
@@ -43,6 +43,7 @@ small,.note{color:var(--muted)}.status{padding:10px 12px;border:1px solid #44697
 <button id="switch" type="button" class="secondary">↻ Flip camera</button>
 <label class="upload" for="photo">▣ Open photo</label><input id="photo" type="file" accept="image/*">
 <button id="freeze" type="button" class="secondary">⏸ Freeze</button>
+<button id="strobeToggle" type="button" class="secondary" aria-pressed="false">🔴 Red pulse: OFF</button>
 <button id="save" type="button" class="secondary">↓ Save picture</button>
 <button id="stop" type="button" class="secondary">■ Stop</button>
 </div>
@@ -82,6 +83,9 @@ small,.note{color:var(--muted)}.status{padding:10px 12px;border:1px solid #44697
 <label class="setting"><strong>Contrast <output id="contrastOut"></output></strong><input type="range" id="contrast" min="50" max="200" step="5" value="115"></label>
 <label class="setting"><strong>Brightness <output id="brightnessOut"></output></strong><input type="range" id="brightness" min="-80" max="80" step="5" value="0"></label>
 <label class="check"><input type="checkbox" id="dots" checked>Show dotted red-interest markers</label>
+<label class="check"><input type="checkbox" id="strobe">Pulse / strobe red-highlighted spots</label>
+<label class="setting"><strong>Red pulse speed</strong><select id="strobeSpeed"><option value="slow">Slow, gentle pulse</option><option value="normal">Normal pulse</option></select></label>
+<p class="note">Optional: only red-like spots brighten and dim, not the whole screen. No rapid full-screen flashing; OFF by default.</p>
 <button id="reset" class="secondary" type="button">Restore defaults</button>
 <p class="note">Try “Invert background, keep red” in green foliage or “Grayscale, keep red” on busy ground. Use sensitivity to reduce false highlights.</p>
 </div>
@@ -95,15 +99,17 @@ small,.note{color:var(--muted)}.status{padding:10px 12px;border:1px solid #44697
 const $=id=>document.getElementById(id);
 const canvas=$('view'),ctx=canvas.getContext('2d',{willReadFrequently:true}),video=$('camera');
 let stream=null,source=null,sourceKind=null,facing='environment',paused=false,last=0,frameId=0,photoUrl=null,frozenSource=null;
-const defaults={mode:'red',background:'gray',highlight:'red',sensitivity:'135',boost:'170',contrast:'115',brightness:'0',dots:true};
-const ids=['mode','background','highlight','sensitivity','boost','contrast','brightness','dots'];
+const defaults={mode:'red',background:'gray',highlight:'red',sensitivity:'135',boost:'170',contrast:'115',brightness:'0',dots:true,strobe:false,strobeSpeed:'slow'};
+const ids=['mode','background','highlight','sensitivity','boost','contrast','brightness','dots','strobe','strobeSpeed'];
 const status=t=>$('status').textContent=t;
 function settings(){let s={};ids.forEach(id=>{const el=$(id);s[id]=el.type==='checkbox'?el.checked:el.value});return s}
-function apply(s){ids.forEach(id=>{const el=$(id);if(s[id]!==undefined){if(el.type==='checkbox')el.checked=!!s[id];else el.value=s[id]}});showValues()}
+function apply(s){ids.forEach(id=>{const el=$(id);if(s[id]!==undefined){if(el.type==='checkbox')el.checked=!!s[id];else el.value=s[id]}});showValues();syncPulseButton()}
+function syncPulseButton(){const on=$('strobe').checked,b=$('strobeToggle');b.textContent=on?'🔴 Red pulse: ON':'🔴 Red pulse: OFF';b.setAttribute('aria-pressed',String(on));b.classList.toggle('active',on);$('strobeSpeed').disabled=!on}
 function showValues(){['sensitivity','boost','contrast','brightness'].forEach(id=>{const v=Number($(id).value);$(id+'Out').textContent=id==='sensitivity'?(v/100).toFixed(2)+'×':id==='brightness'?(v>0?'+':'')+v:(v/100).toFixed(2)+'×'})}
 function saveSettings(){try{localStorage.setItem('bloodtracker_colors_v1',JSON.stringify(settings()))}catch{}}
 try{apply(Object.assign({},defaults,JSON.parse(localStorage.getItem('bloodtracker_colors_v1')||'{}')))}catch{apply(defaults)}
-ids.forEach(id=>$(id).addEventListener('input',()=>{showValues();saveSettings();if(sourceKind==='photo'||paused)render(true)}));
+ids.forEach(id=>$(id).addEventListener('input',()=>{showValues();syncPulseButton();saveSettings();if(source)render(true);ensureLoop()}));
+$('strobeToggle').onclick=()=>{$('strobe').checked=!$('strobe').checked;$('strobe').dispatchEvent(new Event('input',{bubbles:true}))};
 $('reset').onclick=()=>{apply(defaults);saveSettings();render(true)};
 function stopCamera(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}video.srcObject=null;cancelAnimationFrame(frameId);frameId=0}
 function cleanupPhoto(){if(photoUrl){URL.revokeObjectURL(photoUrl);photoUrl=null}}
@@ -121,20 +127,22 @@ status('Camera active. Adjust the filters for the lighting and ground color.');
 last=0;frameId=requestAnimationFrame(tick);
 }catch(e){stopCamera();status('Could not start camera: '+(e.message||'Check Chrome camera permission.'))}
 }
-function tick(t){if(sourceKind!=='camera')return;if(!paused&&t-last>=85){render(false);last=t}frameId=requestAnimationFrame(tick)}
+function ensureLoop(){if(source&&!frameId){last=0;frameId=requestAnimationFrame(tick)}}
+function tick(t){if(!source){frameId=0;return}const pulsing=$('strobe').checked,live=sourceKind==='camera'&&!paused;if(!pulsing&&!live){frameId=0;return}if(t-last>=(sourceKind==='photo'?150:90)){render(false);last=t}frameId=requestAnimationFrame(tick)}
 function clamp(x){return x<0?0:x>255?255:x}
 function isRed(r,g,b,ratio){return r>45&&r>g*ratio&&r>b*ratio&&r-g>12&&r-b>12}
 const hues={gray:[1,1,1],blue:[.35,.69,1.22],green:[.4,1.08,.55],purple:[.95,.55,1.25],teal:[.43,1.12,1.12],amber:[1.2,.86,.35],dark:[.45,.48,.53]};
 const highlights={red:[255,22,36],pink:[255,24,186],orange:[255,119,8],yellow:[255,236,0]};
 function render(force){
 if(!source)return;
-if(paused&&!force)return;
 if(sourceKind==='camera'&&video.readyState<2)return;
 const w=canvas.width,h=canvas.height;
 ctx.drawImage(source,0,0,w,h);
 const image=ctx.getImageData(0,0,w,h),d=image.data;
 const s=settings(),mode=s.mode,ratio=Number(s.sensitivity)/100,boost=Number(s.boost)/100,contrast=Number(s.contrast)/100,brightness=Number(s.brightness);
 const tint=hues[s.background]||hues.gray,hi=highlights[s.highlight]||highlights.red;
+const period=s.strobeSpeed==='normal'?1100:1700;
+const pulse=s.strobe?(0.17+0.83*(0.5+0.5*Math.sin(2*Math.PI*performance.now()/period))):1;
 let hits=0;const markers=[];const step=18;
 for(let y=0;y<h;y++){
 for(let x=0;x<w;x++){
@@ -142,19 +150,21 @@ const i=(y*w+x)*4;
 let r=clamp((d[i]-128)*contrast+128+brightness),g=clamp((d[i+1]-128)*contrast+128+brightness),b=clamp((d[i+2]-128)*contrast+128+brightness);
 const candidate=isRed(r,g,b,ratio);if(candidate)hits++;
 if(s.dots&&candidate&&x%step===Math.floor(step/2)&&y%step===Math.floor(step/2)&&markers.length<650)markers.push([x,y]);
-if(mode==='invert'){d[i]=255-r;d[i+1]=255-g;d[i+2]=255-b}
-else if(mode==='normal'){d[i]=r;d[i+1]=g;d[i+2]=b}
+if(mode==='invert'&&!s.strobe){d[i]=255-r;d[i+1]=255-g;d[i+2]=255-b}
+else if(mode==='normal'&&!s.strobe){d[i]=r;d[i+1]=g;d[i+2]=b}
 else if(candidate){
 const strength=Math.min(1,Math.max(.22,((r-Math.max(g,b))*boost)/170));
-d[i]=clamp(hi[0]*(.6+.4*strength));
-d[i+1]=clamp(hi[1]+(1-strength)*28);
-d[i+2]=clamp(hi[2]+(1-strength)*20);
-}else if(mode==='opposite'){d[i]=255-r;d[i+1]=255-g;d[i+2]=255-b}
-else{const gray=(r*.299+g*.587+b*.114)*(mode==='mono'?1:1);const shade=mode==='mono'?[1,1,1]:tint;d[i]=clamp(gray*shade[0]);d[i+1]=clamp(gray*shade[1]);d[i+2]=clamp(gray*shade[2])}
+const fade=1-pulse;
+d[i]=clamp(hi[0]*(.6+.4*strength)*pulse+r*.1*fade);
+d[i+1]=clamp((hi[1]+(1-strength)*28)*pulse+g*.1*fade);
+d[i+2]=clamp((hi[2]+(1-strength)*20)*pulse+b*.1*fade);
+}else if(mode==='invert'||mode==='opposite'){d[i]=255-r;d[i+1]=255-g;d[i+2]=255-b}
+else if(mode==='normal'){d[i]=r;d[i+1]=g;d[i+2]=b}
+else{const gray=r*.299+g*.587+b*.114;const shade=mode==='mono'?[1,1,1]:tint;d[i]=clamp(gray*shade[0]);d[i+1]=clamp(gray*shade[1]);d[i+2]=clamp(gray*shade[2])}
 }}
 ctx.putImageData(image,0,0);
-if(s.dots&&mode!=='normal'&&mode!=='invert'&&markers.length){
-ctx.save();ctx.strokeStyle='rgba(255,255,255,.8)';ctx.lineWidth=1.8;ctx.setLineDash([2,3]);
+if(s.dots&&(s.strobe||(mode!=='normal'&&mode!=='invert'))&&markers.length){
+ctx.save();ctx.strokeStyle='rgba(255,255,255,'+(s.strobe?(0.15+0.7*pulse):.8)+')';ctx.lineWidth=1.8;ctx.setLineDash([2,3]);
 for(const p of markers){ctx.beginPath();ctx.arc(p[0],p[1],5.5,0,Math.PI*2);ctx.stroke()}
 ctx.restore();
 }
@@ -162,13 +172,13 @@ const pct=(hits/(w*h)*100);$('interest').textContent=pct.toFixed(2)+'% red-like 
 }
 $('start').onclick=startCamera;
 $('switch').onclick=()=>{facing=facing==='environment'?'user':'environment';startCamera()};
-$('freeze').onclick=()=>{if(!source){status('Start the camera or open a photo first.');return}paused=!paused;if(paused&&sourceKind==='camera'){frozenSource=document.createElement('canvas');frozenSource.width=canvas.width;frozenSource.height=canvas.height;frozenSource.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);source=frozenSource}else if(!paused&&sourceKind==='camera'){source=video;frozenSource=null}$('freeze').textContent=paused?'▶ Unfreeze':'⏸ Freeze';render(true);status(paused?'Frame frozen. You can adjust filters and save it.':'Viewing live image.')};
-$('stop').onclick=()=>{stopCamera();cleanupPhoto();source=null;sourceKind=null;paused=false;$('freeze').textContent='⏸ Freeze';status('Camera stopped. You can open a photo or start again.');$('interest').textContent='—';$('bar').style.width='0%';ctx.clearRect(0,0,canvas.width,canvas.height);$('empty').classList.remove('hidden')};
+$('freeze').onclick=()=>{if(!source){status('Start the camera or open a photo first.');return}paused=!paused;if(paused&&sourceKind==='camera'){frozenSource=document.createElement('canvas');frozenSource.width=canvas.width;frozenSource.height=canvas.height;frozenSource.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);source=frozenSource}else if(!paused&&sourceKind==='camera'){source=video;frozenSource=null}$('freeze').textContent=paused?'▶ Unfreeze':'⏸ Freeze';render(true);if(!paused||$('strobe').checked)ensureLoop();status(paused?'Frame frozen. You can adjust filters and save it.':'Viewing live image.')};
+$('stop').onclick=()=>{stopCamera();cleanupPhoto();source=null;sourceKind=null;paused=false;frozenSource=null;$('freeze').textContent='⏸ Freeze';status('Camera stopped. You can open a photo or start again.');$('interest').textContent='—';$('bar').style.width='0%';ctx.clearRect(0,0,canvas.width,canvas.height);$('empty').classList.remove('hidden')};
 $('photo').addEventListener('change',e=>{
 const file=e.target.files&&e.target.files[0];if(!file)return;
 if(!file.type.startsWith('image/')){status('Choose an image file.');return}
 stopCamera();cleanupPhoto();photoUrl=URL.createObjectURL(file);const img=new Image();
-img.onload=()=>{source=img;sourceKind='photo';paused=false;sizeCanvas(img.naturalWidth,img.naturalHeight,1440);reveal();render(true);status('Photo opened locally. Change colors to compare details.');$('photo').value=''};
+img.onload=()=>{source=img;sourceKind='photo';paused=false;sizeCanvas(img.naturalWidth,img.naturalHeight,1000);reveal();render(true);ensureLoop();status('Photo opened locally. Change colors to compare details.');$('photo').value=''};
 img.onerror=()=>{status('Could not open that image.');cleanupPhoto()};
 img.src=photoUrl
 });
