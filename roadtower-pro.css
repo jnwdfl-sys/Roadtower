@@ -545,3 +545,110 @@ body.rt-pro-ui #map #rtLayoutTray .rt-layout-dock-grip{
   max-height:calc(100% - 115px)!important;
  }
 }
+
+/* v53 -- Uninterrupted full-screen map.
+ * Map toolbar and bottom GPS actions still exist for original JavaScript
+ * and non-map setup page, but they are hidden while the map fills the screen.
+ * All controls are now reachable through the minimizable MAP TOOLS dot. */
+body.rt-pro-ui.map-fullscreen #mapToolbar,
+body.rt-pro-ui.map-fullscreen #gpsActions {
+ display:none!important;
+ visibility:hidden!important;
+ pointer-events:none!important;
+}
+body.rt-pro-ui.map-fullscreen #map .rt-command-strip {
+ top:var(--rt-pro-command-top,10px)!important;
+}
+/* FIELD COMMAND becomes a normal managed panel and launches minimized. */
+body.rt-pro-ui #map .rt-command-strip.rt-layout-managed:not(.rt-layout-minimized):not(.rt-layout-hidden) {
+ max-height:calc(100% - 26px);
+ overflow:auto;
+ border-radius:14px!important;
+}
+/* Full functionality formerly located in the two permanent bars. */
+body.rt-pro-ui #map .rt-map-tools-panel{
+ position:absolute;
+ left:12px;top:14px;z-index:1600;
+ width:min(322px,calc(100% - 85px));
+ max-height:min(76%,650px);
+ overflow:auto;overscroll-behavior:contain;
+ border:1px solid rgba(96,184,209,.6);
+ background:linear-gradient(155deg,rgba(13,39,57,.98),rgba(8,30,47,.98));
+ box-shadow:0 10px 30px #0009;
+ color:#eefbff;border-radius:16px;padding:12px;
+ font:650 12px/1.45 system-ui,Arial;
+}
+body.rt-pro-ui #map .rt-map-tools-title{
+ display:block;color:#aff6e9;font:900 17px/1.3 system-ui,Arial;margin-bottom:6px
+}
+body.rt-pro-ui #map .rt-map-tools-intro{
+ margin:8px 0;color:#c4deeb;font:500 11px/1.55 system-ui,Arial
+}
+body.rt-pro-ui #map .rt-map-tools-grid{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:7px;margin-top:11px;
+}
+body.rt-pro-ui #map .rt-map-tools-grid button{
+ min-width:0;min-height:41px;
+ padding:8px 5px;border:1px solid #578ba5;
+ border-radius:9px;
+ color:#eafcff;background:linear-gradient(145deg,#224e67,#14394f);
+ font:800 11px/1.2 system-ui,Arial;cursor:pointer
+}
+body.rt-pro-ui #map .rt-map-tools-grid button:disabled{
+ opacity:.48;cursor:not-allowed
+}
+body.rt-pro-ui #map .rt-map-tools-grid button.rt-map-tool-clear{
+ background:linear-gradient(140deg,#237e76,#176064);
+ border-color:#73d6c2;color:#fff
+}
+body.rt-pro-ui #map .rt-map-tools-grid button:focus-visible{
+ outline:2px solid #b8fff2;outline-offset:2px
+}
+body.rt-pro-ui #map #rtLayoutTray .rt-dock-collapse-button{
+ display:block!important;
+ width:100%!important;min-height:25px!important;
+ margin:0!important;padding:1px 4px!important;
+ color:#d7f9f6!important;
+ border:1px solid #5b92a3!important;
+ border-radius:9px!important;
+ background:#1a485c!important;
+ font:900 15px/1.1 system-ui,Arial!important;
+ cursor:pointer!important;
+}
+body.rt-pro-ui #map #rtLayoutTray.rt-dock-collapsed{
+ display:flex!important;
+ flex-direction:column!important;
+ align-items:center!important;justify-content:flex-start!important;
+ flex-wrap:nowrap!important;
+ grid-template-columns:none!important;
+ width:47px!important;max-width:47px!important;
+ height:auto!important;max-height:47px!important;
+ overflow:hidden!important;
+ padding:4px!important;
+ gap:0!important;
+ border-radius:13px!important;
+}
+body.rt-pro-ui #map #rtLayoutTray.rt-dock-collapsed > :not(.rt-dock-collapse-button){
+ display:none!important;
+}
+body.rt-pro-ui #map #rtLayoutTray.rt-dock-collapsed .rt-dock-collapse-button{
+ width:38px!important;height:36px!important;min-height:36px!important;
+ font-size:22px!important;
+}
+body.rt-pro-ui #map #rtLayoutTray .rt-dock-collapse-button:focus-visible{
+ outline:2px solid #f0ffff;outline-offset:2px
+}
+@media(max-width:430px){
+ body.rt-pro-ui #map .rt-map-tools-panel{
+  width:calc(100% - 75px);
+  padding:9px;
+ }
+ body.rt-pro-ui #map .rt-map-tools-grid button{font-size:10px}
+}
+/* On unfolded screens, the collapse control spans both columns. */
+@media(min-width:540px){
+ body.rt-pro-ui #map #rtLayoutTray:not(.rt-dock-collapsed) .rt-dock-collapse-button{
+  grid-column:1/-1!important;
+ }
+}
