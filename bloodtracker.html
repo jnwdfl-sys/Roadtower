@@ -19,7 +19,7 @@ header h1{font-size:clamp(27px,6vw,41px);margin:8px 0 3px;color:#88e1ff}header p
 #empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;color:#bdd3dd;pointer-events:none;background:radial-gradient(circle at center,#213c49 0%,#08131e 75%)}
 #empty.hidden{display:none}.controls{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 3px}
 button,.upload{background:#27bfe6;color:#05202c;border:1px solid #27bfe6;padding:10px 13px;border-radius:10px;font-weight:750;cursor:pointer;min-height:43px;display:inline-flex;align-items:center;justify-content:center;text-align:center}
-button.secondary,.upload{background:#244c62;color:#f0f8fb;border-color:#47738a}button.active{background:#b32336!important;color:white!important;border-color:#ff8890!important}button:disabled{opacity:.5;cursor:not-allowed}
+button.secondary,.upload{background:#244c62;color:#f0f8fb;border-color:#47738a}button.active{background:#b32336!important;color:white!important;border-color:#ff8890!important}button.trail-active{background:#e7d227!important;color:#182527!important;border-color:#fff48b!important}button:disabled{opacity:.5;cursor:not-allowed}
 input[type=file]{display:none}label.setting{display:block;margin:12px 0}.setting strong{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:5px}
 select{width:100%;background:#071d2d;border:1px solid #527386;border-radius:10px;color:var(--ink);padding:10px}
 input[type=range]{width:100%;accent-color:#54d9ff}
@@ -45,12 +45,14 @@ small,.note{color:var(--muted)}.status{padding:10px 12px;border:1px solid #44697
 <label class="upload" for="photo">▣ Open photo</label><input id="photo" type="file" accept="image/*">
 <button id="freeze" type="button" class="secondary">⏸ Freeze</button>
 <button id="strobeToggle" type="button" class="secondary" aria-pressed="false">🔴 Red pulse: OFF</button>
+<button id="trailToggle" type="button" class="secondary" aria-pressed="true">🟡 Yellow trail line: ON</button>
 <button id="save" type="button" class="secondary">↓ Save picture</button>
 <button id="stop" type="button" class="secondary">■ Stop</button>
 </div>
 <p id="status" class="status" role="status" aria-live="polite">Camera is off. Filters work on photos too.</p>
 <div class="meterline"><span>Red-color interest</span><span id="interest">—</span></div>
 <div class="meter"><span id="bar"></span></div>
+<p class="note" id="trailStatus" role="status">Yellow line: waiting for red-looking spots.</p>
 <p class="note">The interest meter responds to red-colored pixels, not biological identification. Leaves, dirt, rust, clothing, and lighting can create false highlights. Confirm all findings yourself.</p>
 </div>
 <div class="card"><h2>Offline use</h2><p class="note">This camera and photo-processing tool runs locally in Chrome. Visit the page once while online after an update so Joe's Toolbox can cache it, then open it again without internet. Your camera images are processed on your device; this page does not upload them.</p><p class="note">Offline features do not include live maps, weather or the separate Netlify Blood Tracker website.</p></div>
@@ -84,6 +86,9 @@ small,.note{color:var(--muted)}.status{padding:10px 12px;border:1px solid #44697
 <label class="setting"><strong>Contrast <output id="contrastOut"></output></strong><input type="range" id="contrast" min="50" max="200" step="5" value="115"></label>
 <label class="setting"><strong>Brightness <output id="brightnessOut"></output></strong><input type="range" id="brightness" min="-80" max="80" step="5" value="0"></label>
 <label class="check"><input type="checkbox" id="dots" checked>Show dotted red-interest markers</label>
+<label class="check"><input type="checkbox" id="trailLine" checked>🟡 Draw a thin yellow line linking red-looking spots</label>
+<label class="setting"><strong>Maximum line gap <output id="trailGapOut"></output></strong><input id="trailGap" type="range" min="15" max="65" step="5" value="35"></label>
+<p class="note">Yellow lines link separate red-colored areas from lower to higher in the image. They are guesses based on screen position, not confirmed blood or measured distance. A higher point in the picture may not be physically farther away.</p>
 <label class="check"><input type="checkbox" id="strobe">Pulse / strobe red-highlighted spots</label>
 <label class="setting"><strong>Red pulse speed</strong><select id="strobeSpeed"><option value="slow">Slow, gentle pulse</option><option value="normal">Normal pulse</option></select></label>
 <p class="note">Optional: only red-like spots brighten and dim, not the whole screen. No rapid full-screen flashing; OFF by default.</p>
@@ -100,16 +105,18 @@ small,.note{color:var(--muted)}.status{padding:10px 12px;border:1px solid #44697
 const $=id=>document.getElementById(id);
 const canvas=$('view'),ctx=canvas.getContext('2d',{willReadFrequently:true}),video=$('camera');
 let stream=null,source=null,sourceKind=null,facing='environment',paused=false,last=0,frameId=0,photoUrl=null,frozenSource=null,torchOn=false,torchBusy=false;
-const defaults={mode:'red',background:'gray',highlight:'red',sensitivity:'135',boost:'170',contrast:'115',brightness:'0',dots:true,strobe:false,strobeSpeed:'slow'};
-const ids=['mode','background','highlight','sensitivity','boost','contrast','brightness','dots','strobe','strobeSpeed'];
+const defaults={mode:'red',background:'gray',highlight:'red',sensitivity:'135',boost:'170',contrast:'115',brightness:'0',dots:true,trailLine:true,trailGap:'35',strobe:false,strobeSpeed:'slow'};
+const ids=['mode','background','highlight','sensitivity','boost','contrast','brightness','dots','trailLine','trailGap','strobe','strobeSpeed'];
 const status=t=>$('status').textContent=t;
 function settings(){let s={};ids.forEach(id=>{const el=$(id);s[id]=el.type==='checkbox'?el.checked:el.value});return s}
-function apply(s){ids.forEach(id=>{const el=$(id);if(s[id]!==undefined){if(el.type==='checkbox')el.checked=!!s[id];else el.value=s[id]}});showValues();syncPulseButton()}
+function apply(s){ids.forEach(id=>{const el=$(id);if(s[id]!==undefined){if(el.type==='checkbox')el.checked=!!s[id];else el.value=s[id]}});showValues();syncPulseButton();syncTrailButton()}
 function syncPulseButton(){const on=$('strobe').checked,b=$('strobeToggle');b.textContent=on?'🔴 Red pulse: ON':'🔴 Red pulse: OFF';b.setAttribute('aria-pressed',String(on));b.classList.toggle('active',on);$('strobeSpeed').disabled=!on}
-function showValues(){['sensitivity','boost','contrast','brightness'].forEach(id=>{const v=Number($(id).value);$(id+'Out').textContent=id==='sensitivity'?(v/100).toFixed(2)+'×':id==='brightness'?(v>0?'+':'')+v:(v/100).toFixed(2)+'×'})}
+function syncTrailButton(){const on=$('trailLine').checked,b=$('trailToggle');b.textContent=on?'🟡 Yellow trail line: ON':'🟡 Yellow trail line: OFF';b.setAttribute('aria-pressed',String(on));b.classList.toggle('trail-active',on);$('trailGap').disabled=!on;if(!on)$('trailStatus').textContent='Yellow line OFF.'}
+function showValues(){['sensitivity','boost','contrast','brightness'].forEach(id=>{const v=Number($(id).value);$(id+'Out').textContent=id==='sensitivity'?(v/100).toFixed(2)+'×':id==='brightness'?(v>0?'+':'')+v:(v/100).toFixed(2)+'×'});$('trailGapOut').textContent=$('trailGap').value+'% of image diagonal'}
 function saveSettings(){try{localStorage.setItem('bloodtracker_colors_v1',JSON.stringify(settings()))}catch{}}
 try{apply(Object.assign({},defaults,JSON.parse(localStorage.getItem('bloodtracker_colors_v1')||'{}')))}catch{apply(defaults)}
-ids.forEach(id=>$(id).addEventListener('input',()=>{showValues();syncPulseButton();saveSettings();if(source)render(true);ensureLoop()}));
+ids.forEach(id=>$(id).addEventListener('input',()=>{showValues();syncPulseButton();syncTrailButton();saveSettings();if(source)render(true);ensureLoop()}));
+$('trailToggle').onclick=()=>{$('trailLine').checked=!$('trailLine').checked;$('trailLine').dispatchEvent(new Event('input',{bubbles:true}))};
 $('strobeToggle').onclick=()=>{$('strobe').checked=!$('strobe').checked;$('strobe').dispatchEvent(new Event('input',{bubbles:true}))};
 $('reset').onclick=()=>{apply(defaults);saveSettings();render(true)};
 function getTorchTrack(){
@@ -165,6 +172,53 @@ function clamp(x){return x<0?0:x>255?255:x}
 function isRed(r,g,b,ratio){return r>45&&r>g*ratio&&r>b*ratio&&r-g>12&&r-b>12}
 const hues={gray:[1,1,1],blue:[.35,.69,1.22],green:[.4,1.08,.55],purple:[.95,.55,1.25],teal:[.43,1.12,1.12],amber:[1.2,.86,.35],dark:[.45,.48,.53]};
 const highlights={red:[255,22,36],pink:[255,24,186],orange:[255,119,8],yellow:[255,236,0]};
+// Group adjacent red-color samples into candidate image spots, then link upward.
+function findRedGroups(counts,cols,rows,cellSize,w,h){
+const seen=new Uint8Array(counts.length),groups=[];
+for(let i=0;i<counts.length;i++){
+if(seen[i]||counts[i]===0)continue;
+let stack=[i],mass=0,sx=0,sy=0,cells=0;seen[i]=1;
+while(stack.length){
+const k=stack.pop(),cy=Math.floor(k/cols),cx=k%cols,n=counts[k];
+mass+=n;sx+=(cx+.5)*cellSize*n;sy+=(cy+.5)*cellSize*n;cells++;
+for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+const nx=cx+dx,ny=cy+dy;
+if((dx===0&&dy===0)||nx<0||ny<0||nx>=cols||ny>=rows)continue;
+const next=ny*cols+nx;
+if(!seen[next]&&counts[next]>0){seen[next]=1;stack.push(next)}
+}
+}
+if(mass>=2)groups.push({x:Math.min(w-1,sx/mass),y:Math.min(h-1,sy/mass),mass,cells});
+}
+// Ignore very small color specks before choosing a screen-upward visual path.
+return groups.sort((a,b)=>b.mass-a.mass).slice(0,32).sort((a,b)=>b.y-a.y);
+}
+function drawYellowGuide(groups,w,h,maxFraction){
+const maxGap=Math.hypot(w,h)*maxFraction,chain=[];
+if(groups.length){
+chain.push(groups[0]);const used=new Set([groups[0]]);
+while(chain.length<12){
+const cur=chain[chain.length-1];let best=null,bestScore=Infinity;
+for(const g of groups){
+if(used.has(g)||cur.y-g.y<Math.max(7,h*.025))continue;
+const dx=Math.abs(g.x-cur.x),dy=cur.y-g.y,dist=Math.hypot(dx,dy);
+if(dist>maxGap||dx>maxGap*.85)continue;
+const score=dist+dx*.25-Math.log1p(g.mass)*3;
+if(score<bestScore){best=g;bestScore=score}
+}
+if(!best)break;
+chain.push(best);used.add(best);
+}
+}
+if(chain.length>1){
+ctx.save();ctx.strokeStyle='#ffed38';ctx.fillStyle='#ffed38';ctx.lineWidth=2;ctx.lineJoin='round';ctx.lineCap='round';ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=3;
+ctx.beginPath();ctx.moveTo(chain[0].x,chain[0].y);
+for(let i=1;i<chain.length;i++)ctx.lineTo(chain[i].x,chain[i].y);
+ctx.stroke();for(const p of chain){ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);ctx.fill()}
+ctx.restore();
+}
+return chain.length;
+}
 function render(force){
 if(!source)return;
 if(sourceKind==='camera'&&video.readyState<2)return;
@@ -176,12 +230,15 @@ const tint=hues[s.background]||hues.gray,hi=highlights[s.highlight]||highlights.
 const period=s.strobeSpeed==='normal'?1100:1700;
 const pulse=s.strobe?(0.17+0.83*(0.5+0.5*Math.sin(2*Math.PI*performance.now()/period))):1;
 let hits=0;const markers=[];const step=18;
+const cellSize=Math.max(9,Math.round(w/75)),cols=Math.ceil(w/cellSize),rows=Math.ceil(h/cellSize);
+const redCounts=s.trailLine?new Uint16Array(cols*rows):null;
 for(let y=0;y<h;y++){
 for(let x=0;x<w;x++){
 const i=(y*w+x)*4;
 let r=clamp((d[i]-128)*contrast+128+brightness),g=clamp((d[i+1]-128)*contrast+128+brightness),b=clamp((d[i+2]-128)*contrast+128+brightness);
 const candidate=isRed(r,g,b,ratio);if(candidate)hits++;
 if(s.dots&&candidate&&x%step===Math.floor(step/2)&&y%step===Math.floor(step/2)&&markers.length<650)markers.push([x,y]);
+if(redCounts&&candidate&&x%3===0&&y%3===0)redCounts[Math.floor(y/cellSize)*cols+Math.floor(x/cellSize)]++;
 if(mode==='invert'&&!s.strobe){d[i]=255-r;d[i+1]=255-g;d[i+2]=255-b}
 else if(mode==='normal'&&!s.strobe){d[i]=r;d[i+1]=g;d[i+2]=b}
 else if(candidate){
@@ -195,6 +252,11 @@ else if(mode==='normal'){d[i]=r;d[i+1]=g;d[i+2]=b}
 else{const gray=r*.299+g*.587+b*.114;const shade=mode==='mono'?[1,1,1]:tint;d[i]=clamp(gray*shade[0]);d[i+1]=clamp(gray*shade[1]);d[i+2]=clamp(gray*shade[2])}
 }}
 ctx.putImageData(image,0,0);
+if(redCounts){
+const groups=findRedGroups(redCounts,cols,rows,cellSize,w,h);
+const connected=drawYellowGuide(groups,w,h,Number(s.trailGap)/100);
+$('trailStatus').textContent='Red-color spots: '+groups.length+' · Yellow guide: '+(connected>1?(connected-1)+' suggested link'+(connected===2?'':'s'):'no link found');
+}
 if(s.dots&&(s.strobe||(mode!=='normal'&&mode!=='invert'))&&markers.length){
 ctx.save();ctx.strokeStyle='rgba(255,255,255,'+(s.strobe?(0.15+0.7*pulse):.8)+')';ctx.lineWidth=1.8;ctx.setLineDash([2,3]);
 for(const p of markers){ctx.beginPath();ctx.arc(p[0],p[1],5.5,0,Math.PI*2);ctx.stroke()}
@@ -206,7 +268,7 @@ $('start').onclick=startCamera;
 $('torch').onclick=toggleTorch;
 $('switch').onclick=()=>{facing=facing==='environment'?'user':'environment';startCamera()};
 $('freeze').onclick=()=>{if(!source){status('Start the camera or open a photo first.');return}paused=!paused;if(paused&&sourceKind==='camera'){frozenSource=document.createElement('canvas');frozenSource.width=canvas.width;frozenSource.height=canvas.height;frozenSource.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);source=frozenSource}else if(!paused&&sourceKind==='camera'){source=video;frozenSource=null}$('freeze').textContent=paused?'▶ Unfreeze':'⏸ Freeze';render(true);if(!paused||$('strobe').checked)ensureLoop();status(paused?'Frame frozen. You can adjust filters and save it.':'Viewing live image.')};
-$('stop').onclick=()=>{stopCamera();cleanupPhoto();source=null;sourceKind=null;paused=false;frozenSource=null;$('freeze').textContent='⏸ Freeze';status('Camera stopped. You can open a photo or start again.');$('interest').textContent='—';$('bar').style.width='0%';ctx.clearRect(0,0,canvas.width,canvas.height);$('empty').classList.remove('hidden')};
+$('stop').onclick=()=>{stopCamera();cleanupPhoto();source=null;sourceKind=null;paused=false;frozenSource=null;$('freeze').textContent='⏸ Freeze';status('Camera stopped. You can open a photo or start again.');$('interest').textContent='—';$('bar').style.width='0%';$('trailStatus').textContent=$('trailLine').checked?'Yellow line: waiting for red-looking spots.':'Yellow line OFF.';ctx.clearRect(0,0,canvas.width,canvas.height);$('empty').classList.remove('hidden')};
 $('photo').addEventListener('change',e=>{
 const file=e.target.files&&e.target.files[0];if(!file)return;
 if(!file.type.startsWith('image/')){status('Choose an image file.');return}
