@@ -1171,8 +1171,9 @@ $('center').onclick=()=>{
 let autoStartDone=false;
 function autoStartRoadtower(){
  if(autoStartDone)return;autoStartDone=true;
- if(window.matchMedia&&window.matchMedia('(max-width:1050px)').matches&&
-    !document.body.classList.contains('map-fullscreen')){
+ // ROADTOWER opens in the full-viewport map on BOTH folded and unfolded
+ // screens. The original setup page remains available through MAP TOOLS.
+ if(!document.body.classList.contains('map-fullscreen')){
   $('fullscreenMap').click();
  }
  followMap=true;$('followMap').textContent='Follow GPS: ON';
@@ -1198,4 +1199,4 @@ window.addEventListener('pageshow',e=>{
  }
 });
 })();
-</script><script src="./repeaters.js"></script><script src="./offline-maps.js"></script><script src="./live-layers.js"></script><script src="./cb-range.js"></script><script src="./storm-health.js"></script><script src="./aprs-tracker.js"></script><script src="./panel-layout.js"></script><script src="./roadtower-pro.js"></script></body></html>
+</script><script src="./repeaters.js"></script><script src="./offline-maps.js"></script><script src="./live-layers.js"></script><script src="./cb-range.js"></script><script src="./storm-health.js"></script><script src="./aprs-tracker.js"></script><script src="./roadtower-pro.js"></script><script src="./panel-layout.js"></script></body></html>
