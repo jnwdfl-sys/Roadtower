@@ -1031,3 +1031,20 @@ body.rt-pro-ui #map .rt-nearest-plane-panel .rt-nearest-plane-external{
 body.rt-pro-ui #map .rt-nearest-plane-panel .rt-nearest-plane-external:focus-visible{
  outline:3px solid #9ef2ef;outline-offset:2px;
 }
+
+/* v59: quota-saving aircraft ON/OFF directly in Nearest Plane. */
+body.rt-pro-ui #map .rt-nearest-plane-panel .rt-nearest-plane-buttons #rtPlaneNearestToggle{
+ grid-column:1/-1!important;
+ border:2px solid #6db9c7!important;
+ background:#173b52!important;color:#ddf3fa!important;
+ font-weight:900!important;
+}
+body.rt-pro-ui #map .rt-nearest-plane-panel .rt-nearest-plane-buttons #rtPlaneNearestToggle[data-active="true"]{
+ border-color:#61edaa!important;
+ background:linear-gradient(120deg,#166758,#17877a)!important;
+ color:#f3fffc!important;
+}
+body.rt-pro-ui #map .rt-nearest-plane-panel .rt-nearest-plane-buttons #rtPlaneNearestToggle[data-active="false"]{
+ border-color:#c9a269!important;
+ background:#49433a!important;color:#fff0d2!important;
+}
