@@ -37,7 +37,7 @@ export async function onRequestGet({request}) {
     seenSec:Number.isFinite(x.seen_pos)?x.seen_pos:null
    }));
   const response=reply({source:'adsb.lol',credit:'© adsb.lol contributors (ODbL 1.0)',
-   center:{lat,lon},updated:Date.now(),flights},200,'public,max-age=180,s-maxage=180');
+   center:{lat,lon},updated:Date.now(),flights},200,'public,max-age=60,s-maxage=60');
   if(store)try{await store.put(key,response.clone())}catch(_){}
   return response;
  }catch(e){return reply({error:'Aircraft tracking temporarily unavailable'},503)}
