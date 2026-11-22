@@ -12,6 +12,7 @@ const configs=[
  {id:'gps',selector:'.rt-gps-hud',title:'My GPS'},
  {id:'status',selector:'.rt-status-hud',title:'Connection status'},
  {id:'layers',selector:'.rt-live-panel',title:'Airplanes and weather radar'},
+ {id:'nearestplane',selector:'.rt-nearest-plane-panel',title:'Nearest airplane to my GPS'},
  {id:'cb',selector:'.rt-cb-panel',title:'My radio ranges'},
  {id:'storm',selector:'.rt-storm-panel',title:'Storms Ahead warnings'},
  {id:'health',selector:'.rt-health-panel',title:'Live feed health'},
@@ -65,6 +66,7 @@ const BUBBLES={
  gps:{icon:'◎',short:'GPS',color:'cyan'},
  status:{icon:'●',short:'INFO',color:'blue'},
  layers:{icon:'✈',short:'LIVE',color:'orange'},
+ nearestplane:{icon:'✈',short:'PLANE',color:'airplane'},
  cb:{icon:'📻',short:'RANGE',color:'cb'},
  storm:{icon:'⛈',short:'STORM',color:'storm'},
  health:{icon:'📶',short:'FEEDS',color:'health'},
@@ -188,6 +190,7 @@ function putAtDefault(s){
  else if(s.id==='nearest'){s.x=b.width-w-12;s.y=b.height-h-96}
  else if(s.id==='gps'){s.x=12;s.y=88}
  else if(s.id==='layers'){s.x=b.width-w-12;s.y=Math.max(120,Math.round(b.height*.36))}
+ else if(s.id==='nearestplane'){s.x=Math.max(8,b.width-w-12);s.y=Math.max(120,Math.round(b.height*.27))}
  else if(s.id==='cb'){s.x=12;s.y=Math.max(170,Math.round(b.height*.54))}
  else if(s.id==='storm'){s.x=12;s.y=Math.max(120,Math.round(b.height*.30))}
  else if(s.id==='health'){s.x=b.width-w-12;s.y=Math.max(145,Math.round(b.height*.48))}
