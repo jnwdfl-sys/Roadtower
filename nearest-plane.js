@@ -59,9 +59,9 @@ const compass=n=>['N','NE','E','SE','S','SW','W','NW'][Math.round(n/45)%8];
 function getResult(){
  const g=goodGps(),snapshot=live.getAircraftSnapshot(),checkedAt=snapshot.checkedAt||0;
  const ageMs=checkedAt?Math.max(0,Date.now()-checkedAt):Infinity;
- if(!g)return {state:'gps',error:'Start Live GPS to measure the closest plane to you.'};
  if(!snapshot.aircraftOn)return {state:'off',
   error:'AIRCRAFT OFF to save free API requests. Tap AIRCRAFT ON below for a nearby-plane check.'};
+ if(!g)return {state:'gps',error:'Start Live GPS to measure the closest plane to you.'};
  if(!navigator.onLine&&ageMs>FRESH_MS)return {state:'offline',error:'Offline. Cannot verify nearby airplane positions.'};
  if(ageMs>FRESH_MS)return {state:'stale',error:snapshot.error?
   'Aircraft feed unavailable: '+snapshot.error:
