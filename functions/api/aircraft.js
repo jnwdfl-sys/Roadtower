@@ -16,11 +16,14 @@ export async function onRequestGet({request,env}) {
  lat=Math.round(lat*10)/10;lon=Math.round(lon*10)/10;
  const latStr=lat.toFixed(1),lonStr=lon.toFixed(1);
  const origin=url.origin;
+ const optionalKey=typeof env?.ADSB_LOL_API_KEY==='string'?env.ADSB_LOL_API_KEY.trim():'';
  const store=typeof caches!=='undefined'&&caches.default?caches.default:null;
- const key=new Request(new URL('/api/aircraft?lat='+latStr+'&lon='+lonStr,origin).toString());
+ // Public cache key contains the fact that a secret is configured, NEVER
+ // the secret itself. Adding a key must bypass a prior anonymous 429 cache.
+ const key=new Request(new URL('/api/aircraft?lat='+latStr+'&lon='+lonStr+
+  (optionalKey?'&tier=keyed':''),origin).toString());
  if(store)try{const hit=await store.match(key);if(hit)return hit}catch(_){}
  const failures=[];
- const optionalKey=typeof env?.ADSB_LOL_API_KEY==='string'?env.ADSB_LOL_API_KEY.trim():'';
  const fi={id:'adsb.fi',url:'https://opendata.adsb.fi/api/v3/lat/'+latStr+'/lon/'+lonStr+'/dist/80'};
  const lol={id:'adsb.lol',url:'https://api.adsb.lol/v2/point/'+latStr+'/'+lonStr+'/80',
   headers:optionalKey?{'x-api-key':optionalKey}:undefined};
@@ -39,8 +42,11 @@ export async function onRequestGet({request,env}) {
   const credit=source==='adsb.fi'?'adsb.fi (personal/non-commercial)':
    source==='adsb.lol'?'adsb.lol contributors (ODbL 1.0)':
    'OpenSky Network (opensky-network.org)';
+  const cacheSeconds=optionalKey?90:180;
   const result=reply({source,credit,center:{lat,lon},updated,
-   flights:flights.slice(0,180)},200,'public,max-age=180,s-maxage=180');
+   refreshAfterSec:optionalKey?120:240,
+   flights:flights.slice(0,180)},200,
+   'public,max-age='+cacheSeconds+',s-maxage='+cacheSeconds);
   if(store)try{await store.put(key,result.clone())}catch(_){}
   return result;
  }
