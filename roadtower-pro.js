@@ -129,7 +129,37 @@ function update(){
     'Waiting for official NWS check');
  }
 }
-window.RoadtowerProUI={refresh:update,openPanel:go};
+// Full-screen toolbar lives outside #map (above its stacking context).
+// Position FIELD COMMAND below the *measured* toolbar height so it cannot
+// disappear behind Exit Map / Map mode / CB buttons on narrow Fold screens.
+const topToolbar=document.getElementById('mapToolbar');
+function alignCommand(){
+ if(!document.body.classList.contains('map-fullscreen')){
+  map.style.removeProperty('--rt-pro-command-top');
+  return;
+ }
+ const mr=map.getBoundingClientRect();
+ const tr=topToolbar&&topToolbar.getBoundingClientRect();
+ const measured=tr&&tr.height>0?tr.bottom-mr.top+10:78;
+ const safe=Math.max(62,Math.min(Math.round(measured),Math.max(110,mr.height*.33)));
+ map.style.setProperty('--rt-pro-command-top',safe+'px');
+}
+window.addEventListener('resize',alignCommand);
+if(typeof ResizeObserver!=='undefined'&&topToolbar){
+ const ro=new ResizeObserver(alignCommand);ro.observe(topToolbar);
+}
+if(typeof MutationObserver!=='undefined'){
+ const mo=new MutationObserver(alignCommand);
+ mo.observe(document.body,{attributes:true,attributeFilter:['class']});
+}
+const fullscreenControl=document.getElementById('fullscreenMap');
+if(fullscreenControl)fullscreenControl.addEventListener('click',()=>{
+ if(typeof requestAnimationFrame==='function')requestAnimationFrame(alignCommand);
+ else alignCommand();
+});
+window.addEventListener('pageshow',alignCommand);
+alignCommand();
+window.RoadtowerProUI={refresh:update,openPanel:go,align:alignCommand};
 update();
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)update()});
 window.addEventListener('pageshow',update);
