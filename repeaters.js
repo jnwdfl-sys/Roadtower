@@ -69,7 +69,9 @@ coverageCss.textContent=[
  '#map .rt-cov-swatch.wide{background:#e9c54a}',
  '#map .rt-coverage-controls #rtCoverageToggle[aria-pressed="true"]{background:#21725c;color:#fff;border-color:#64d8a5}',
  '#map .rt-coverage-controls #rtCoverageToggle[aria-pressed="false"]{background:#344350;color:#bbcbd2;border-color:#607c88}',
- '#map #rtCoverageStatus{font-weight:700;color:#c4f5dd}'
+ '#map #rtCoverageStatus{font-weight:700;color:#c4f5dd}',
+ '#map .rt-coverage-radius-label{background:transparent!important;border:0!important;pointer-events:none!important}',
+ '#map .rt-coverage-radius-label span{display:inline-block;padding:5px 7px;border-radius:8px;border:2px solid currentColor;background:#0c2138eb;color:#e7faff;box-shadow:0 2px 9px #000a;font:900 12px/1.2 system-ui,Arial;text-align:center;white-space:nowrap;pointer-events:none}'
 ].join('\n');
 document.head.appendChild(coverageCss);
 
@@ -220,7 +222,7 @@ let coverageMiles=Number(getCov(COV_MILES_KEY,'20'));
 if(![5,10,20,30,50].includes(coverageMiles))coverageMiles=20;
 let coverageShade=Number(getCov(COV_SHADE_KEY,'8'));
 if(!Number.isFinite(coverageShade)||coverageShade<3||coverageShade>18)coverageShade=8;
-let coverageCount=0;
+let coverageCount=0,coverageFocused=false;
 
 const BASELINE_AMATEUR=5044;
 var completeHamRefresh=false;
@@ -522,7 +524,7 @@ function serviceUI(){
  updateGrowth();
 }
 function switchService(name){
- radioService=name;selected=null;follow=true;
+ radioService=name;selected=null;coverageFocused=false;follow=true;
  try{localStorage.setItem('roadtower-radio-view-v1',name)}catch(e){}
  el('rtAuto').textContent='Follow nearest: ON';
  serviceUI();renderPersonal();redraw();updateStatuses();
@@ -541,7 +543,7 @@ function showDetails(x){
  lineText('Location:',x.city+(x.state?', '+x.state:'')+' (approx.)');
  var nearPoint=anchor();
  lineText('Straight-line distance:',distance(nearPoint.lat,nearPoint.lon,x.lat,x.lon).toFixed(1)+' miles '+(nearPoint.gps?'from GPS':'from map center'));
- lineText('Coverage radius:',coverageOn?coverageMiles+' mi illustrative planning circle; NOT verified signal coverage':'Overlay off');
+ lineText('Coverage radius:',coverageOn?coverageMiles+' mi estimated planning circle; NOT verified RF coverage':'Overlay off');
  if(isGMRS(x))lineText('Access:', x.restricted?'GMRS license AND repeater-owner permission REQUIRED.':'GMRS license required; verify repeater-owner access rules.');
  if(x.source)lineText('Source:',x.source);
  if(x.approx)lineText('Pin accuracy:','APPROXIMATE reference area, NOT a surveyed repeater antenna. Mileage is approximate.');
@@ -549,7 +551,11 @@ function showDetails(x){
  var p=document.createElement('div');p.className='rt-muted';p.textContent='Verify repeater settings before transmitting.';d.appendChild(p);
 }
 function choose(x,move){
- selected=x;follow=false;el('rtAuto').textContent='Follow nearest: OFF';
+ selected=x;coverageFocused=true;follow=false;
+ // Clicking a station explicitly asks to view its range. Restore coverage
+ // even when the general overlay was previously turned off.
+ if(!coverageOn){coverageOn=true;setCov(COV_KEY,true);updateCoverageButton()}
+ el('rtAuto').textContent='Follow nearest: OFF';
  showDetails(x);
  if(move)map.setView(coord(x),Math.max(map.getZoom(),11));
  drawLine();
@@ -587,28 +593,52 @@ function drawCoverage(list){
  const ham=inView.filter(it=>!isGMRS(it.x)).sort(ranking).slice(0,8);
  const gmrs=inView.filter(it=>isGMRS(it.x)).sort(ranking).slice(0,8);
  const display=radioService==='ham'?ham:radioService==='gmrs'?gmrs:[...ham,...gmrs];
- if(selected&&bounds.contains(coord(selected))&&
-    (radioService==='both'||(radioService==='gmrs')===isGMRS(selected))&&
-    !display.some(it=>it.x===selected)){
-  display.push({x:selected});
- }
- for(const it of display){
-  const x=it.x,gmrsSite=isGMRS(x);
-  const color=gmrsSite?'#b340cf':x.wide?'#e9c54a':'#35c979';
-  const isSelected=selected===x;
+ const focused=coverageFocused&&selected&&bounds.contains(coord(selected))&&
+  (radioService==='both'||(radioService==='gmrs')===isGMRS(selected));
+ // Draw the selected ring LAST so it stands out over the other circles.
+ const others=display.filter(it=>!focused||it.x!==selected);
+ for(const it of others){
+  const x=it.x;
+  const color=isGMRS(x)?'#b340cf':x.wide?'#e9c54a':'#35c979';
   L.circle(coord(x),{
-   radius:coverageMiles*1609.344,
-   pane:'rtCoveragePane',
-   color,weight:isSelected?2:1.25,opacity:isSelected?.85:.58,
-   dashArray:'5 8',fillColor:color,fillOpacity:coverageShade/100,
+   radius:coverageMiles*1609.344,pane:'rtCoveragePane',
+   color,weight:1.15,opacity:focused?.3:.58,
+   dashArray:'5 8',fillColor:color,fillOpacity:coverageShade/100*(focused?.5:1),
    interactive:false
   }).addTo(coverageGroup);
   coverageCount++;
  }
- status.textContent='Showing '+coverageCount+' nearby site circle(s) • '+
-  coverageMiles+'-mile planning radius • '+
-  (radioService==='both'?'HAM + GMRS':radioService.toUpperCase())+
-  '. Zoom/pan for other repeater sites.';
+ if(focused){
+  const x=selected;
+  const color=isGMRS(x)?'#b340cf':x.wide?'#e9c54a':'#35c979';
+  const selectedCircle=L.circle(coord(x),{
+   radius:coverageMiles*1609.344,pane:'rtCoveragePane',
+   color,weight:4,opacity:1,dashArray:'11 5',
+   fillColor:color,fillOpacity:Math.min(.25,coverageShade/100+.1),
+   interactive:false
+  }).addTo(coverageGroup);
+  coverageCount++;
+  // Put a small mileage label at the right-hand perimeter of the
+  // illustrative circle, without covering the repeater pin itself.
+  const latRad=x.lat*Math.PI/180;
+  const edgeLon=coverageMiles/(69.172*Math.max(.18,Math.cos(latRad)));
+  const edge=[x.lat,Math.max(-179.9,Math.min(179.9,x.lon+edgeLon))];
+  L.marker(edge,{
+   pane:'rtCoveragePane',interactive:false,keyboard:false,
+   icon:L.divIcon({className:'rt-coverage-radius-label',
+    html:'<span>'+coverageMiles+' mi est.</span>',
+    iconSize:[90,26],iconAnchor:[45,13]})
+  }).addTo(coverageGroup);
+  status.textContent='SELECTED '+x.call+' · '+x.mhz.toFixed(3)+' MHz · '+
+   coverageMiles+'-mile ESTIMATED radius shown in '+
+   (isGMRS(x)?'purple':x.wide?'gold':'green')+
+   '. Not verified RF coverage. Zoom out to see the full circle.';
+ }else{
+  status.textContent='Showing '+coverageCount+' nearby site circle(s) • '+
+   coverageMiles+'-mile planning radius • '+
+   (radioService==='both'?'HAM + GMRS':radioService.toUpperCase())+
+   '. Tap a repeater pin to highlight its range.';
+ }
 }
 function redraw(){
  if(!getAllStations().length){
@@ -722,6 +752,7 @@ function drawMarkers(list,p){
   info('TX tone',x.tone||'Not listed');
   info('Mode',x.mode||'Not listed');
   if(x.wide)info('Kansas City Wide','Listed');
+  info('Estimated range',coverageMiles+' mile radius; tap dot to highlight circle. NOT terrain-modeled or guaranteed');
   if(isGMRS(x))info('Access',x.restricted?'Owner permission required':'Confirm owner permission');
   const detail=document.createElement('button');detail.type='button';
   detail.textContent='More repeater details';
@@ -750,7 +781,7 @@ async function install(raw,source){
 el('rtHam').onclick=function(){switchService('ham')};
 el('rtGMRS').onclick=function(){switchService('gmrs')};
 el('rtBoth').onclick=function(){switchService('both')};
-el('rtBand').onchange=function(){bandFilter=this.value;selected=null;follow=true;redraw()};
+el('rtBand').onchange=function(){bandFilter=this.value;selected=null;coverageFocused=false;follow=true;redraw()};
 el('rtCoverageMiles').value=String(coverageMiles);
 el('rtCoverageOpacity').value=String(coverageShade);
 el('rtCoverageOpacityValue').textContent=coverageShade+'%';
@@ -777,12 +808,13 @@ el('rtHide').onclick=function(){
  el('rtHide').textContent=hidden?'Show':'Hide';
 };
 el('rtAuto').onclick=function(){
- follow=!follow;el('rtAuto').textContent='Follow nearest: '+(follow?'ON':'OFF');
+ follow=!follow;if(follow)coverageFocused=false;
+ el('rtAuto').textContent='Follow nearest: '+(follow?'ON':'OFF');
  redraw();
 };
 el('rtWide').onclick=function(){
  wideOnly=!wideOnly;el('rtWide').textContent=wideOnly?'★ KC Wide: ONLY':'★ KC Wide: All';
- selected=null;follow=true;redraw();
+ selected=null;coverageFocused=false;follow=true;redraw();
 };
 el('rtImport').onclick=function(){el('rtFile').click()};
 function renderPersonal(){
