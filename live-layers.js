@@ -28,7 +28,7 @@ panel.innerHTML=
  '<button type="button" id="rtLayersRefresh">↻ Update now</button></div>'+
  '<div class="rt-live-nearest"><strong>✈ Aircraft near map</strong>'+
  '<div id="rtAircraftList" class="rt-live-air-list">Waiting for aircraft reports…</div></div>'+
- '<div class="rt-live-credit">Aircraft © adsb.lol contributors (ODbL) · Radar © RainViewer<br>'+
+ '<div class="rt-live-credit">Aircraft: <a href="https://adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a> (personal/non-commercial) or <a href="https://www.adsb.lol/" target="_blank" rel="noopener noreferrer">adsb.lol</a> (ODbL) · Radar © RainViewer<br>'+
  'Aircraft auto-refreshes about every minute when open (provider reporting may lag). Radar checks about every 2 minutes; new radar frames normally arrive about every 10 minutes. Neither is an instant tracking feed or a forecast.'+
  '<br>Uses internet and sends an approximate MAP CENTER (rounded to 0.1°) to the aircraft service. GPS itself stays on your phone.</div>';
 host.appendChild(panel);
@@ -216,7 +216,19 @@ async function loadAircraft(force=false){
   const resp=await fetch('./api/aircraft?lat='+c.lat.toFixed(1)+'&lon='+c.lon.toFixed(1),{
    cache:'no-store'
   });
-  if(!resp.ok)throw Error('Aircraft feed '+resp.status);
+  if(!resp.ok){
+   let detail='';
+   try{
+    const errorBody=await resp.json();
+    detail=String(errorBody.error||'');
+    if(Array.isArray(errorBody.diagnostics))
+     detail+=' ['+errorBody.diagnostics.slice(0,2).join('; ')+']';
+   }catch(_){}
+   if(resp.status===404)throw Error('Aircraft API missing (404). Cloudflare Pages Functions may not be deployed.');
+   throw Error(detail||'Website aircraft API returned HTTP '+resp.status);
+  }
+  const contentType=resp.headers.get('content-type')||'';
+  if(!contentType.includes('json'))throw Error('Aircraft API returned a web page, not aircraft data. Check Pages Functions deployment.');
   const data=await resp.json();
   if(!Array.isArray(data.flights))throw Error('Invalid aircraft data');
   if(!Number.isFinite(data.updated)||now-data.updated>900000)throw Error('Stale aircraft snapshot');
@@ -228,14 +240,14 @@ async function loadAircraft(force=false){
     altFt:safeNumber(x.altFt),speedKt:safeNumber(x.speedKt),
     heading:safeNumber(x.heading),seenSec:safeNumber(x.seenSec)}));
   renderAircraft();
-  airStatus.textContent='Aircraft AUTO · '+airRecords.length+' reported · checked '+new Date(data.updated)
+  airStatus.textContent='Aircraft AUTO ('+(data.source==='adsb.fi'?'adsb.fi':data.source==='adsb.lol'?'adsb.lol':'unknown source')+') · '+airRecords.length+' reported · checked '+new Date(data.updated)
    .toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'})+
    ' · next check ~1 min';
  }catch(e){
   // Never keep old aircraft dots under a false LIVE label.
   if(!aircraftOn)return;
   if(now-airLastSuccess>=360000||!airRecords.length){airRecords=[];renderAircraft()}
-  airStatus.textContent='Aircraft data unavailable · '+e.message;
+  airStatus.textContent='Aircraft unavailable · '+e.message+' · Tap Update now to retry.';
  }finally{airBusy=false}
 }
 const autoButton=el('rtAutoToggle');
