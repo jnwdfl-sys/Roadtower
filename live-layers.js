@@ -1,7 +1,7 @@
 /* Roadtower independent live map overlays.
    These optional ONLINE layers default ON every launch. They do not replace
    the HAM/GMRS group or the user's high-priority visual SOS GPS marker.
-   Aircraft: © adsb.lol contributors (ODbL 1.0), 3-minute snapshots.
+   Aircraft: © adsb.lol contributors (ODbL 1.0), automatic nearby snapshots.
    Radar: RainViewer observed-precipitation frames, NOT future forecasts.
 */
 (function(){
@@ -24,11 +24,12 @@ panel.innerHTML=
  '<label for="rtRadarOpacity">Radar strength <output id="rtRadarOpacityValue">30%</output></label>'+
  '<input type="range" id="rtRadarOpacity" min="15" max="65" value="30" step="5">'+
  '<button type="button" id="rtRadarAnimate">▶ Play past radar</button>'+
- '<button type="button" id="rtLayersRefresh">↻ Update</button></div>'+
+ '<button type="button" id="rtAutoToggle" aria-pressed="true">⟳ AUTO: ON</button>'+ 
+ '<button type="button" id="rtLayersRefresh">↻ Update now</button></div>'+
  '<div class="rt-live-nearest"><strong>✈ Aircraft near map</strong>'+
  '<div id="rtAircraftList" class="rt-live-air-list">Waiting for aircraft reports…</div></div>'+
  '<div class="rt-live-credit">Aircraft © adsb.lol contributors (ODbL) · Radar © RainViewer<br>'+
- 'Aircraft data are delayed reports; positions can be missing. Radar shows recent rain, not a forecast.'+
+ 'Aircraft auto-refreshes about every minute when open (provider reporting may lag). Radar checks about every 2 minutes; new radar frames normally arrive about every 10 minutes. Neither is an instant tracking feed or a forecast.'+
  '<br>Uses internet and sends an approximate MAP CENTER (rounded to 0.1°) to the aircraft service. GPS itself stays on your phone.</div>';
 host.appendChild(panel);
 if(L.DomEvent){
@@ -41,8 +42,10 @@ const radarStatus=el('rtRadarStatus'),airStatus=el('rtAirStatus'),listRoot=el('r
 const airGroup=L.layerGroup().addTo(map);
 let aircraftOn=true,radarOn=true,airRecords=[],airLastFetch=0,airLastSuccess=0,airLastCenter=null;
 let airBusy=false,radarBusy=false,radarFrames=[],radarHost='',radarLayer=null;
+const airMarkers=new Map();
+let autoEnabled=true,radarFramePath='';
 let radarFrameTime=0,radarLastFetch=0,animation=null,animationIndex=0;
-const RADAR_OPACITY=.30, AIR_INTERVAL=180000, RADAR_INTERVAL=300000;
+const RADAR_OPACITY=.30, AIR_INTERVAL=60000, RADAR_INTERVAL=120000;
 let currentOpacity=RADAR_OPACITY;
 const radarPane=map.getPane('rtRadarPane')||map.createPane('rtRadarPane');
 radarPane.style.zIndex='325';
@@ -70,24 +73,31 @@ function viewCenter(){
 }
 function radarTile(frame){
  if(!radarOn||!frame||!radarHost)return;
- if(radarLayer){map.removeLayer(radarLayer);radarLayer=null}
- const url=radarHost+frame.path+'/256/{z}/{x}/{y}/2/1_1.png';
- radarLayer=L.tileLayer(url,{
-  pane:'rtRadarPane',opacity:currentOpacity,tileSize:256,
-  maxNativeZoom:7,maxZoom:19,minZoom:0,
-  updateWhenZooming:false,keepBuffer:1,
-  attribution:'Weather radar © RainViewer',
-  className:'rt-radar-tile-layer'
- }).addTo(map);
- let radarTileErrors=0;
- radarLayer.on('tileerror',()=>{
-  if(!radarOn||++radarTileErrors<4)return;
-  radarStatus.textContent='Radar imagery unavailable at this zoom or from the provider. Roads and GPS still work.';
- });
+ const changed=!radarLayer||radarFramePath!==frame.path;
+ if(changed){
+  if(radarLayer){map.removeLayer(radarLayer);radarLayer=null}
+  const url=radarHost+frame.path+'/256/{z}/{x}/{y}/2/1_1.png';
+  radarLayer=L.tileLayer(url,{
+   pane:'rtRadarPane',opacity:currentOpacity,tileSize:256,
+   maxNativeZoom:7,maxZoom:19,minZoom:0,
+   updateWhenZooming:false,keepBuffer:1,
+   attribution:'Weather radar © RainViewer',
+   className:'rt-radar-tile-layer'
+  }).addTo(map);
+  let radarTileErrors=0;
+  radarLayer.on('tileerror',()=>{
+   if(!radarOn||++radarTileErrors<4)return;
+   radarStatus.textContent='Radar imagery unavailable from provider. Roads and GPS still work.';
+  });
+ }
+ radarFramePath=frame.path;
  radarFrameTime=frame.time;
  const observed=new Date(frame.time*1000);
- radarStatus.textContent='Radar ON · observed '+observed.toLocaleTimeString([],{
-  hour:'numeric',minute:'2-digit'})+' · recent precipitation (not a forecast)';
+ const ageMinutes=Math.max(0,Math.floor((Date.now()-frame.time*1000)/60000));
+ radarStatus.textContent='Radar ON · frame '+observed.toLocaleTimeString([],{
+  hour:'numeric',minute:'2-digit'})+' ('+ageMinutes+' min old) · '+
+  (animation!==null?'playing past frames':'auto checks ~2 min')+
+  (ageMinutes>30?' · delayed radar frame':'');
 }
 function stopAnimation(){
  if(animation!==null){clearInterval(animation);animation=null}
@@ -96,15 +106,17 @@ function stopAnimation(){
 function setRadar(on){
  radarOn=on;updateToggle(toggleRadar,on,'RADAR');
  if(!on){stopAnimation();if(radarLayer){map.removeLayer(radarLayer);radarLayer=null}
-  radarStatus.textContent='Radar OFF';return}
+  radarFramePath='';radarStatus.textContent='Radar OFF';return}
  if(radarFrames.length)radarTile(radarFrames[radarFrames.length-1]);
- else loadRadar(true);
+ loadRadar(true);
 }
 async function loadRadar(force=false){
  if(!radarOn||radarBusy||document.hidden)return;
  if(!navigator.onLine){radarStatus.textContent='Radar waiting for internet';return}
- if(!force&&Date.now()-radarLastFetch<RADAR_INTERVAL)return;
- radarBusy=true;radarLastFetch=Date.now();
+ const now=Date.now();
+ if(!force&&now-radarLastFetch<RADAR_INTERVAL)return;
+ if(now-radarLastFetch<60000)return;
+ radarBusy=true;radarLastFetch=now;
  radarStatus.textContent='Radar ON · checking latest image…';
  try{
   const resp=await fetch('./api/radar',{cache:'no-store'});
@@ -143,18 +155,33 @@ function aircraftPopup(item){
  return box;
 }
 function renderAircraft(){
- airGroup.clearLayers();listRoot.replaceChildren();
- if(!aircraftOn){airStatus.textContent='Aircraft OFF';return}
+ listRoot.replaceChildren();
+ if(!aircraftOn){airGroup.clearLayers();airMarkers.clear();
+  airStatus.textContent='Aircraft OFF';return}
  const c=map.getCenter();
  const sorted=airRecords.filter(x=>Number.isFinite(x.lat)&&Number.isFinite(x.lon))
-  .map(x=>({x,dist:miles(c.lat,c.lng,x.lat,x.lon)}))
+  .map((x,i)=>({x,key:x.hex||('unknown:'+x.call+':'+i),
+   dist:miles(c.lat,c.lng,x.lat,x.lon)}))
   .sort((a,b)=>a.dist-b.dist);
- for(const item of sorted.slice(0,110)){
-  const m=L.marker([item.x.lat,item.x.lon],{
-   icon:aircraftIcon(item.x),zIndexOffset:250,
-   title:'Aircraft '+(item.x.call||item.x.hex||'unknown')});
-  m.bindPopup(aircraftPopup(item.x),{maxWidth:310});
-  m.addTo(airGroup);
+ const visible=sorted.slice(0,110);
+ const keys=new Set();
+ for(const it of visible){
+  const x=it.x,key=it.key;
+  keys.add(key);
+  let marker=airMarkers.get(key);
+  if(!marker){
+   marker=L.marker([x.lat,x.lon],{
+    icon:aircraftIcon(x),zIndexOffset:250,
+    title:'Aircraft '+(x.call||x.hex||'unknown')}).addTo(airGroup);
+   airMarkers.set(key,marker);
+  }else{
+   marker.setLatLng([x.lat,x.lon]);
+   marker.setIcon(aircraftIcon(x));
+  }
+  marker.bindPopup(aircraftPopup(x),{maxWidth:310});
+ }
+ for(const [key,marker] of airMarkers){
+  if(!keys.has(key)){airGroup.removeLayer(marker);airMarkers.delete(key)}
  }
  if(!sorted.length){listRoot.textContent='No aircraft positions reported nearby.';return}
  for(const it of sorted.slice(0,7)){
@@ -164,9 +191,7 @@ function renderAircraft(){
    (it.x.altFt!==null?' · '+Math.round(it.x.altFt).toLocaleString()+' ft':'');
   b.onclick=()=>{
    map.panTo([it.x.lat,it.x.lon],{animate:false});
-   const layers=airGroup.getLayers();
-   const marker=layers.find(m=>m.getLatLng&&
-    Math.abs(m.getLatLng().lat-it.x.lat)<.00001&&Math.abs(m.getLatLng().lng-it.x.lon)<.00001);
+   const marker=airMarkers.get(it.key);
    if(marker)marker.openPopup();
   };
   listRoot.appendChild(b);
@@ -174,7 +199,7 @@ function renderAircraft(){
 }
 function setAircraft(on){
  aircraftOn=on;updateToggle(toggleAir,on,'AIRCRAFT');
- if(!on){airGroup.clearLayers();listRoot.textContent='Aircraft layer OFF';airStatus.textContent='Aircraft OFF';return}
+ if(!on){airGroup.clearLayers();airMarkers.clear();listRoot.textContent='Aircraft layer OFF';airStatus.textContent='Aircraft OFF';return}
  renderAircraft();
  if(!airRecords.length)loadAircraft(true);
 }
@@ -203,9 +228,9 @@ async function loadAircraft(force=false){
     altFt:safeNumber(x.altFt),speedKt:safeNumber(x.speedKt),
     heading:safeNumber(x.heading),seenSec:safeNumber(x.seenSec)}));
   renderAircraft();
-  airStatus.textContent='Aircraft ON · '+airRecords.length+' reported · '+new Date(data.updated)
-   .toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+
-   ' · refresh ~3 min';
+  airStatus.textContent='Aircraft AUTO · '+airRecords.length+' reported · checked '+new Date(data.updated)
+   .toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'})+
+   ' · next check ~1 min';
  }catch(e){
   // Never keep old aircraft dots under a false LIVE label.
   if(!aircraftOn)return;
@@ -213,6 +238,14 @@ async function loadAircraft(force=false){
   airStatus.textContent='Aircraft data unavailable · '+e.message;
  }finally{airBusy=false}
 }
+const autoButton=el('rtAutoToggle');
+function setAuto(on){
+ autoEnabled=Boolean(on);
+ autoButton.textContent=autoEnabled?'⟳ AUTO: ON':'⏸ AUTO: OFF';
+ autoButton.setAttribute('aria-pressed',String(autoEnabled));
+ if(autoEnabled){loadAircraft();loadRadar()}
+}
+autoButton.addEventListener('click',()=>setAuto(!autoEnabled));
 toggleAir.addEventListener('click',()=>setAircraft(!aircraftOn));
 toggleRadar.addEventListener('click',()=>setRadar(!radarOn));
 el('rtRadarOpacity').addEventListener('input',e=>{
@@ -236,29 +269,32 @@ el('rtLayersRefresh').addEventListener('click',()=>{
 });
 let lastPanning=0;
 map.on('moveend',()=>{
- if(!aircraftOn)return;
+ if(!aircraftOn||!autoEnabled)return;
  renderAircraft();
  const c=viewCenter();
  if(airLastCenter&&miles(c.lat,c.lon,airLastCenter.lat,airLastCenter.lon)>30&&
-  Date.now()-airLastFetch>=120000){loadAircraft(true)}
+  Date.now()-airLastFetch>=AIR_INTERVAL){loadAircraft(true)}
 });
 document.addEventListener('visibilitychange',()=>{
  if(document.hidden)stopAnimation();
- else{loadAircraft();loadRadar()}
+ else if(autoEnabled){loadAircraft();loadRadar()}
 });
-window.addEventListener('online',()=>{loadAircraft(true);loadRadar(true)});
+window.addEventListener('online',()=>{if(autoEnabled){loadAircraft(true);loadRadar(true)}});
+window.addEventListener('pageshow',()=>{if(autoEnabled&&!document.hidden){loadAircraft();loadRadar()}});
 window.setInterval(()=>{
- if(document.hidden)return;
+ if(document.hidden||!autoEnabled)return;
  if(aircraftOn)loadAircraft();
  if(radarOn)loadRadar();
-},60000);
+},15000);
 window.RoadtowerLiveLayers={
- getState:()=>({aircraft:aircraftOn,radar:radarOn,planes:airRecords.length,radarFrameTime}),
- setAircraft,setRadar
+ getState:()=>({aircraft:aircraftOn,radar:radarOn,autoRefresh:autoEnabled,
+  aircraftCheckIntervalMs:AIR_INTERVAL,radarCheckIntervalMs:RADAR_INTERVAL,
+  planes:airRecords.length,airLastSuccess,radarFrameTime}),
+ setAircraft,setRadar,setAuto
 };
 // Both layers turn ON on each fresh launch. No saved OFF preference suppresses
 // them on the next startup; the user can disable them during this session.
-updateToggle(toggleAir,true,'AIRCRAFT');updateToggle(toggleRadar,true,'RADAR');
+updateToggle(toggleAir,true,'AIRCRAFT');updateToggle(toggleRadar,true,'RADAR');setAuto(true);
 loadRadar(true);
 loadAircraft(true);
 })();
