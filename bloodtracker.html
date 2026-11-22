@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#081723">
+<meta name="description" content="Offline-capable Blood Tracker color inversion and red-contrast visual tool.">
+<title>Blood Tracker • Color Inverter</title>
+<style>
+:root{color-scheme:dark;--bg:#071521;--surface:#122b3c;--edge:#355669;--ink:#eff8fc;--muted:#bcd0da;--accent:#5cdbff;--good:#66d4a7}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Arial,sans-serif}button,input,select{font:inherit}
+a{color:var(--accent)}.wrap{max-width:1100px;margin:auto;padding:16px}header{background:linear-gradient(125deg,#143e57,#0c2637);border-bottom:1px solid var(--edge);padding:14px 0 18px}header .wrap{padding-top:0;padding-bottom:0}
+header h1{font-size:clamp(27px,6vw,41px);margin:8px 0 3px;color:#88e1ff}header p{color:var(--muted);margin:0}
+.back{display:inline-block;text-decoration:none;font-weight:750;color:#e0f5ff}
+.layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(290px,1fr);gap:16px;align-items:start}
+.card{background:var(--surface);border:1px solid var(--edge);border-radius:16px;padding:15px;margin-bottom:15px;min-width:0}
+.card h2{font-size:18px;margin:0 0 12px}#view{display:block;width:100%;height:auto;max-height:68vh;object-fit:contain;border-radius:12px;background:#05090d;aspect-ratio:16/10}
+.frame{position:relative;overflow:hidden;border:1px solid #446477;border-radius:12px;background:#05090d}
+#empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;color:#bdd3dd;pointer-events:none;background:radial-gradient(circle at center,#213c49 0%,#08131e 75%)}
+#empty.hidden{display:none}.controls{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 3px}
+button,.upload{background:#27bfe6;color:#05202c;border:1px solid #27bfe6;padding:10px 13px;border-radius:10px;font-weight:750;cursor:pointer;min-height:43px;display:inline-flex;align-items:center;justify-content:center;text-align:center}
+button.secondary,.upload{background:#244c62;color:#f0f8fb;border-color:#47738a}button:disabled{opacity:.5;cursor:not-allowed}
+input[type=file]{display:none}label.setting{display:block;margin:12px 0}.setting strong{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:5px}
+select{width:100%;background:#071d2d;border:1px solid #527386;border-radius:10px;color:var(--ink);padding:10px}
+input[type=range]{width:100%;accent-color:#54d9ff}
+small,.note{color:var(--muted)}.status{padding:10px 12px;border:1px solid #44697a;border-radius:10px;background:#0b2533;margin:12px 0;min-height:44px}
+.meter{height:12px;border-radius:999px;background:#263f4c;overflow:hidden}.meter>span{display:block;height:100%;width:0;background:linear-gradient(90deg,#f08361,#ff323d);transition:width .15s}.meterline{display:flex;justify-content:space-between;gap:10px;margin:6px 0 2px;font-weight:700}
+.check{display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:650;margin:13px 0}.check input{width:20px;height:20px;accent-color:#36cae7}
+.note{font-size:13px;line-height:1.55}footer{padding:8px 0 35px;color:var(--muted);font-size:12px}
+@media(max-width:770px){.layout{grid-template-columns:1fr}.wrap{padding:12px}.card{padding:12px}#view{max-height:50vh}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><a class="back" href="./index.html">← Joe's Toolbox</a><h1>🩸 Blood Tracker</h1><p>Color Inverter • Red contrast • Live camera or saved photograph</p></div></header>
+<main class="wrap">
+<div class="layout">
+<section>
+<div class="card"><h2>Visual scanner</h2>
+<div class="frame"><canvas id="view" width="960" height="600" aria-label="Processed camera or photograph"></canvas><div id="empty"><div><strong>Ready for the field</strong><p>Start the rear camera or choose a photo to apply color filters.</p></div></div></div>
+<video id="camera" autoplay muted playsinline style="display:none"></video>
+<div class="controls">
+<button id="start" type="button">📷 Start camera</button>
+<button id="switch" type="button" class="secondary">↻ Flip camera</button>
+<label class="upload" for="photo">▣ Open photo</label><input id="photo" type="file" accept="image/*">
+<button id="freeze" type="button" class="secondary">⏸ Freeze</button>
+<button id="save" type="button" class="secondary">↓ Save picture</button>
+<button id="stop" type="button" class="secondary">■ Stop</button>
+</div>
+<p id="status" class="status" role="status" aria-live="polite">Camera is off. Filters work on photos too.</p>
+<div class="meterline"><span>Red-color interest</span><span id="interest">—</span></div>
+<div class="meter"><span id="bar"></span></div>
+<p class="note">The interest meter responds to red-colored pixels, not biological identification. Leaves, dirt, rust, clothing, and lighting can create false highlights. Confirm all findings yourself.</p>
+</div>
+<div class="card"><h2>Offline use</h2><p class="note">This camera and photo-processing tool runs locally in Chrome. Visit the page once while online after an update so Joe's Toolbox can cache it, then open it again without internet. Your camera images are processed on your device; this page does not upload them.</p><p class="note">Offline features do not include live maps, weather or the separate Netlify Blood Tracker website.</p></div>
+</section>
+<aside>
+<div class="card"><h2>Color filters</h2>
+<label class="setting"><strong>Filter mode</strong><select id="mode">
+<option value="red">Red highlight</option>
+<option value="opposite">Invert background, keep red</option>
+<option value="invert">Full color inversion</option>
+<option value="mono">Grayscale, keep red</option>
+<option value="normal">Natural colors</option>
+</select></label>
+<label class="setting"><strong>Background color</strong><select id="background">
+<option value="gray">Silver / grayscale</option>
+<option value="blue">Midnight blue</option>
+<option value="green">Emerald green</option>
+<option value="purple">Violet purple</option>
+<option value="teal">Aqua teal</option>
+<option value="amber">Amber gold</option>
+<option value="dark">Deep charcoal</option>
+</select></label>
+<label class="setting"><strong>Highlight color</strong><select id="highlight">
+<option value="red">Bright red</option>
+<option value="pink">Neon pink</option>
+<option value="orange">Safety orange</option>
+<option value="yellow">Electric yellow</option>
+</select></label>
+<label class="setting"><strong>Red sensitivity <output id="sensitivityOut"></output></strong><input type="range" id="sensitivity" min="105" max="230" step="5" value="135"></label>
+<label class="setting"><strong>Red boost <output id="boostOut"></output></strong><input type="range" id="boost" min="100" max="250" step="10" value="170"></label>
+<label class="setting"><strong>Contrast <output id="contrastOut"></output></strong><input type="range" id="contrast" min="50" max="200" step="5" value="115"></label>
+<label class="setting"><strong>Brightness <output id="brightnessOut"></output></strong><input type="range" id="brightness" min="-80" max="80" step="5" value="0"></label>
+<label class="check"><input type="checkbox" id="dots" checked>Show dotted red-interest markers</label>
+<button id="reset" class="secondary" type="button">Restore defaults</button>
+<p class="note">Try “Invert background, keep red” in green foliage or “Grayscale, keep red” on busy ground. Use sensitivity to reduce false highlights.</p>
+</div>
+</aside>
+</div>
+<footer>Blood Tracker Color Inverter — field visualization aid only. No automated blood recognition, identification, tracking guarantee or evidence validation.</footer>
+</main>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const canvas=$('view'),ctx=canvas.getContext('2d',{willReadFrequently:true}),video=$('camera');
+let stream=null,source=null,sourceKind=null,facing='environment',paused=false,last=0,frameId=0,photoUrl=null;
+const defaults={mode:'red',background:'gray',highlight:'red',sensitivity:'135',boost:'170',contrast:'115',brightness:'0',dots:true};
+const ids=['mode','background','highlight','sensitivity','boost','contrast','brightness','dots'];
+const status=t=>$('status').textContent=t;
+function settings(){let s={};ids.forEach(id=>{const el=$(id);s[id]=el.type==='checkbox'?el.checked:el.value});return s}
+function apply(s){ids.forEach(id=>{const el=$(id);if(s[id]!==undefined){if(el.type==='checkbox')el.checked=!!s[id];else el.value=s[id]}});showValues()}
+function showValues(){['sensitivity','boost','contrast','brightness'].forEach(id=>{const v=Number($(id).value);$(id+'Out').textContent=id==='sensitivity'?(v/100).toFixed(2)+'×':id==='brightness'?(v>0?'+':'')+v:(v/100).toFixed(2)+'×'})}
+function saveSettings(){try{localStorage.setItem('bloodtracker_colors_v1',JSON.stringify(settings()))}catch{}}
+try{apply(Object.assign({},defaults,JSON.parse(localStorage.getItem('bloodtracker_colors_v1')||'{}')))}catch{apply(defaults)}
+ids.forEach(id=>$(id).addEventListener('input',()=>{showValues();saveSettings();if(sourceKind==='photo'||paused)render(true)}));
+$('reset').onclick=()=>{apply(defaults);saveSettings();render(true)};
+function stopCamera(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}video.srcObject=null;cancelAnimationFrame(frameId);frameId=0}
+function cleanupPhoto(){if(photoUrl){URL.revokeObjectURL(photoUrl);photoUrl=null}}
+function reveal(){$('empty').classList.add('hidden')}
+function sizeCanvas(w,h,limit){const scale=Math.min(1,limit/Math.max(w,1));canvas.width=Math.max(1,Math.round(w*scale));canvas.height=Math.max(1,Math.round(h*scale))}
+async function startCamera(){
+if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){status('Camera access is unavailable. Open in Chrome over HTTPS, or select a photo.');return}
+stopCamera();cleanupPhoto();source=null;sourceKind=null;paused=false;$('freeze').textContent='⏸ Freeze';
+try{
+status('Requesting camera permission…');
+stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:facing},width:{ideal:1280},height:{ideal:720}}});
+video.srcObject=stream;await video.play();source=video;sourceKind='camera';reveal();
+sizeCanvas(video.videoWidth||960,video.videoHeight||600,800);
+status('Camera active. Adjust the filters for the lighting and ground color.');
+last=0;frameId=requestAnimationFrame(tick);
+}catch(e){stopCamera();status('Could not start camera: '+(e.message||'Check Chrome camera permission.'))}
+}
+function tick(t){if(sourceKind!=='camera')return;if(!paused&&t-last>=85){render(false);last=t}frameId=requestAnimationFrame(tick)}
+function clamp(x){return x<0?0:x>255?255:x}
+function isRed(r,g,b,ratio){return r>45&&r>g*ratio&&r>b*ratio&&r-g>12&&r-b>12}
+const hues={gray:[1,1,1],blue:[.35,.69,1.22],green:[.4,1.08,.55],purple:[.95,.55,1.25],teal:[.43,1.12,1.12],amber:[1.2,.86,.35],dark:[.45,.48,.53]};
+const highlights={red:[255,22,36],pink:[255,24,186],orange:[255,119,8],yellow:[255,236,0]};
+function render(force){
+if(!source)return;
+if(paused&&!force)return;
+if(sourceKind==='camera'&&video.readyState<2)return;
+const w=canvas.width,h=canvas.height;
+ctx.drawImage(source,0,0,w,h);
+const image=ctx.getImageData(0,0,w,h),d=image.data;
+const s=settings(),mode=s.mode,ratio=Number(s.sensitivity)/100,boost=Number(s.boost)/100,contrast=Number(s.contrast)/100,brightness=Number(s.brightness);
+const tint=hues[s.background]||hues.gray,hi=highlights[s.highlight]||highlights.red;
+let hits=0;const markers=[];const step=18;
+for(let y=0;y<h;y++){
+for(let x=0;x<w;x++){
+const i=(y*w+x)*4;
+let r=clamp((d[i]-128)*contrast+128+brightness),g=clamp((d[i+1]-128)*contrast+128+brightness),b=clamp((d[i+2]-128)*contrast+128+brightness);
+const candidate=isRed(r,g,b,ratio);if(candidate)hits++;
+if(s.dots&&candidate&&x%step===step>>1&&y%step===step>>1&&markers.length<650)markers.push([x,y]);
+if(mode==='invert'){d[i]=255-r;d[i+1]=255-g;d[i+2]=255-b}
+else if(mode==='normal'){d[i]=r;d[i+1]=g;d[i+2]=b}
+else if(candidate){
+const strength=Math.min(1,Math.max(.22,((r-Math.max(g,b))*boost)/170));
+d[i]=clamp(hi[0]*(.6+.4*strength));
+d[i+1]=clamp(hi[1]+(1-strength)*28);
+d[i+2]=clamp(hi[2]+(1-strength)*20);
+}else if(mode==='opposite'){d[i]=255-r;d[i+1]=255-g;d[i+2]=255-b}
+else{const gray=(r*.299+g*.587+b*.114)*(mode==='mono'?1:1);const shade=mode==='mono'?[1,1,1]:tint;d[i]=clamp(gray*shade[0]);d[i+1]=clamp(gray*shade[1]);d[i+2]=clamp(gray*shade[2])}
+}}
+ctx.putImageData(image,0,0);
+if(s.dots&&mode!=='normal'&&mode!=='invert'&&markers.length){
+ctx.save();ctx.strokeStyle='rgba(255,255,255,.8)';ctx.lineWidth=1.8;ctx.setLineDash([2,3]);
+for(const p of markers){ctx.beginPath();ctx.arc(p[0],p[1],5.5,0,Math.PI*2);ctx.stroke()}
+ctx.restore();
+}
+const pct=(hits/(w*h)*100);$('interest').textContent=pct.toFixed(2)+'% red-like pixels';$('bar').style.width=Math.min(100,pct*10)+'%';
+}
+$('start').onclick=startCamera;
+$('switch').onclick=()=>{facing=facing==='environment'?'user':'environment';startCamera()};
+$('freeze').onclick=()=>{if(!source){status('Start the camera or open a photo first.');return}paused=!paused;$('freeze').textContent=paused?'▶ Unfreeze':'⏸ Freeze';if(!paused)render(true);status(paused?'Frame frozen. You can adjust filters and save it.':'Viewing live image.')};
+$('stop').onclick=()=>{stopCamera();cleanupPhoto();source=null;sourceKind=null;paused=false;$('freeze').textContent='⏸ Freeze';status('Camera stopped. You can open a photo or start again.');$('interest').textContent='—';$('bar').style.width='0%';ctx.clearRect(0,0,canvas.width,canvas.height);$('empty').classList.remove('hidden')};
+$('photo').addEventListener('change',e=>{
+const file=e.target.files&&e.target.files[0];if(!file)return;
+if(!file.type.startsWith('image/')){status('Choose an image file.');return}
+stopCamera();cleanupPhoto();photoUrl=URL.createObjectURL(file);const img=new Image();
+img.onload=()=>{source=img;sourceKind='photo';paused=false;sizeCanvas(img.naturalWidth,img.naturalHeight,1440);reveal();render(true);status('Photo opened locally. Change colors to compare details.');$('photo').value=''};
+img.onerror=()=>{status('Could not open that image.');cleanupPhoto()};
+img.src=photoUrl
+});
+$('save').onclick=()=>{if(!source){status('Open a camera or photo before saving.');return}render(true);canvas.toBlob(blob=>{if(!blob){status('Could not save the picture.');return}const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='blood-tracker-filtered-'+Date.now()+'.jpg';a.click();setTimeout(()=>URL.revokeObjectURL(u),10000);status('Filtered picture sent to Chrome downloads.')},'image/jpeg',.92)};
+window.addEventListener('pagehide',stopCamera);
+if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{})}
+})();
+</script>
+</body></html>
