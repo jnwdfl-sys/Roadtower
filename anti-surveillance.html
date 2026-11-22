@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#08131e">
+<meta name="description" content="Anti-Surveillance: private camera lens-reflection inspection and manual microphone inspection tools.">
+<title>Anti-Surveillance | Joe's Toolbox</title>
+<style>
+:root{color-scheme:dark;--bg:#07131e;--card:#112839;--edge:#355569;--ink:#edf8ff;--muted:#b8d0dc;--blue:#62d9ff;--red:#ff4c5e;--yellow:#ffdf52}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Arial,sans-serif}button,input{font:inherit}a{color:var(--blue)}
+header{background:linear-gradient(125deg,#123c50,#0b1c2a);border-bottom:1px solid var(--edge)}
+.wrap{max-width:1120px;margin:auto;padding:16px}.back{text-decoration:none;color:#d8f2ff;font-weight:750}h1{font-size:clamp(28px,6vw,44px);margin:4px 0;color:#9ae7ff}header p{color:var(--muted);margin:0 0 4px}
+.layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(285px,1fr);gap:15px;align-items:start}
+.card{background:var(--card);border:1px solid var(--edge);border-radius:16px;padding:15px;margin-bottom:15px;min-width:0}h2{margin:0 0 10px;font-size:19px}h3{margin:10px 0 6px;font-size:16px}
+.frame{position:relative;background:radial-gradient(circle,#153344,#050b12);border:1px solid #437084;border-radius:14px;overflow:hidden;isolation:isolate}
+#view{display:block;width:100%;height:auto;aspect-ratio:4/3;touch-action:manipulation;cursor:crosshair}
+#placeholder{position:absolute;inset:0;display:grid;place-items:center;padding:25px;text-align:center;pointer-events:none;background:radial-gradient(circle at center,#1b3d4e,#060f19)}
+#placeholder.hide{display:none}.radaricon{font-size:60px;line-height:1.1}
+.cameraBadge{position:absolute;top:10px;left:10px;background:#031a25bd;padding:4px 9px;border:1px solid #49748a;border-radius:7px;color:#b6efff;font-weight:700;font-size:12px;pointer-events:none}
+.controls{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+button,.upload{border:1px solid #269fca;border-radius:10px;background:#2dbce5;color:#06202a;padding:10px 12px;font-size:14px;min-height:43px;font-weight:750;cursor:pointer;display:inline-flex;justify-content:center;align-items:center;text-align:center}
+button.secondary,.upload{background:#25485d;color:#ecf9ff;border-color:#4b758b}
+button.warn{background:#50353c;border-color:#a35e67;color:#ffe6e7}
+button.yellow{background:#554d22;border-color:#c6ae43;color:#fff2aa}
+button.selected{outline:2px solid #fff;outline-offset:2px}
+button:disabled{opacity:.55;cursor:not-allowed}
+#photo{display:none}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.metric{background:#091e2b;border:1px solid #365b70;border-radius:12px;padding:12px}
+.metric .value{font-weight:800;font-size:clamp(26px,5vw,39px);font-variant-numeric:tabular-nums;line-height:1.2}
+.metric .name{font-size:12px;color:#c6dbe5}
+.metric.red .value{color:var(--red)}.metric.yellow .value{color:var(--yellow)}
+.meter{height:9px;border-radius:30px;background:#284353;overflow:hidden;margin-top:7px}
+.meter>span{display:block;height:100%;width:0;background:linear-gradient(90deg,#f8bc5e,#fc3f51);transition:width .2s}
+.meter.yellow>span{background:linear-gradient(90deg,#7fd4a2,#ffe154)}
+.status{background:#0a2432;border:1px solid #42697e;border-radius:10px;padding:11px 12px;min-height:45px}
+.note{color:var(--muted);font-size:13px;line-height:1.55}.warning{border-left:3px solid #ffca64;padding-left:12px;color:#f7dfb0}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin:9px 0;color:#d8e9f1;font-size:13px}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:middle;margin-right:4px}.dot.red{border:3px solid var(--red)}.dot.yellow{border:3px solid var(--yellow)}
+label.setting{display:block;margin:12px 0}.setting strong{display:flex;justify-content:space-between}input[type=range]{width:100%;accent-color:#57d8ff}
+.feature{padding:10px 0;border-bottom:1px solid #33566a}.feature:last-child{border-bottom:0}
+.pill{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.4px;background:#1c4c57;color:#c4fff1;border-radius:7px;padding:3px 7px}
+#devices{list-style:none;margin:9px 0;padding:0}#devices li{background:#092130;padding:8px;border-radius:8px;margin:5px 0;overflow-wrap:anywhere}
+footer{color:var(--muted);font-size:12px;padding:3px 0 30px}
+@media(max-width:790px){.layout{grid-template-columns:1fr}.wrap{padding:12px}.card{padding:12px}.controls button,.controls .upload{flex:1 1 auto}#view{max-height:56vh;object-fit:contain}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><a class="back" href="./index.html">← Joe's Toolbox</a><h1>🛡️ Anti-Surveillance</h1><p>Private camera reflection inspection • Manual microphone markers • On-device tools</p></div></header>
+<main class="wrap">
+<div class="layout">
+<section>
+<div class="card">
+<h2>Live visual inspection</h2>
+<div class="frame">
+<canvas id="view" width="640" height="480" aria-label="Live inspection view with red bright-spot circles and manually placed yellow microphone markers"></canvas>
+<div id="placeholder"><div><div class="radaricon">◎</div><h2>Inspection ready</h2><p>Start your camera to look for small bright lens-like reflections. No image is uploaded.</p></div></div>
+<div class="cameraBadge" id="badge">CAMERA OFF</div>
+</div>
+<div class="legend"><span><span class="dot red"></span>Red: bright reflection to check (not confirmed camera)</span><span><span class="dot yellow"></span>Yellow: microphone inspection mark you place</span></div>
+<div class="controls">
+<button id="start" type="button">📷 Start camera</button>
+<button id="flip" type="button" class="secondary">↻ Flip camera</button>
+<button id="torch" type="button" class="secondary" aria-pressed="false">🔦 Light OFF</button>
+<label class="upload" for="photo">▣ Open photo</label><input id="photo" type="file" accept="image/*">
+<button id="freeze" type="button" class="secondary">⏸ Freeze</button>
+<button id="save" type="button" class="secondary">↓ Save image</button>
+<button id="stop" type="button" class="warn">■ Stop camera</button>
+</div>
+<div class="controls" aria-label="Inspection mark tools">
+<button id="markmic" type="button" class="yellow" aria-pressed="false">🟡 Mark possible mic</button>
+<button id="markcam" type="button" class="secondary" aria-pressed="false">🔴 Mark possible camera</button>
+<button id="clear" type="button" class="secondary">Clear manual marks</button>
+</div>
+<p class="note">To mark a suspicious opening or object, tap a mark button and then tap its position on the camera view. Markers are manual and do not track objects as you move the phone.</p>
+<div class="metrics">
+<div class="metric red"><div class="name">Visual reflection score · 0–100</div><div class="value" id="reflection">—</div><div class="meter"><span id="reflectionBar"></span></div></div>
+<div class="metric yellow"><div class="name">Room sound activity · 0–100</div><div class="value" id="sound">—</div><div class="meter yellow"><span id="soundBar"></span></div></div>
+</div>
+<p id="status" class="status" role="status" aria-live="polite">Camera and microphone are off. Start a scan to inspect nearby objects.</p>
+<p class="note warning">These 0–100 readings are relative visual and sound levels, <strong>not radio signal strength or detection probability.</strong> Bright spots can come from screws, glass, mirrors, or other surfaces. Room noise does not reveal whether a hidden microphone exists.</p>
+</div>
+<div class="card"><h2>Local sound check</h2>
+<p class="note">Listen to room sound with your phone's own microphone and view the relative activity level. This cannot identify a hidden recording microphone.</p>
+<div class="controls"><button id="startAudio" type="button">🎙️ Start sound meter</button><button id="stopAudio" class="secondary" type="button">■ Stop sound meter</button></div>
+<p id="audioStatus" class="note" role="status">Sound meter off. No audio is stored or sent.</p>
+</div>
+</section>
+<aside>
+<div class="card">
+<h2>Scan settings</h2>
+<label for="sensitivity" class="setting"><strong>Bright-spot sensitivity <output id="sensitivityValue">75%</output></strong><input id="sensitivity" type="range" min="35" max="95" step="5" value="75"></label>
+<p class="note">Higher sensitivity highlights more possible reflections but creates more false positives.</p>
+<label for="ringSize" class="setting"><strong>Circle size <output id="ringValue">22 px</output></strong><input id="ringSize" type="range" min="12" max="42" step="2" value="22"></label>
+<div class="feature"><span class="pill">REAL SENSOR</span><h3>Rear camera and flashlight</h3><p class="note">Live camera frames are inspected for small, bright points against darker surroundings. The phone flashlight works only if Chrome and your camera support torch control.</p></div>
+<div class="feature"><span class="pill">USER MARKERS</span><h3>Yellow microphone circles</h3><p class="note">Manually mark objects such as clocks, vents, chargers, or unfamiliar openings. The phone camera cannot automatically recognize a hidden microphone.</p></div>
+<div class="feature"><span class="pill">OPTIONAL</span><h3>Bluetooth device chooser</h3><p class="note">Chrome may let you choose a nearby Bluetooth Low Energy device. This is not a full Bluetooth sweep and does not expose RSSI signal levels to this web page.</p><button id="bluetooth" type="button" class="secondary">Search selectable Bluetooth devices</button><ul id="devices"></ul><p id="bleStatus" class="note" role="status">No device selected.</p></div>
+</div>
+<div class="card"><h2>How to inspect a room</h2><p class="note">Darken the room, turn on the flashlight, and scan slowly near suspicious objects. Look for small red-circled reflections that remain visible from nearby angles, then physically inspect the object safely. Use yellow marks to identify openings worth checking. A clean scan cannot prove that no surveillance device exists.</p></div>
+<div class="card"><h2>Privacy & offline use</h2><p class="note">This page performs camera, photo, and sound processing locally in the browser. There are no uploads or accounts. Open it once while online to let Joe's Toolbox cache it for future offline use. Camera, microphone, and Bluetooth permissions are requested only when you start their features.</p></div>
+</aside>
+</div>
+<footer>Anti-Surveillance • Joe's Toolbox. Visual aid only; it does not perform a complete Wi-Fi, RF, or microphone detector sweep. A dedicated RF detector or professional inspection may be needed.</footer>
+</main>
+<video id="camera" autoplay muted playsinline style="display:none"></video>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id), view=$('view'),ctx=view.getContext('2d'),video=$('camera');
+const sample=document.createElement('canvas');sample.width=160;sample.height=120;
+const sctx=sample.getContext('2d',{willReadFrequently:true});
+let stream=null,source=null,sourceKind=null,photo=null,facing='environment',paused=false,torchOn=false;
+let frameId=0,lastAnalyze=0,glints=[],score=null,markMode=null,marks=[];
+let audioStream=null,audioCtx=null,analyser=null,audioData=null,audioFrame=0;
+const setStatus=t=>$('status').textContent=t;
+function cameraButtons(){ $('torch').textContent='🔦 Light '+(torchOn?'ON':'OFF');$('torch').setAttribute('aria-pressed',String(torchOn));$('freeze').textContent=paused?'▶ Resume':'⏸ Freeze';$('markmic').classList.toggle('selected',markMode==='mic');$('markcam').classList.toggle('selected',markMode==='cam');$('markmic').setAttribute('aria-pressed',String(markMode==='mic'));$('markcam').setAttribute('aria-pressed',String(markMode==='cam'));}
+function stopTracks(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}torchOn=false;cameraButtons();}
+async function startCamera(){
+stopTracks();photo=null;source=null;sourceKind=null;
+try{
+ stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:facing},width:{ideal:1280},height:{ideal:720}}});
+ video.srcObject=stream;await video.play();source=video;sourceKind='camera';paused=false;glints=[];score=0;
+ view.width=640;view.height=Math.max(360,Math.round(640*video.videoHeight/Math.max(1,video.videoWidth)));
+ $('placeholder').classList.add('hide');$('badge').textContent='LIVE CAMERA';setStatus('Camera running. Red circles show bright spots to inspect, not confirmed cameras.');
+ cameraButtons();startDrawing();
+}catch(e){stopTracks();setStatus('Could not start camera: '+(e.message||e)+'. Allow camera access in Chrome.');}
+}
+function startDrawing(){if(frameId)cancelAnimationFrame(frameId);frameId=requestAnimationFrame(draw);}
+function draw(t){
+ frameId=requestAnimationFrame(draw);
+ if(!source || paused)return;
+ try{
+ ctx.drawImage(source,0,0,view.width,view.height);
+ if(t-lastAnalyze>210){lastAnalyze=t;analyze();}else{renderOverlays();}
+ }catch(e){/* Video may briefly be between camera states. */}
+}
+function analyze(){
+ sctx.drawImage(source,0,0,160,120);
+ const d=sctx.getImageData(0,0,160,120).data, lum=new Float32Array(160*120);
+ for(let p=0,i=0;p<lum.length;p++,i+=4)lum[p]=.299*d[i]+.587*d[i+1]+.114*d[i+2];
+ const setting=Number($('sensitivity').value);
+ const minLum=260-setting*.62; // 238 for low sensitivity; 201 for high
+ const requiredContrast=100-setting*.53; // 81 for low; 50 for high
+ let candidates=[];
+ const offsets=[[-9,0],[9,0],[0,-9],[0,9],[-7,-7],[7,-7],[-7,7],[7,7]];
+ for(let y=11;y<109;y+=2)for(let x=11;x<149;x+=2){
+  const p=y*160+x,L=lum[p];if(L<minLum)continue;
+  let around=0;for(let k=0;k<8;k++){const q=offsets[k];around+=lum[(y+q[1])*160+x+q[0]];}
+  around/=8;const diff=L-around;if(diff<requiredContrast)continue;
+  let bright=0;for(let dy=-3;dy<=3;dy++)for(let dx=-3;dx<=3;dx++)if(lum[(y+dy)*160+x+dx]>minLum)bright++;
+  if(bright>35)continue;
+  const contrastScore=Math.max(0,Math.min(100,Math.round(diff/1.9)));
+  candidates.push({x:x/160,y:y/120,n:contrastScore});
+ }
+ candidates.sort((a,b)=>b.n-a.n);const points=[];
+ for(const c of candidates){if(points.length>=12)break;if(points.every(p=>Math.hypot(p.x-c.x,p.y-c.y)>.045))points.push(c);}
+ glints=points;score=points.length?points[0].n:0;
+ $('reflection').textContent=score;$('reflectionBar').style.width=score+'%';
+ $('badge').textContent='LIVE • '+glints.length+' GLINT'+(glints.length===1?'':'S');
+ renderOverlays();
+}
+function circle(x,y,r,color,label){
+ ctx.save();ctx.strokeStyle=color;ctx.lineWidth=Math.max(2,view.width/320);ctx.shadowColor=color;ctx.shadowBlur=10;
+ ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.stroke();
+ ctx.beginPath();ctx.moveTo(x-r-5,y);ctx.lineTo(x-r+3,y);ctx.moveTo(x+r-3,y);ctx.lineTo(x+r+5,y);ctx.moveTo(x,y-r-5);ctx.lineTo(x,y-r+3);ctx.stroke();
+ ctx.shadowBlur=0;ctx.font='bold '+Math.max(11,Math.round(view.width/60))+'px system-ui';
+ ctx.fillStyle=color;ctx.fillText(label,Math.min(view.width-100,x+r+7),Math.max(14,y-r-5));ctx.restore();
+}
+function renderOverlays(){
+ const w=view.width,h=view.height;ctx.save();
+ ctx.strokeStyle='#68dfff33';ctx.lineWidth=1;
+ for(const f of [.17,.32,.47]){ctx.beginPath();ctx.ellipse(w/2,h/2,Math.min(w,h)*f,Math.min(w,h)*f,0,0,Math.PI*2);ctx.stroke();}
+ ctx.beginPath();ctx.moveTo(w/2,0);ctx.lineTo(w/2,h);ctx.moveTo(0,h/2);ctx.lineTo(w,h/2);ctx.stroke();ctx.restore();
+ for(let i=0;i<glints.length;i++){const p=glints[i];circle(p.x*w,p.y*h,Number($('ringSize').value),'#ff4c5e','CHECK '+p.n);}
+ for(const m of marks)circle(m.x*w,m.y*h,Number($('ringSize').value)+(m.kind==='mic'?6:0),m.kind==='mic'?'#ffe154':'#ff4c5e',m.kind==='mic'?'MIC?':'CAM?');
+}
+function manualClick(ev){
+ if(!markMode||!source)return;
+ const r=view.getBoundingClientRect();const x=(ev.clientX-r.left)/r.width,y=(ev.clientY-r.top)/r.height;
+ if(x<0||y<0||x>1||y>1)return;
+ marks.push({x,y,kind:markMode});if(marks.length>35)marks.shift();
+ setStatus('Manual '+(markMode==='mic'?'yellow microphone':'red camera')+' mark placed. This is your observation, not sensor identification.');
+ if(paused)renderOverlays();
+}
+async function setTorch(){
+ if(!stream){setStatus('Start the rear camera before using the flashlight.');return;}
+ const track=stream.getVideoTracks()[0];try{
+  const caps=track.getCapabilities?track.getCapabilities():{};
+  if(!caps.torch)throw Error('This browser/camera does not allow flashlight control.');
+  await track.applyConstraints({advanced:[{torch:!torchOn}]});torchOn=!torchOn;cameraButtons();
+  setStatus('Flashlight '+(torchOn?'on':'off')+'. Scan slowly for small bright reflections.');
+ }catch(e){setStatus('Flashlight unavailable: '+(e.message||e)+'. Your phone may require a native app for torch support.');}
+}
+function stopCamera(){stopTracks();source=null;sourceKind=null;photo=null;glints=[];score=null;paused=false;
+ if(frameId){cancelAnimationFrame(frameId);frameId=0;}
+ $('reflection').textContent='—';$('reflectionBar').style.width='0';$('badge').textContent='CAMERA OFF';
+ $('placeholder').classList.remove('hide');ctx.clearRect(0,0,view.width,view.height);cameraButtons();setStatus('Camera stopped.');}
+$('start').onclick=startCamera;$('stop').onclick=stopCamera;
+$('flip').onclick=()=>{facing=facing==='environment'?'user':'environment';startCamera();};
+$('torch').onclick=setTorch;
+$('freeze').onclick=()=>{if(!source){setStatus('Start a camera or open a photo first.');return;}paused=!paused;cameraButtons();setStatus(paused?'Image frozen for inspection.':'Live inspection resumed.');};
+$('markmic').onclick=()=>{markMode=markMode==='mic'?null:'mic';cameraButtons();setStatus(markMode?'Tap a suspicious object on the image to add a yellow microphone inspection circle.':'Manual marker mode off.');};
+$('markcam').onclick=()=>{markMode=markMode==='cam'?null:'cam';cameraButtons();setStatus(markMode?'Tap a suspicious spot on the image to add a red camera inspection circle.':'Manual marker mode off.');};
+$('clear').onclick=()=>{marks=[];if(paused&&source){ctx.drawImage(source,0,0,view.width,view.height);renderOverlays();}setStatus('Manual circles cleared.');};
+view.addEventListener('pointerup',manualClick);
+for(const pair of [['sensitivity','sensitivityValue','%'],['ringSize','ringValue',' px']]){
+ $(pair[0]).addEventListener('input',()=>{$(pair[1]).textContent=$(pair[0]).value+pair[2];if(paused&&source){ctx.drawImage(source,0,0,view.width,view.height);renderOverlays();}});
+}
+$('photo').onchange=ev=>{const file=ev.target.files&&ev.target.files[0];if(!file)return;
+ const url=URL.createObjectURL(file),img=new Image();
+ img.onload=()=>{stopTracks();photo=img;source=img;sourceKind='photo';paused=false;marks=[];glints=[];view.width=640;view.height=Math.max(200,Math.round(640*img.height/img.width));
+ $('placeholder').classList.add('hide');$('badge').textContent='PHOTO • LOCAL';startDrawing();setStatus('Photo loaded locally. Red circles highlight bright reflections only.');URL.revokeObjectURL(url);};
+ img.onerror=()=>{URL.revokeObjectURL(url);setStatus('Could not open this image.');};img.src=url;ev.target.value='';
+};
+$('save').onclick=()=>{if(!source){setStatus('Start a camera or open a photo first.');return;}
+ const a=document.createElement('a');a.download='anti-surveillance-inspection-'+new Date().toISOString().slice(0,10)+'.png';a.href=view.toDataURL('image/png');document.body.append(a);a.click();a.remove();
+ setStatus('Image saved to your device with inspection circles.');};
+async function startAudio(){
+ if(audioStream)return;
+ try{
+  audioStream=await navigator.mediaDevices.getUserMedia({video:false,audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+  audioCtx=new (window.AudioContext||window.webkitAudioContext)();const src=audioCtx.createMediaStreamSource(audioStream);
+  analyser=audioCtx.createAnalyser();analyser.fftSize=1024;src.connect(analyser);audioData=new Uint8Array(analyser.fftSize);
+  $('audioStatus').textContent='Room sound meter active. This measures ambient sound, not nearby microphones.';
+  measureSound();
+ }catch(e){$('audioStatus').textContent='Sound meter unavailable: '+(e.message||e);stopAudio();}
+}
+function measureSound(){
+ if(!analyser)return;analyser.getByteTimeDomainData(audioData);
+ let total=0;for(const x of audioData){const v=(x-128)/128;total+=v*v;}
+ const rms=Math.sqrt(total/audioData.length);
+ const n=Math.min(100,Math.round(rms*340));$('sound').textContent=n;$('soundBar').style.width=n+'%';
+ audioFrame=requestAnimationFrame(measureSound);
+}
+function stopAudio(){
+ if(audioFrame)cancelAnimationFrame(audioFrame);audioFrame=0;
+ if(audioStream){audioStream.getTracks().forEach(t=>t.stop());audioStream=null;}
+ if(audioCtx){audioCtx.close().catch(()=>{});audioCtx=null;}
+ analyser=null;$('sound').textContent='—';$('soundBar').style.width='0';
+ $('audioStatus').textContent='Sound meter stopped.';
+}
+$('startAudio').onclick=startAudio;$('stopAudio').onclick=stopAudio;
+$('bluetooth').onclick=async()=>{
+ if(!navigator.bluetooth||!navigator.bluetooth.requestDevice){$('bleStatus').textContent='Chrome Bluetooth chooser not available on this browser. A native Android app is needed for a full BLE RSSI scan.';return;}
+ try{
+  const device=await navigator.bluetooth.requestDevice({acceptAllDevices:true});
+  const li=document.createElement('li');li.textContent=(device.name||'Unnamed BLE device')+' — selected by you; signal strength unavailable';$('devices').appendChild(li);
+  $('bleStatus').textContent='Selected BLE device. Choosing a device is not evidence of a camera or microphone.';
+ }catch(e){$('bleStatus').textContent=e.name==='NotFoundError'?'No Bluetooth device selected.':'Bluetooth access failed: '+(e.message||e);}
+};
+window.addEventListener('pagehide',()=>{stopTracks();stopAudio();});
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+})();
+</script>
+</body>
+</html>
