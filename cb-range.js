@@ -22,7 +22,8 @@ const save=(k,v)=>{try{localStorage.setItem(k,String(v))}catch(e){}};
 const nearChoices=[1,2,3,5];
 const farChoices=[5,7,10];
 let cbOn=read(K.cb,'true')!=='false';
-let hamOn=read(K.ham,'false')==='true';
+// Keep HAM simplex range visible for new installs; respect explicit saved OFF.
+let hamOn=read(K.ham,'true')!=='false';
 const legacy=Number(read(K.legacy,'3'));
 let near=Number(read(K.near,String(nearChoices.includes(legacy)?legacy:3)));
 let far=Number(read(K.far,'10'));
@@ -109,7 +110,11 @@ function deleteLayer(k){if(drawn[k]){map.removeLayer(drawn[k]);drawn[k]=null;}}
 function syncLayer(key,center,radius,opt,active){
  if(!active){deleteLayer(key);return;}
  if(!drawn[key])drawn[key]=L.circle(center,Object.assign({radius,interactive:false},opt)).addTo(map);
- else{drawn[key].setLatLng(center);drawn[key].setRadius(radius);}
+ else{
+  drawn[key].setLatLng(center);drawn[key].setRadius(radius);
+  // Recover if Leaflet layers were cleared or map mode changed.
+  if(!map.hasLayer(drawn[key]))drawn[key].addTo(map);
+ }
 }
 function render(g){
  if(g!==undefined)coords=gpsOK(g)?{latitude:g.latitude,longitude:g.longitude}:null;
@@ -175,7 +180,7 @@ setInterval(()=>{if((cbOn||hamOn)&&document.visibilityState==='visible')render()
 render();
 window.RoadtowerCBRange={
  isOn:()=>cbOn,getMiles:()=>near,getFavorableMiles:()=>far,
- isHamOn:()=>hamOn,setOn:setCB,setHamOn:setHAM,
+ isHamOn:()=>hamOn,setOn:setCB,setHamOn:setHAM,refresh:()=>render(),
  getProfile:()=>({cb:{radio:'Cobra 75',antenna:'102-inch stainless whip',vehicle:'2020 GMC Sierra',nearMiles:near,favorableMiles:far},ham:{radio:'Yaesu FTM-400XDR',antenna:'Comet CSB790A 62-inch',powerWatts:50,simplexNearMiles:5,simplexFavorableMiles:20}})
 };
 })();
