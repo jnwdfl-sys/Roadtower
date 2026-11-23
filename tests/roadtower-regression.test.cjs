@@ -111,6 +111,10 @@ test('Follow GPS starts tracking if off and keeps the SOS position marker',()=>{
  function $(id){return nodes[id]}
  function gpsHudState(){}
  function visibleFollowZoom(){return 11}
+ function resumeGpsFollow(){followMap=true;if(position)centers++}
+ function clearFollowPause(){}
+ function updateFollowLabel(){}
+ function followPaused(){return false}
  `+followHandler+`
  nodes.followMap.onclick();
  return {followMap,starts,centers};
@@ -141,4 +145,39 @@ test('Offline shell includes scripts and JSON directory and is versioned',()=>{
   assert.ok(sw.includes("'./"+asset+"'"),asset+' must be precached');
  }
  assert.match(sw,/roadtower-offline-v\d+/);
+});
+
+test('GPS follow pauses during map browsing and auto-centers after 60 seconds',()=>{
+ const start=html.indexOf('const FOLLOW_IDLE_MS=60000;');
+ const end=html.indexOf("try{if(!window.L)",start);
+ assert.ok(start>=0&&end>start);
+ assert.match(html,/map\.on\('dragstart',pauseGpsFollow\)/);
+ assert.match(html,/map\.on\('dragend',scheduleGpsReturn\)/);
+ assert.match(html,/if\(followMap&&!followPaused\(\)\)map\.panTo/);
+ const helpers=html.slice(start,end);
+ const simulate=new Function(
+  "let followMap=true,watch=1,position={latitude:39,longitude:-94.5},map=null;\n"+
+  "let now=1000,timer=null,pan=[];\n"+
+  "const Date={now:()=>now};\n"+
+  "const setTimeout=(callback,delay)=>{timer={callback,delay};return 1};\n"+
+  "const clearTimeout=()=>{timer=null};\n"+
+  "const buttons={followMap:{textContent:'',title:''}};\n"+
+  "const $=id=>buttons[id];\n"+
+  "function visibleFollowZoom(){return 12}\n"+
+  "map={panTo:coords=>pan.push(coords),setView:()=>{}};\n"+helpers+
+  "pauseGpsFollow();\n"+
+  "const paused=followMap&&followPaused()&&buttons.followMap.textContent.includes('PAUSED');\n"+
+  "scheduleGpsReturn();\n"+
+  "const delay=timer&&timer.delay;\n"+
+  "position={latitude:40,longitude:-95};\n"+
+  "const held=followPaused();\n"+
+  "now+=60000;\n"+
+  "timer.callback();\n"+
+  "const resumed=followMap&&!followPaused()&&pan.length===1&&pan[0][0]===40&&pan[0][1]===-95;\n"+
+  "followMap=false;pauseGpsFollow();\n"+
+  "return {paused,delay,held,resumed,offDoesNotPause:!followPaused()};"
+ );
+ const r=simulate();
+ assert.equal(r.paused,true);assert.equal(r.delay,60000);
+ assert.equal(r.held,true);assert.equal(r.resumed,true);assert.equal(r.offDoesNotPause,true);
 });
