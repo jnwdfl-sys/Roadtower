@@ -43,7 +43,7 @@ test('GPS automatically starts on secure browser and remains user-controlled',()
 });
 test('SOS marker is a distinct visible icon',()=>{
  assert.match(page,/@keyframes rt-gps-sos/);
- assert.match(page,/YOU · SOS/);
+ assert.match(page,/@keyframes rt-gps-fast-dot/);
  assert.match(page,/rt-self-center/);
 });
 test('panels minimize at startup while support for opening, maximizing and restoring remains',()=>{
