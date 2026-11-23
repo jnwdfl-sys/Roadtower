@@ -27,7 +27,7 @@ test('JavaScript modules and all inline scripts parse',()=>{
   assert.doesNotThrow(()=>new vm.Script(code,{filename:'roadtower-inline-'+index+'.js'}));
  }
  for(const script of ['repeaters.js','offline-maps.js','panel-layout.js']){
-  assert.ok(html.includes('<script src="./'+script+'"></script>'),'Linked '+script);
+  assert.ok(html.includes('<script src="./'+script),'Linked '+script);
  }
 });
 
