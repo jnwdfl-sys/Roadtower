@@ -1,4 +1,4 @@
-/* Regression checks for optional default-on aircraft and radar overlays.
+/* Regression checks for optional aircraft (off by default) and radar (on) overlays.
  * No internet needed. Upstream providers are mocked.
  */
 'use strict';
@@ -32,9 +32,9 @@ test('new frontend and both Cloudflare worker scripts are valid JS',()=>{
  assert.doesNotThrow(()=>new vm.Script(radar.replace('export async function onRequestGet','async function onRequestGet')));
 });
 
-test('aircraft and radar both start ON and retain independent OFF controls',()=>{
- assert.match(js,/let aircraftOn=true,radarOn=true/);
- assert.match(js,/loadRadar\(true\);\s*loadAircraft\(true\)/);
+test('aircraft starts OFF to save API quota while radar stays ON, both toggle independently',()=>{
+ assert.match(js,/let aircraftOn=false,radarOn=true/);
+ assert.match(js,/setAuto\(true\);\s*loadRadar\(true\)/);
  assert.match(js,/setAircraft\(!aircraftOn\)/);
  assert.match(js,/setRadar\(!radarOn\)/);
  assert.match(js,/airGroup\.clearLayers\(\)/);
@@ -42,8 +42,8 @@ test('aircraft and radar both start ON and retain independent OFF controls',()=>
 });
 
 test('live panel appears before draggable layout; minimization leaves layers active',()=>{
- const a=page.indexOf('<script src="./live-layers.js"></script>');
- const b=page.indexOf('<script src="./panel-layout.js"></script>');
+ const a=page.indexOf('<script src="./live-layers.js');
+ const b=page.indexOf('<script src="./panel-layout.js');
  assert.ok(a>0&&b>a);
  assert.match(layout,/selector:'\.rt-live-panel'/);
  assert.match(layout,/layers:\{icon:'✈',short:'LIVE',color:'orange'\}/);
@@ -58,7 +58,7 @@ test('transparent radar is latest observed image, not a forecast',()=>{
  assert.match(js,/pane:'rtRadarPane'/);
  assert.match(js,/pointerEvents='none'/);
  assert.match(js,/frame\.path\+'\/256\/\{z\}\/\{x\}\/\{y\}\/2\/1_1\.png'/);
- assert.match(js,/recent precipitation \(not a forecast\)/);
+ assert.match(js,/observed-precipitation frames, NOT future forecasts/);
  assert.match(js,/radarTile\(radarFrames\[radarFrames\.length-1\]\)/);
 });
 
@@ -81,7 +81,7 @@ test('aircraft lookup rounds map center to 0.1 degrees and caches requests',asyn
  assert.equal(data.flights[0].altFt,20000);
  assert.equal(data.center.lat,39.1);
  assert.equal(data.center.lon,-94.7);
- assert.match(data.credit,/adsb\.lol/);
+ assert.match(data.credit,/adsb\.fi/);
  assert.match(response.headers.get('cache-control'),/max-age=180/);
  const invalid=await get({request:fakeRequest('https://roadtower.pages.dev/api/aircraft?lat=999&lon=-95')});
  assert.equal(invalid.status,400);
@@ -113,7 +113,7 @@ test('stale aircraft are not presented as live, no simulated flight tracks',()=>
  assert.match(js,/now-airLastSuccess>=360000/);
  assert.match(js,/last position/i);
  assert.doesNotMatch(js,/Math\.random\(\)/);
- assert.match(js,/refresh ~3 min/);
+ assert.match(js,/AIR_INTERVAL=240000/);
 });
 
 test('new frontend file is in the cache but API data are network-only',()=>{
