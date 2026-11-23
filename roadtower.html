@@ -1058,7 +1058,49 @@ body.map-fullscreen #map .rt-status-hud{
 <div id="offlineAreaList" class="rt-area-list"></div>
 <p class="hint">Save multiple stops along a route while online (up to 25 areas). Area downloads require internet and may be unavailable if the public data service is busy. No automatic cross-country route download yet; a saved area covers only its selected radius. Offline GPS is not a substitute for road directions or emergency navigation. Downloading an area sends the selected map center and radius (which may be your location if you choose My GPS) to the external Overpass map-data service. Normal GPS tracking remains local to your device. Maps are stored in this browser and can be removed if its data is cleared. Road data: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a> (ODbL).</p>
 </section><section class="card"><h2>Saved Places</h2><p class="hint">Private on this device. Export a backup before clearing browser data.</p><div class="buttons"><button id="export" class="secondary">Download Backup</button><button id="import" class="secondary">Restore Backup</button><input type="file" id="importFile" accept=".json,application/json" hidden></div><div id="places" class="saved"></div></section><section class="card"><h2>Official Weather Alerts</h2><p class="hint">Checks your location when GPS starts and approximately every 5 minutes while the page is open. Browsers may suspend background tabs. Not a replacement for emergency alerts.</p><div class="buttons"><button id="checkWeather">Check Now</button><button id="voice" class="secondary">Voice: Off</button></div><p id="weatherStatus" class="hint">Not checked yet.</p><p id="alerts" role="status">Start GPS to check local National Weather Service alerts.</p><p><a href="https://www.weather.gov/" target="_blank" rel="noopener noreferrer">Official National Weather Service website</a></p></section><section class="card"><h2>Look-Ahead Weather Check</h2><p class="hint">Check official NWS alerts at points ahead of your GPS location. This is a <strong>direction-based preview, not a calculated driving route</strong>. It cannot detect traffic, crashes, plows, or guarantee you will encounter or avoid a storm. For a future true route check, ROADTOWER will need a permitted routing source.</p><div class="settingsRow"><label for="aheadRange">Look-ahead distance</label><select id="aheadRange"><option value="10">10 miles</option><option value="25" selected>25 miles</option><option value="50">50 miles</option><option value="100">100 miles</option></select></div><div class="settingsRow"><label for="aheadDirection">Direction</label><select id="aheadDirection"><option value="heading">GPS heading (when moving)</option><option value="0">North</option><option value="90">East</option><option value="180">South</option><option value="270">West</option></select></div><div class="buttons"><button id="checkAhead">Check Weather Ahead</button><button class="secondary" id="clearAhead">Clear Preview</button></div><p class="hint" id="routeStatus" role="status">Start GPS, then choose a direction and check ahead.</p><p class="hint">Official alerts can change quickly. This feature needs internet and works only while the page is open. Do not use the app while driving.</p></section><section class="card"><h2>Road Hazards & Winter Driving</h2><p class="hint">Official state road maps are the dependable no-special-agreement option. Open the state map for reported crashes, slow traffic, construction, closures, snow and ice. ROADTOWER does not claim these are live overlays on its own map.</p><div class="buttons"><a class="button" href="https://www.kandrive.gov/" target="_blank" rel="noopener noreferrer">Kansas: Accidents / Snow / Closures</a><a class="button" href="https://traveler.modot.org/mapv3/index.html" target="_blank" rel="noopener noreferrer">Missouri: Incidents / Plow Conditions</a><a class="button secondary" href="https://www.ksdot.gov/travel/travel-conditions" target="_blank" rel="noopener noreferrer">Kansas Road Weather / KC Scout</a></div><p class="hint">Snowplow GPS locations and future plow routes are not displayed: no suitable unrestricted live feed has been verified. Road conditions do not prove a plow has passed.</p></section><section class="card"><h2>Official Highway Information</h2><p class="hint">These links open government travel sites. ROADTOWER does not copy their traffic feeds or promise live road coverage.</p><div class="buttons"><a class="button secondary" href="https://www.kandrive.gov/" target="_blank" rel="noopener noreferrer">Kansas KanDrive</a><a class="button secondary" href="https://traveler.modot.org/mapv3/index.html" target="_blank" rel="noopener noreferrer">Missouri MoDOT</a></div></section><section class="card"><h2>Emergency</h2><p class="hint notice">If you are in danger, contact emergency services directly. GPS, maps and weather services can be delayed or unavailable. Never interact with the app while driving.</p><a class="button" href="tel:911">Call 911</a></section><p class="hint">ROADTOWER is an informational tool. GPS requires permission; maps and NWS alerts require internet. Voice alerts only operate while this page remains active and the browser allows audio. No accounts or subscriptions.</p></main><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script><script>
-(()=>{'use strict';const $=id=>document.getElementById(id);let map,locationMarker,accuracyCircle,layer,watch=null,position=null,pending=null,lastCheck=0,checking=false,voice=false,lastSpoken='';const KEY='roadtower.savedPlaces.v1';let aheadLayer=null,checkingAhead=false,followMap=true;let places=[];window.RoadtowerRepeaters={getMap:()=>map,getGps:()=>(watch!==null?position:null),onGps:null};try{const a=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(a))places=a.filter(p=>p&&typeof p.name==='string'&&Number.isFinite(p.lat)&&Number.isFinite(p.lng)&&Math.abs(p.lat)<=90&&Math.abs(p.lng)<=180).slice(0,500)}catch(e){}const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(places));return true}catch(e){alert('Storage unavailable');return false}};try{if(!window.L)throw Error('Map library not available');map=L.map('map').setView([39.1,-94.58],9);L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);layer=L.layerGroup().addTo(map);map.on('click',e=>openSave(e.latlng.lat,e.latlng.lng));map.on('dragstart',()=>{followMap=false;$('followMap').textContent='Follow GPS: OFF'})}catch(e){$('map').textContent='Map unavailable. Check internet connection.'}const gpsHud=document.createElement('section');
+(()=>{'use strict';const $=id=>document.getElementById(id);let map,locationMarker,accuracyCircle,layer,watch=null,position=null,pending=null,lastCheck=0,checking=false,voice=false,lastSpoken='';const KEY='roadtower.savedPlaces.v1';let aheadLayer=null,checkingAhead=false,followMap=true;let places=[];window.RoadtowerRepeaters={getMap:()=>map,getGps:()=>(watch!==null?position:null),onGps:null};try{const a=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(a))places=a.filter(p=>p&&typeof p.name==='string'&&Number.isFinite(p.lat)&&Number.isFinite(p.lng)&&Math.abs(p.lat)<=90&&Math.abs(p.lng)<=180).slice(0,500)}catch(e){}const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(places));return true}catch(e){alert('Storage unavailable');return false}};const FOLLOW_IDLE_MS=60000;
+let followReturnTimer=null,followPauseUntil=0,mapDragging=false;
+function followPaused(){return mapDragging||followPauseUntil>Date.now()}
+function updateFollowLabel(){
+ const button=$('followMap');if(!button)return;
+ button.textContent=!followMap?'Follow GPS: OFF':followPaused()?'Follow GPS: PAUSED · 60s':'Follow GPS: ON';
+ button.title=followMap?'Drag the map to explore; it returns to your GPS after 60 seconds.':'Tap to keep your GPS centered on the map.';
+}
+function clearFollowPause(){
+ if(followReturnTimer!==null)clearTimeout(followReturnTimer);
+ followReturnTimer=null;followPauseUntil=0;mapDragging=false;
+}
+function centerGps(resetZoom=false){
+ if(!map||!position)return;
+ const coords=[position.latitude,position.longitude];
+ if(resetZoom)map.setView(coords,visibleFollowZoom(position),{animate:false});
+ else map.panTo(coords,{animate:false});
+}
+function resumeGpsFollow(resetZoom=false){
+ clearFollowPause();followMap=true;updateFollowLabel();
+ if(watch!==null&&position)centerGps(resetZoom);
+}
+function pauseGpsFollow(){
+ if(!followMap||watch===null||!position)return;
+ if(followReturnTimer!==null)clearTimeout(followReturnTimer);
+ followReturnTimer=null;followPauseUntil=0;mapDragging=true;updateFollowLabel();
+}
+function scheduleGpsReturn(){
+ if(!followMap||!mapDragging)return;
+ mapDragging=false;
+ if(watch===null||!position){updateFollowLabel();return}
+ if(followReturnTimer!==null)clearTimeout(followReturnTimer);
+ followPauseUntil=Date.now()+FOLLOW_IDLE_MS;updateFollowLabel();
+ followReturnTimer=setTimeout(()=>{
+  followReturnTimer=null;
+  if(followMap&&watch!==null&&position)resumeGpsFollow();
+  else{followPauseUntil=0;updateFollowLabel()}
+ },FOLLOW_IDLE_MS);
+}
+function resumeFollowIfDue(){
+ if(followMap&&!mapDragging&&followPauseUntil&&Date.now()>=followPauseUntil)resumeGpsFollow();
+}
+try{if(!window.L)throw Error('Map library not available');map=L.map('map').setView([39.1,-94.58],9);L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);layer=L.layerGroup().addTo(map);map.on('click',e=>openSave(e.latlng.lat,e.latlng.lng));map.on('dragstart',pauseGpsFollow);map.on('dragend',scheduleGpsReturn)}catch(e){$('map').textContent='Map unavailable. Check internet connection.'}const gpsHud=document.createElement('section');
 gpsHud.id='rtGpsHud';gpsHud.className='rt-gps-hud rt-gps-off';
 gpsHud.setAttribute('aria-label','My GPS location and status');
 gpsHud.innerHTML='<div class="rt-gps-row"><strong id="rtGpsMode">GPS OFF</strong><button id="rtGpsQuick" type="button">Start GPS</button><button id="rtGpsStopQuick" type="button" hidden>Stop</button></div><div id="rtGpsDetails">GPS not started</div>';
@@ -1076,16 +1118,10 @@ function gpsHudState(state,message){
  $('rtGpsQuick').disabled=state==='searching';
  $('rtGpsStopQuick').hidden=!(state==='live'||state==='searching');
 }
-$('rtGpsQuick').onclick=()=>{
- if(watch===null){$('start').click();return}
- if(position&&map){
-  followMap=true;$('followMap').textContent='Follow GPS: ON';
-  map.setView([position.latitude,position.longitude],visibleFollowZoom(position),{animate:false});
- }
-};
+$('rtGpsQuick').onclick=()=>{resumeGpsFollow(true);if(watch===null)$('start').click()};
 $('rtGpsStopQuick').onclick=()=>$('stop').click();
 gpsHudState('off','GPS not started');
-function openSave(lat,lng){pending={lat,lng};$('saveForm').classList.remove('hidden');$('placeName').value='';$('chosen').textContent=lat.toFixed(5)+', '+lng.toFixed(5);$('saveForm').scrollIntoView({behavior:'smooth',block:'nearest'})}function render(){const root=$('places');root.replaceChildren();if(layer)layer.clearLayers();if(!places.length){root.textContent='No saved places yet.';return}places.forEach((p,i)=>{if(layer){const m=L.marker([p.lat,p.lng]).addTo(layer);m.bindPopup(document.createTextNode(p.name))}const div=document.createElement('div');div.className='place';const title=document.createElement('strong');title.textContent=(p.type||'📍')+' '+p.name;const coords=document.createElement('small');coords.textContent=p.lat.toFixed(5)+', '+p.lng.toFixed(5);const bar=document.createElement('div');bar.className='buttons';const show=document.createElement('button');show.textContent='Show on Map';show.onclick=()=>{if(map){map.setView([p.lat,p.lng],15);$('map').scrollIntoView({behavior:'smooth'})}};const directions=document.createElement('button');directions.className='secondary';directions.textContent='Directions';directions.onclick=()=>window.open('https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(p.lat+','+p.lng),'_blank','noopener');const remove=document.createElement('button');remove.className='secondary';remove.textContent='Delete';remove.onclick=()=>{if(confirm('Delete '+p.name+'?')){places.splice(i,1);save();render()}};bar.append(show,directions,remove);div.append(title,coords,bar);root.append(div)})}render();const mapResize=()=>{if(map)requestAnimationFrame(()=>map.invalidateSize({pan:false}))};window.addEventListener('resize',mapResize);if(window.visualViewport)window.visualViewport.addEventListener('resize',mapResize);window.addEventListener('orientationchange',()=>setTimeout(mapResize,180));if(window.ResizeObserver)new ResizeObserver(mapResize).observe($('map'));document.addEventListener('visibilitychange',()=>{if(!document.hidden)mapResize()});const mapElement=$('map'),mapHome=mapElement.parentNode,mapNext=mapElement.nextSibling;function exitFull(){if(!document.body.classList.contains('map-fullscreen'))return;document.body.classList.remove('map-fullscreen');if(mapNext&&mapNext.parentNode===mapHome)mapHome.insertBefore(mapElement,mapNext);else mapHome.appendChild(mapElement);$('fullscreenMap').textContent='Full Screen';mapResize();setTimeout(mapResize,180)}$('compactMap').onclick=()=>{exitFull();$('map').classList.remove('expanded');$('map').classList.toggle('compact');mapResize()};$('expandMap').onclick=()=>{exitFull();$('map').classList.remove('compact');$('map').classList.toggle('expanded');mapResize()};$('fullscreenMap').onclick=()=>{if(document.body.classList.contains('map-fullscreen'))exitFull();else{document.body.appendChild(mapElement);document.body.classList.add('map-fullscreen');$('fullscreenMap').textContent='Exit Map';mapResize();setTimeout(mapResize,180)}};document.addEventListener('keydown',e=>{if(e.key==='Escape')exitFull()});const prefKey='roadtower.aheadSettings.v1';try{const pref=JSON.parse(localStorage.getItem(prefKey)||'{}');if(['10','25','50','100'].includes(pref.range))$('aheadRange').value=pref.range;if(['heading','0','90','180','270'].includes(pref.direction))$('aheadDirection').value=pref.direction}catch(e){}function saveAheadPrefs(){try{localStorage.setItem(prefKey,JSON.stringify({range:$('aheadRange').value,direction:$('aheadDirection').value}))}catch(e){}}$('aheadRange').onchange=saveAheadPrefs;$('aheadDirection').onchange=saveAheadPrefs;function aheadPoint(lat,lng,bearing,miles){const rad=Math.PI/180,dist=miles/3958.7613,p1=lat*rad,l1=lng*rad,br=bearing*rad,p2=Math.asin(Math.sin(p1)*Math.cos(dist)+Math.cos(p1)*Math.sin(dist)*Math.cos(br)),l2=l1+Math.atan2(Math.sin(br)*Math.sin(dist)*Math.cos(p1),Math.cos(dist)-Math.sin(p1)*Math.sin(p2));return [p2/rad,((l2/rad+540)%360)-180]}$('clearAhead').onclick=()=>{if(aheadLayer){aheadLayer.remove();aheadLayer=null}$('routeStatus').textContent='Preview cleared.'};$('checkAhead').onclick=async()=>{if(!position){$('routeStatus').textContent='Start Live GPS first.';return}if(checkingAhead)return;const direction=$('aheadDirection').value;let heading=direction==='heading'?position.heading:Number(direction);if(!Number.isFinite(heading)){$('routeStatus').textContent='GPS direction unavailable. Select North, East, South, or West, or move until GPS reports a heading.';return}checkingAhead=true;$('checkAhead').disabled=true;const miles=Number($('aheadRange').value),start=[position.latitude,position.longitude],p1=aheadPoint(...start,heading,miles/2),p2=aheadPoint(...start,heading,miles);$('routeStatus').textContent='Checking official weather alerts at two points ahead…';try{const results=await Promise.all([p1,p2].map(async(point)=>{const url='https://api.weather.gov/alerts/active?point='+point[0].toFixed(4)+','+point[1].toFixed(4);const r=await fetch(url,{headers:{Accept:'application/geo+json'}});if(!r.ok)throw Error('Weather service HTTP '+r.status);return (await r.json()).features||[]}));const unique=new Map();results.flat().forEach(f=>{const id=f.id||f.properties?.id;if(id)unique.set(id,f)});const events=[...unique.values()].slice(0,8);$('routeStatus').textContent='Checked '+new Date().toLocaleTimeString()+' • '+miles+' miles '+Math.round(heading)+'° ahead (straight-line sample, NOT a driving route).\n'+(events.length?events.map(f=>'⚠ '+(f.properties?.event||'NWS alert')+': '+(f.properties?.headline||'See official NWS details')).join('\n\n'):'No active NWS alerts found at the two sampled points. This does NOT mean the road ahead is safe.');if(map){if(aheadLayer)aheadLayer.remove();aheadLayer=L.layerGroup().addTo(map);L.polyline([start,p2],{color:'#f5bd42',dashArray:'8,9',weight:4}).addTo(aheadLayer);[p1,p2].forEach((p,i)=>L.circleMarker(p,{radius:6,color:'#fff',fillColor:events.length?'#f1a12b':'#22c55e',fillOpacity:1}).bindPopup('Weather sample '+(i+1)+' — not a route').addTo(aheadLayer))}if(voice&&events.length&&'speechSynthesis'in window)speechSynthesis.speak(new SpeechSynthesisUtterance('ROADTOWER. Official weather alerts were found in the direction you selected. Review the alerts before traveling.'))}catch(e){$('routeStatus').textContent='Unable to check ahead: '+e.message+'. Check official NWS information.'}finally{checkingAhead=false;$('checkAhead').disabled=false}};$('start').onclick=()=>{
+function openSave(lat,lng){pending={lat,lng};$('saveForm').classList.remove('hidden');$('placeName').value='';$('chosen').textContent=lat.toFixed(5)+', '+lng.toFixed(5);$('saveForm').scrollIntoView({behavior:'smooth',block:'nearest'})}function render(){const root=$('places');root.replaceChildren();if(layer)layer.clearLayers();if(!places.length){root.textContent='No saved places yet.';return}places.forEach((p,i)=>{if(layer){const m=L.marker([p.lat,p.lng]).addTo(layer);m.bindPopup(document.createTextNode(p.name))}const div=document.createElement('div');div.className='place';const title=document.createElement('strong');title.textContent=(p.type||'📍')+' '+p.name;const coords=document.createElement('small');coords.textContent=p.lat.toFixed(5)+', '+p.lng.toFixed(5);const bar=document.createElement('div');bar.className='buttons';const show=document.createElement('button');show.textContent='Show on Map';show.onclick=()=>{if(map){map.setView([p.lat,p.lng],15);$('map').scrollIntoView({behavior:'smooth'})}};const directions=document.createElement('button');directions.className='secondary';directions.textContent='Directions';directions.onclick=()=>window.open('https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(p.lat+','+p.lng),'_blank','noopener');const remove=document.createElement('button');remove.className='secondary';remove.textContent='Delete';remove.onclick=()=>{if(confirm('Delete '+p.name+'?')){places.splice(i,1);save();render()}};bar.append(show,directions,remove);div.append(title,coords,bar);root.append(div)})}render();const mapResize=()=>{if(map)requestAnimationFrame(()=>map.invalidateSize({pan:false}))};window.addEventListener('resize',mapResize);if(window.visualViewport)window.visualViewport.addEventListener('resize',mapResize);window.addEventListener('orientationchange',()=>setTimeout(mapResize,180));if(window.ResizeObserver)new ResizeObserver(mapResize).observe($('map'));document.addEventListener('visibilitychange',()=>{if(!document.hidden){mapResize();resumeFollowIfDue()}});const mapElement=$('map'),mapHome=mapElement.parentNode,mapNext=mapElement.nextSibling;function exitFull(){if(!document.body.classList.contains('map-fullscreen'))return;document.body.classList.remove('map-fullscreen');if(mapNext&&mapNext.parentNode===mapHome)mapHome.insertBefore(mapElement,mapNext);else mapHome.appendChild(mapElement);$('fullscreenMap').textContent='Full Screen';mapResize();setTimeout(mapResize,180)}$('compactMap').onclick=()=>{exitFull();$('map').classList.remove('expanded');$('map').classList.toggle('compact');mapResize()};$('expandMap').onclick=()=>{exitFull();$('map').classList.remove('compact');$('map').classList.toggle('expanded');mapResize()};$('fullscreenMap').onclick=()=>{if(document.body.classList.contains('map-fullscreen'))exitFull();else{document.body.appendChild(mapElement);document.body.classList.add('map-fullscreen');$('fullscreenMap').textContent='Exit Map';mapResize();setTimeout(mapResize,180)}};document.addEventListener('keydown',e=>{if(e.key==='Escape')exitFull()});const prefKey='roadtower.aheadSettings.v1';try{const pref=JSON.parse(localStorage.getItem(prefKey)||'{}');if(['10','25','50','100'].includes(pref.range))$('aheadRange').value=pref.range;if(['heading','0','90','180','270'].includes(pref.direction))$('aheadDirection').value=pref.direction}catch(e){}function saveAheadPrefs(){try{localStorage.setItem(prefKey,JSON.stringify({range:$('aheadRange').value,direction:$('aheadDirection').value}))}catch(e){}}$('aheadRange').onchange=saveAheadPrefs;$('aheadDirection').onchange=saveAheadPrefs;function aheadPoint(lat,lng,bearing,miles){const rad=Math.PI/180,dist=miles/3958.7613,p1=lat*rad,l1=lng*rad,br=bearing*rad,p2=Math.asin(Math.sin(p1)*Math.cos(dist)+Math.cos(p1)*Math.sin(dist)*Math.cos(br)),l2=l1+Math.atan2(Math.sin(br)*Math.sin(dist)*Math.cos(p1),Math.cos(dist)-Math.sin(p1)*Math.sin(p2));return [p2/rad,((l2/rad+540)%360)-180]}$('clearAhead').onclick=()=>{if(aheadLayer){aheadLayer.remove();aheadLayer=null}$('routeStatus').textContent='Preview cleared.'};$('checkAhead').onclick=async()=>{if(!position){$('routeStatus').textContent='Start Live GPS first.';return}if(checkingAhead)return;const direction=$('aheadDirection').value;let heading=direction==='heading'?position.heading:Number(direction);if(!Number.isFinite(heading)){$('routeStatus').textContent='GPS direction unavailable. Select North, East, South, or West, or move until GPS reports a heading.';return}checkingAhead=true;$('checkAhead').disabled=true;const miles=Number($('aheadRange').value),start=[position.latitude,position.longitude],p1=aheadPoint(...start,heading,miles/2),p2=aheadPoint(...start,heading,miles);$('routeStatus').textContent='Checking official weather alerts at two points ahead…';try{const results=await Promise.all([p1,p2].map(async(point)=>{const url='https://api.weather.gov/alerts/active?point='+point[0].toFixed(4)+','+point[1].toFixed(4);const r=await fetch(url,{headers:{Accept:'application/geo+json'}});if(!r.ok)throw Error('Weather service HTTP '+r.status);return (await r.json()).features||[]}));const unique=new Map();results.flat().forEach(f=>{const id=f.id||f.properties?.id;if(id)unique.set(id,f)});const events=[...unique.values()].slice(0,8);$('routeStatus').textContent='Checked '+new Date().toLocaleTimeString()+' • '+miles+' miles '+Math.round(heading)+'° ahead (straight-line sample, NOT a driving route).\n'+(events.length?events.map(f=>'⚠ '+(f.properties?.event||'NWS alert')+': '+(f.properties?.headline||'See official NWS details')).join('\n\n'):'No active NWS alerts found at the two sampled points. This does NOT mean the road ahead is safe.');if(map){if(aheadLayer)aheadLayer.remove();aheadLayer=L.layerGroup().addTo(map);L.polyline([start,p2],{color:'#f5bd42',dashArray:'8,9',weight:4}).addTo(aheadLayer);[p1,p2].forEach((p,i)=>L.circleMarker(p,{radius:6,color:'#fff',fillColor:events.length?'#f1a12b':'#22c55e',fillOpacity:1}).bindPopup('Weather sample '+(i+1)+' — not a route').addTo(aheadLayer))}if(voice&&events.length&&'speechSynthesis'in window)speechSynthesis.speak(new SpeechSynthesisUtterance('ROADTOWER. Official weather alerts were found in the direction you selected. Review the alerts before traveling.'))}catch(e){$('routeStatus').textContent='Unable to check ahead: '+e.message+'. Check official NWS information.'}finally{checkingAhead=false;$('checkAhead').disabled=false}};$('start').onclick=()=>{
  if(!navigator.geolocation){
   $('status').textContent='GPS unavailable in this browser';
   gpsHudState('error','Location services are unavailable');return
@@ -1109,7 +1145,8 @@ function openSave(lat,lng){pending={lat,lng};$('saveForm').classList.remove('hid
    // GPS marker should remain visible even after switching map modes or resizing.
    if(locationMarker&&!map.hasLayer(locationMarker))locationMarker.addTo(map);
    if(locationMarker&&locationMarker.setZIndexOffset)locationMarker.setZIndexOffset(3000);
-   if(followMap)map.panTo([lat,lng],{animate:false});
+   resumeFollowIfDue();
+    if(followMap&&!followPaused())map.panTo([lat,lng],{animate:false});
    if(!accuracyCircle)accuracyCircle=L.circle([lat,lng],{radius:Math.max(1,position.accuracy||1),color:'#1ac7f9',weight:1,fillOpacity:.055,interactive:false}).addTo(map);
    else{accuracyCircle.setLatLng([lat,lng]);accuracyCircle.setRadius(Math.max(1,position.accuracy||1))}
   }
@@ -1119,7 +1156,7 @@ function openSave(lat,lng){pending={lat,lng};$('saveForm').classList.remove('hid
  },e=>{
   $('status').textContent='GPS unavailable: '+(e.code===1?'location permission denied':e.message);
   if(watch!==null)navigator.geolocation.clearWatch(watch);
-  watch=null;position=null;
+  watch=null;position=null;clearFollowPause();updateFollowLabel();
   $('start').disabled=false;$('stop').disabled=true;
   $('center').disabled=true;$('saveCurrent').disabled=true;
   if(locationMarker&&map){map.removeLayer(locationMarker);locationMarker=null}
@@ -1128,7 +1165,7 @@ function openSave(lat,lng){pending={lat,lng};$('saveForm').classList.remove('hid
   if(window.RoadtowerRepeaters.onGps)window.RoadtowerRepeaters.onGps(null);
  },{enableHighAccuracy:true,maximumAge:1000,timeout:30000});
  }catch(err){
-  watch=null;position=null;
+  watch=null;position=null;clearFollowPause();updateFollowLabel();
   $('start').disabled=false;$('stop').disabled=true;
   gpsHudState('error','GPS could not start: '+(err.message||err));
   $('status').textContent='GPS not started • allow Chrome location access and tap Start GPS';
@@ -1136,7 +1173,7 @@ function openSave(lat,lng){pending={lat,lng};$('saveForm').classList.remove('hid
 };
 $('stop').onclick=()=>{
  if(watch!==null)navigator.geolocation.clearWatch(watch);
- watch=null;position=null;
+ watch=null;position=null;clearFollowPause();updateFollowLabel();
  $('start').disabled=false;$('stop').disabled=true;
  $('center').disabled=true;$('saveCurrent').disabled=true;
  $('status').textContent='GPS stopped';
@@ -1146,26 +1183,16 @@ $('stop').onclick=()=>{
  if(window.RoadtowerRepeaters.onGps)window.RoadtowerRepeaters.onGps(null);
 };
 $('center').onclick=()=>{
- if(!position&&watch===null){followMap=true;$('followMap').textContent='Follow GPS: ON';$('start').click();return}
- if(map&&position){map.setView([position.latitude,position.longitude],visibleFollowZoom(position),{animate:false});followMap=true;$('followMap').textContent='Follow GPS: ON'}
-};$('followMap').onclick=()=>{
- // The Follow control must START GPS if location is off; previously the
- // initial "Follow GPS: ON" state was toggling OFF on the very first tap.
- if(watch===null){
-  followMap=true;$('followMap').textContent='Follow GPS: ON';
-  $('start').click();return
- }
- if(!position){
-  followMap=true;$('followMap').textContent='Follow GPS: ON';
-  gpsHudState('searching','Waiting for GPS coordinates; allow location permission');
-  return
- }
- followMap=!followMap;
- $('followMap').textContent='Follow GPS: '+(followMap?'ON':'OFF');
- if(followMap&&map){
-  map.invalidateSize({pan:false});
-  map.setView([position.latitude,position.longitude],visibleFollowZoom(position),{animate:false});
- }
+ if(!position&&watch===null){resumeGpsFollow(true);$('start').click();return}
+ if(map&&position)resumeGpsFollow(true);
+};
+$('followMap').onclick=()=>{
+ // Dragging temporarily pauses following. This button can resume immediately.
+ if(watch===null){resumeGpsFollow(true);$('start').click();return}
+ if(!position){resumeGpsFollow(true);gpsHudState('searching','Waiting for GPS coordinates; allow location permission');return}
+ if(followMap&&followPaused()){resumeGpsFollow(true);return}
+ followMap=!followMap;clearFollowPause();updateFollowLabel();
+ if(followMap&&map){map.invalidateSize({pan:false});map.setView([position.latitude,position.longitude],visibleFollowZoom(position),{animate:false})}
 };$('saveCurrent').onclick=()=>{if(position)openSave(position.latitude,position.longitude)};$('cancelSave').onclick=()=>{$('saveForm').classList.add('hidden');pending=null};$('confirmSave').onclick=()=>{if(!pending)return;const name=$('placeName').value.trim();if(!name)return alert('Enter a name');if(places.length>=500)return alert('Maximum 500 places');places.push({name:name.slice(0,80),type:$('placeType').value,lat:pending.lat,lng:pending.lng});if(save()){pending=null;$('saveForm').classList.add('hidden');render()}};$('export').onclick=()=>{const blob=new Blob([JSON.stringify({format:'roadtower-places-v1',places},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='roadtower-saved-places.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000)};$('import').onclick=()=>$('importFile').click();$('importFile').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{const obj=JSON.parse(await f.text());if(obj.format!=='roadtower-places-v1'||!Array.isArray(obj.places))throw Error('Invalid backup');const clean=obj.places.filter(p=>p&&typeof p.name==='string'&&p.name.trim()&&Number.isFinite(p.lat)&&Number.isFinite(p.lng)&&Math.abs(p.lat)<=90&&Math.abs(p.lng)<=180).slice(0,500).map(p=>({name:p.name.slice(0,80),type:typeof p.type==='string'?p.type.slice(0,8):'📍',lat:p.lat,lng:p.lng}));if(confirm('Replace your saved places with '+clean.length+' imported places?')){places=clean;save();render()}}catch(err){alert('Backup could not be restored: '+err.message)}finally{e.target.value=''}};async function checkWeather(){if(!position){$('alerts').textContent='Start GPS first to check alerts near you.';return}if(checking)return;checking=true;lastCheck=Date.now();$('weatherStatus').textContent='Checking official weather service...';try{const r=await fetch('https://api.weather.gov/alerts/active?point='+position.latitude.toFixed(4)+','+position.longitude.toFixed(4),{headers:{Accept:'application/geo+json'}});if(!r.ok)throw Error('HTTP '+r.status);const json=await r.json(),a=(json.features||[]).slice(0,8);$('alerts').textContent=a.length?a.map(f=>(f.properties?.event||'Alert')+': '+(f.properties?.headline||'Active alert')).join('\n\n'):'No active NWS alerts reported for this location.';$('weatherStatus').textContent='Last checked '+new Date().toLocaleTimeString();const signature=a.map(f=>f.id).join('|');if(voice&&a.length&&signature!==lastSpoken&&'speechSynthesis'in window){speechSynthesis.speak(new SpeechSynthesisUtterance('ROADTOWER weather warning. '+a.slice(0,3).map(f=>f.properties?.event||'Weather alert').join('. ')));lastSpoken=signature}}catch(e){$('alerts').textContent='Weather service unavailable. Please check the official weather website.';$('weatherStatus').textContent='Check failed at '+new Date().toLocaleTimeString()}finally{checking=false}}$('checkWeather').onclick=checkWeather;$('voice').onclick=()=>{voice=!voice;$('voice').textContent='Voice: '+(voice?'On':'Off');if(voice&&'speechSynthesis'in window)speechSynthesis.speak(new SpeechSynthesisUtterance('ROADTOWER voice alerts enabled'))};setInterval(()=>{if(watch!==null&&position&&document.visibilityState==='visible'&&Date.now()-lastCheck>=300000)checkWeather()},60000);// The app launches in live map mode on phones, then starts GPS
 // immediately. Browser permission is always required and cannot be bypassed.
 let autoStartDone=false;
@@ -1176,7 +1203,7 @@ function autoStartRoadtower(){
  if(!document.body.classList.contains('map-fullscreen')){
   $('fullscreenMap').click();
  }
- followMap=true;$('followMap').textContent='Follow GPS: ON';
+ followMap=true;clearFollowPause();updateFollowLabel();
  if(!window.isSecureContext){
   gpsHudState('error','GPS needs HTTPS. Open the secure Roadtower link.');
   return;
@@ -1188,13 +1215,14 @@ if(document.readyState==='complete')setTimeout(autoStartRoadtower,120);
 else window.addEventListener('load',autoStartRoadtower,{once:true});
 // A back/forward-cache page can restore without rerunning its scripts.
 window.addEventListener('pagehide',()=>{
+ clearFollowPause();
  if(watch!==null)navigator.geolocation.clearWatch(watch);
  watch=null;
 });
 window.addEventListener('pageshow',e=>{
  if(e.persisted&&navigator.geolocation&&watch===null){
   $('start').disabled=false;$('stop').disabled=true;
-  followMap=true;$('followMap').textContent='Follow GPS: ON';
+  followMap=true;clearFollowPause();updateFollowLabel();
   $('start').click();
  }
 });
