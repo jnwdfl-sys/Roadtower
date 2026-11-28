@@ -2,7 +2,7 @@
    Repeater data lives in IndexedDB, independently of service-worker cache.
    OpenStreetMap tiles are intentionally NOT bulk cached for offline use.
 */
-const VERSION='roadtower-offline-v63';
+const VERSION='roadtower-offline-v64';
 const SHELL=['./','./index.html','./bloodtracker.html','./anti-surveillance.html','./bible-resources.html','./roadtower.html','./activity.html','./vehicle-command.html','./repeaters.js','./gmrs-directory.json','./offline-maps.js','./live-layers.js','./nearest-plane.js','./cb-range.js','./storm-health.js','./aprs-tracker.js','./panel-layout.js','./roadtower-pro.css','./roadtower-pro.js'];
 const LEAFLET=[
  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
@@ -11,7 +11,8 @@ const LEAFLET=[
 self.addEventListener('install',event=>{
  event.waitUntil((async()=>{
   const cache=await caches.open(VERSION);
-  await Promise.allSettled(SHELL.map(u=>cache.add(u)));
+  await Promise.all(['./index.html','./vehicle-command.html'].map(u=>cache.add(new Request(new URL(u,self.location.href),{cache:'reload'}))));
+  await Promise.allSettled(SHELL.filter(u=>!['./index.html','./vehicle-command.html'].includes(u)).map(u=>cache.add(u)));
   await Promise.allSettled(LEAFLET.map(async u=>{
    const response=await fetch(u,{mode:'cors'});
    if(response.ok)await cache.put(u,response);
@@ -43,7 +44,7 @@ self.addEventListener('fetch',event=>{
    if(response.ok)await cache.put(req,response.clone());
    return response;
   }catch(e){
-   return await cache.match(req)||await cache.match('./roadtower.html')||
+   return await cache.match(req)||await cache.match(new Request(url.origin+url.pathname))||(req.mode==='navigate'&&url.pathname.endsWith('/')?await cache.match('./index.html'):null)||
     new Response('ROADTOWER offline cache not ready. Open this page once while online.',{
       status:503,headers:{'Content-Type':'text/plain'}
     });
