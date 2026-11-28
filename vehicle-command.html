@@ -82,9 +82,69 @@ body.fit-on{--fit-label:15px;--fit-reading:30px;--fit-unit:12px;--fit-status:10p
 .fit-on .percent-meter{margin-top:2px}
 .fit-on #demoBanner{padding:3px 5px;font-size:12px}
 }
+
+/* V13 display-only: driving view prioritizes legibility; complete diagnostics remain available. */
+body.pro-view{background:#08111a}
+.pro-view main{padding:6px}
+.pro-view header{padding:3px 1px;justify-content:space-between}
+.pro-view header h1{font-size:clamp(19px,3vw,26px);letter-spacing:-.025em}
+.pro-view #dieselTop{gap:6px}
+.pro-view #dieselTop #regenPanel{border-radius:11px;padding:9px 10px}
+.pro-view #regenStatus{font-size:clamp(23px,4vw,32px)!important;letter-spacing:-.02em}
+.pro-view #regenInfo,.pro-view #regenStats{font-size:13px}
+.pro-view #defTop .gauge,.pro-view #fuelTop .gauge{padding:8px 10px}
+.pro-view #defTop .gauge>span:first-child,.pro-view #fuelTop .gauge>span:first-child{font-size:16px}
+.pro-view #defTop .gauge b,.pro-view #fuelTop .gauge b{font-size:clamp(34px,5.7vw,49px)}
+.pro-view #defTop .gauge small,.pro-view #fuelTop .gauge small{font-size:13px}
+.pro-view #alarm{padding:7px 9px;background:#112333}
+.pro-view #alarm h2,.pro-view #alerts{font-size:15px;line-height:1.25}
+.pro-view #alarm.warn{background:#392811}.pro-view #alarm.critical{background:#591820}
+.pro-view .dashboard-section{padding:6px;margin:5px 0;border-radius:11px}
+.pro-view .dashboard-section h2{font-size:17px;font-weight:750}
+.pro-view .dashboard-section .grid{gap:5px}
+.pro-view .dashboard-section .gauge{padding:8px 9px;overflow:hidden;border-radius:8px;min-height:64px}
+.pro-view .dashboard-section .gauge>span:first-child{font-size:clamp(15px,2.4vw,20px);font-weight:650;line-height:1.12;overflow-wrap:normal}
+.pro-view .dashboard-section .gauge b{font-size:clamp(30px,5.3vw,45px);line-height:1.04;letter-spacing:-.035em;white-space:nowrap}
+.pro-view .dashboard-section .gauge .unit{font-size:13px}
+.pro-view .dashboard-section .gauge small{font-size:11px}
+.pro-view .dashboard-section .gauge[data-extra="yes"],.pro-view .dashboard-secondary .dashboard-section[data-extra="yes"]{display:none!important}
+.pro-view #connectionPanel[data-live="yes"] .bar #connect,.pro-view #connectionPanel[data-live="yes"] .bar #scanMore,.pro-view #connectionPanel[data-live="yes"] .bar #testBle,.pro-view #connectionPanel[data-live="yes"] .bar #reconnect,.pro-view #connectionPanel[data-live="yes"] .bar #demo{display:none}
+.pro-view.show-tools #connectionPanel[data-live="yes"] .bar #connect,.pro-view.show-tools #connectionPanel[data-live="yes"] .bar #scanMore,.pro-view.show-tools #connectionPanel[data-live="yes"] .bar #testBle,.pro-view.show-tools #connectionPanel[data-live="yes"] .bar #reconnect,.pro-view.show-tools #connectionPanel[data-live="yes"] .bar #demo{display:inline-block}
+.pro-view #connectionPanel .bar button{font-size:13px;min-height:34px;padding:5px 9px}
+.pro-view #viewMode{background:#19516a;border-color:#68c6e9;font-weight:800}
+.pro-view #temps{grid-template-columns:repeat(2,minmax(0,1fr))}
+.pro-view .dashboard-secondary{grid-template-columns:1fr!important}
+.pro-view #economy{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.pro-view #mpgInfo{display:none}
+.pro-view #utility{display:none}.pro-view.show-tools #utility{display:block}
+@media(min-width:570px){
+.pro-view #temps{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.pro-view .dashboard-secondary{grid-template-columns:1fr 1fr!important}
+.pro-view #economy,.pro-view #emissions{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.pro-view.fit-on .dashboard-section .gauge>span:first-child{font-size:var(--fit-label)}
+.pro-view.fit-on .dashboard-section .gauge b{font-size:var(--fit-reading)}
+.pro-view.fit-on .dashboard-section .gauge .unit{font-size:var(--fit-unit)}
+.pro-view.fit-on .dashboard-section .gauge{min-height:0;padding:var(--fit-pad)}
+.pro-view.fit-on .dashboard-section h2{font-size:var(--fit-title)}
+.pro-view.fit-on #temps{grid-template-columns:repeat(var(--fit-temps),minmax(0,1fr))!important}
+.pro-view.fit-on #defTop .gauge b,.pro-view.fit-on #fuelTop .gauge b{font-size:var(--fit-tank)}
+.pro-view.fit-on #regenStatus{font-size:var(--fit-regen)!important}
+.pro-view.fit-on #regenInfo,.pro-view.fit-on #regenStats{font-size:var(--fit-status)}
+.pro-view.fit-on #defTop .gauge>span:first-child,.pro-view.fit-on #fuelTop .gauge>span:first-child{font-size:var(--fit-label)}
+.pro-view.fit-on #alarm h2,.pro-view.fit-on #alerts{font-size:max(13px,var(--fit-status))}
+}
+
+/* Clean v13: CSS-only sizing, no repeated geometry measurements during live polling. */
+@media(min-width:570px){
+ body.fit-on{--fit-label:clamp(14px,2.1vw,19px);--fit-reading:clamp(29px,4.7vw,43px);--fit-unit:12px;--fit-status:11px;--fit-title:17px;--fit-tank:clamp(32px,5vw,48px);--fit-regen:clamp(21px,3.4vw,30px);--fit-pad:6px;--fit-temps:4;--fit-secondary:2;--fit-across:3}
+ .pro-view.fit-on{--fit-temps:4;--fit-across:2}
+ .pro-view.fit-on .dashboard-section .gauge{overflow:hidden}
+}
+@media(min-width:1000px){body.fit-on{--fit-temps:6}.pro-view.fit-on{--fit-temps:5}}
+@media(min-width:570px) and (max-height:650px){body.fit-on{--fit-pad:4px;--fit-reading:clamp(27px,4vw,36px);--fit-label:clamp(13px,1.9vw,17px)}}
 </style></head><body><main><div id="dieselTop"><section class="panel" id="regenPanel" aria-live="polite"><h2 style="margin:0 0 8px">DPF regeneration</h2><div id="regenStatus" style="font-size:28px;font-weight:800">UNKNOWN</div><p id="regenInfo">Waiting for actual ECU regeneration status.</p><div id="regenStats" class="muted">Duration / peak DPF temperature: unavailable</div><small>High exhaust temperature alone does not confirm regeneration. No forced regeneration controls.</small></section><section id="defTop" aria-label="Diesel exhaust fluid tank level"></section><section id="fuelTop" aria-label="Diesel fuel tank level"></section></div>
-<header><a href="./index.html">← Joe's Toolbox</a><h1>Vehicle Command Center</h1><div class="muted">2020 GMC Sierra · LM2 Duramax 3.0L · Dashboard v12 · Experimental BlueDriver BLE</div></header>
-<div class="panel" id="connectionPanel"><span id="state" class="flag" role="status">DISCONNECTED</span><p id="message">Park safely, switch ignition on, close the official BlueDriver app, then connect.</p><div class="bar"><button id="connect" class="primary">Connect BlueDriver</button><button id="scanMore" type="button">Scan all Bluetooth devices</button><button id="testBle" type="button">Test Bluetooth only</button><button id="reconnect">Reconnect</button><button id="stop">Disconnect</button><button id="demo">Preview demo</button><button id="full">Full screen</button><button id="fit" aria-pressed="true">Fit screen</button><button id="split">Split gauges</button><button id="tools">Settings</button></div><details id="connectionOptions"><summary>Connection and display options</summary><label><input id="keepAwake" type="checkbox" checked> Keep screen on while this dashboard is open (including reconnecting and offline)</label><label><input id="recover" type="checkbox" checked> Recover dropped connections automatically</label><label><input id="basicOnly" type="checkbox"> Basic readings only (connection recovery mode)</label><label><input id="transProbe" type="checkbox" checked> Try GM transmission temperature (experimental; compare with factory display)</label><label><input id="allSensors" type="checkbox"> Show all candidate gauges (including unsupported)</label><small id="fitStatus">Fit mode automatically maximizes text size on the unfolded screen.</small><label><input id="auto" type="checkbox"> Automatically connect to remembered BlueDriver on opening (requires first approval)</label><label><input id="voice" type="checkbox"> Spoken advisory alerts while dashboard is open</label></details><small id="device">No vehicle data received.</small><small id="awakeStatus" role="status">Screen awake: checking…</small><small id="offlineStatus" role="status">Checking offline availability…</small><div id="demoBanner" class="demo hide">DEMO ONLY — invented sample readings, not your vehicle.</div></div>
+<header><a href="./index.html">← Joe's Toolbox</a><h1>Vehicle Command Center</h1><div class="muted">2020 GMC Sierra · LM2 Duramax 3.0L · Dashboard v13 Clean · Experimental BlueDriver BLE</div></header>
+<div class="panel" id="connectionPanel"><span id="state" class="flag" role="status">DISCONNECTED</span><p id="message">Park safely, switch ignition on, close the official BlueDriver app, then connect.</p><div class="bar"><button id="connect" class="primary">Connect BlueDriver</button><button id="scanMore" type="button">Scan all Bluetooth devices</button><button id="testBle" type="button">Test Bluetooth only</button><button id="reconnect">Reconnect</button><button id="stop">Disconnect</button><button id="demo">Preview demo</button><button id="full">Full screen</button><button id="fit" aria-pressed="true">Fit screen</button><button id="viewMode" aria-pressed="true">All sensors</button><button id="split">Split gauges</button><button id="tools">Settings</button></div><details id="connectionOptions"><summary>Connection and display options</summary><label><input id="keepAwake" type="checkbox" checked> Keep screen on while this dashboard is open (including reconnecting and offline)</label><label><input id="recover" type="checkbox" checked> Recover dropped connections automatically</label><label><input id="basicOnly" type="checkbox"> Basic readings only (connection recovery mode)</label><label><input id="transProbe" type="checkbox" checked> Try GM transmission temperature (experimental; compare with factory display)</label><label><input id="allSensors" type="checkbox"> Show all candidate gauges (including unsupported)</label><small id="fitStatus">Fit mode automatically maximizes text size on the unfolded screen.</small><label><input id="auto" type="checkbox"> Automatically connect to remembered BlueDriver on opening (requires first approval)</label><label><input id="voice" type="checkbox"> Spoken advisory alerts while dashboard is open</label></details><small id="device">No vehicle data received.</small><small id="awakeStatus" role="status">Screen awake: checking…</small><small id="offlineStatus" role="status">Checking offline availability…</small><div id="demoBanner" class="demo hide">DEMO ONLY — invented sample readings, not your vehicle.</div></div>
 <div class="status-grid"><section class="panel alarm" id="alarm" aria-live="polite"><h2 style="margin:0 0 8px">Alarm panel</h2><div id="alerts">Monitoring unavailable until live readings arrive.</div><small>Supplemental only. Follow the factory warning lights and owner’s manual. Set up while parked.</small></section>
 </div><section class="dashboard-section"><div class="section-title"><h2>01 · Temperatures</h2><small id="sensorSummary">Detecting available sensors</small></div><div class="grid" id="temps"></div></section><div class="dashboard-secondary"><section class="dashboard-section" id="economyPanel"><h2>02 · Fuel &amp; economy</h2><div class="grid" id="economy"></div><p class="muted" id="mpgInfo">Trip MPG uses sampled speed and measured fuel rate.</p><button id="resetTrip">Reset trip</button></section><section class="dashboard-section"><h2>03 · Engine &amp; electrical</h2><div class="grid" id="other"></div></section><section class="dashboard-section"><h2>04 · Emissions &amp; diagnostics</h2><div class="grid" id="emissions"></div><p id="mil">Check engine / reported DTC count: unavailable</p></section></div><div id="exhaust" hidden></div><div id="utility"><details class="panel"><summary>Observed regeneration history</summary><p class="muted">Only events observed while connected are recorded. An event may have started before connection or ended after disconnect.</p><div id="history"></div><button id="clearHistory">Clear history</button></details>
 <details class="panel"><summary>Diagnostic information</summary><small>Standard engine MIL status only; this version does not scan ABS, airbags, or manufacturer-specific codes.</small><p id="trans">Transmission temperature is an experimental GM Mode 22 reading (221940); verify against the factory display. DEF level and temperature use standard PID 9B, with level fallback PID 85. Other manufacturer-specific temperatures require verified definitions and adapter support.</p><a href="https://play.google.com/store/apps/details?id=com.lemurmonitors.bluedriver">Official BlueDriver app</a></details>
@@ -139,7 +199,7 @@ let auto=true;try{auto=localStorage.getItem('vc_auto')!=='0'}catch{}$('auto').ch
 const svc='331a36f5-2459-45ea-9d95-6142f0c4b307',cmdId='a9da6040-0823-4995-94ec-9ce41ca28833',dataId='a73e9a10-628f-4494-a099-12efaf72258f',pairId='12e868e7-c926-4906-96c8-a7ee81d4b1b3',statusId='75a9f022-af03-4e41-b4bc-9de90a47d50b';
 let dev=null,cmd=null,rx=null,bleStatus=null,pending=null,mode='idle',session=0,vals={},mil=null,known={},seen=new Set(),lines=[],lastAlarm='',lastValid=0,ack=Promise.resolve();
 function log(s){lines.push(new Date().toLocaleTimeString()+' '+s);if(lines.length>80)lines.shift();$('log').textContent=lines.join('\n')}
-$('copyBleLog').onclick=async()=>{try{await navigator.clipboard.writeText('LM2 dashboard v12\n'+$('state').textContent+'\n'+$('message').textContent+'\n'+$('log').textContent);$('copyBleStatus').textContent=' Copied. Paste into chat for troubleshooting.'}catch{$('copyBleStatus').textContent=' Copy not available; select the log or take a screenshot.'}};
+$('copyBleLog').onclick=async()=>{try{await navigator.clipboard.writeText('LM2 dashboard v13 Clean\n'+$('state').textContent+'\n'+$('message').textContent+'\n'+$('log').textContent);$('copyBleStatus').textContent=' Copied. Paste into chat for troubleshooting.'}catch{$('copyBleStatus').textContent=' Copy not available; select the log or take a screenshot.'}};
 function state(s,msg){$('state').textContent=s;$('message').textContent=msg;$('connectionPanel').dataset.live=s.startsWith('LIVE')?'yes':'no'}
 function codec(a){return Uint8Array.from(a,b=>b===13||b===62?b:b^38)}
 function write(c,b){return c.properties.writeWithoutResponse?c.writeValueWithoutResponse(b):c.writeValueWithResponse(b)}
@@ -156,7 +216,7 @@ function render(){renderRegen();let issues=[];for(const d of defs){let k=d[0],v=
 $('sensorSummary').textContent=defs.filter(d=>d[5]==='°F'&&fresh(d[0])!==null).length+(mode==='demo'?' sample temperatures':' current temperatures');let m=mil&&Date.now()-mil.t<60000?mil:null;$('mil').textContent=m?'Check engine: '+(m.on?'ON':'off')+' · reported emissions DTC count: '+m.count+(mode==='demo'?' (sample)':''):'Check engine / reported DTC count: unavailable';if(m&&m.on)issues.push('Check engine light reported ON. Follow factory guidance.');
 const tankCritical=['defLevel','fuelLevel'].some(k=>{const v=fresh(k);return v!==null&&v>=0&&v<=10});const n=defs.filter(d=>fresh(d[0])!==null&&d[0]!=='transmission').length;const msg=issues.length?issues.join(' • '):n?'No configured advisory limits exceeded in '+n+' current readings. Other faults may be present.':'Monitoring unavailable — no current readings.';$('alerts').textContent=msg;$('alarm').className='panel alarm'+((m&&m.on)||tankCritical?' critical':issues.length?' warn':'');let spoken=issues.join('. ');if(mode==='live'&&spoken&&spoken!==lastAlarm&&$('voice').checked&&'speechSynthesis'in window){try{speechSynthesis.speak(new SpeechSynthesisUtterance(spoken))}catch{}}lastAlarm=spoken;
 $('demoBanner').classList.toggle('hide',mode!=='demo');$('connect').disabled=mode==='connecting'||mode==='live'||mode==='selecting';$('reconnect').disabled=mode==='connecting'||mode==='live'||mode==='selecting';$('demo').disabled=mode==='connecting'||mode==='live'||mode==='selecting';
-$('device').textContent=mode==='demo'?'Sample values only':lastValid?'Last valid data: '+new Date(lastValid).toLocaleTimeString():'No vehicle data received.';renderFocus();scheduleFit()}
+$('device').textContent=mode==='demo'?'Sample values only':lastValid?'Last valid data: '+new Date(lastValid).toLocaleTimeString():'No vehicle data received.';renderFocus()}
 function reset(){regen=null;event=null;lastRegenSpeech='';trip={mi:0,gal:0,t:0,s:null,r:null};$('mpgInfo').textContent='Average MPG uses sampled road speed and measured fuel rate; missing data is excluded.';vals={};mil=null;known={};seen.clear();lastValid=0;lastAlarm=''}
 let retryTimer=null,retryCount=0,wantConnection=false,disconnectHandler=null,wake=null;const cooldown=new Map();let activeQuery='';let wakePending=false,wakeRetryAt=0,wakePageActive=true;
 try{$('keepAwake').checked=localStorage.getItem('vc_keep_awake')!=='0'}catch{}
@@ -194,42 +254,42 @@ $('connect').onclick=()=>pick(false);$('scanMore').onclick=()=>pick(true);$('tes
 setInterval(()=>{if(mode==='demo'){for(const k in vals)vals[k].t=Date.now();if(mil)mil.t=Date.now();if(regen)regen.t=Date.now();if(event)event.last=Date.now()}render()},1000);
 document.addEventListener('visibilitychange',()=>{wakeRetryAt=0;keepScreen();if(!document.hidden){startupConnect();if(wantConnection&&mode==='idle'&&!retryTimer&&$('recover').checked&&dev)run(dev)}});$('keepAwake').onchange=()=>{try{localStorage.setItem('vc_keep_awake',$('keepAwake').checked?'1':'0')}catch{}wakeRetryAt=0;keepScreen()};$('allSensors').onchange=render;$('recover').onchange=()=>{if(!$('recover').checked){clearTimeout(retryTimer);retryTimer=null;if(mode==='idle')state('DISCONNECTED','Auto-reconnect disabled.')}else if(wantConnection&&mode==='idle'&&dev&&!document.hidden)run(dev)};$('full').onclick=async()=>{try{if(document.fullscreenElement){await document.exitFullscreen()}else await document.documentElement.requestFullscreen()}catch(e){document.body.classList.toggle('dashboard-full')}};document.addEventListener('fullscreenchange',()=>{document.body.classList.toggle('dashboard-full',!!document.fullscreenElement);$('full').textContent=document.fullscreenElement?'Exit full screen':'Full screen'});window.addEventListener('pagehide',()=>{wakePageActive=false;releaseScreen();if(mode==='live'||mode==='connecting')stop()});window.addEventListener('pageshow',()=>{wakePageActive=true;wakeRetryAt=0;keepScreen()});setInterval(keepScreen,15000);
 let focusKeys=['transmission','coolant'],splitMode=false,fitEnabled=true,fitQueued=false,lastLayout='';
-try{fitEnabled=localStorage.getItem('vc_fit')!=='0'}catch{}
-function availableKeys(){return defs.filter(d=>!$('g_'+d[0]).hidden).map(d=>d[0])}
+try{fitEnabled=localStorage.getItem('vc_fit_clean')!=='0'}catch{}
+let proView=true;try{proView=localStorage.getItem('vc_pro_view_clean')!=='0'}catch{}
+const priorityKeys=new Set(['defLevel','fuelLevel','coolant','oil','transmission','ambient','intake','defTemp','dpf0','dpf1','egt00','egt01','egt02','egt03','avgmpg','instantmpg','regenTrigger','regenMinutes']);
+for(const d of defs){const g=$('g_'+d[0]);g.dataset.extra=priorityKeys.has(d[0])?'no':'yes'}
+$('other').closest('.dashboard-section').dataset.extra='yes';
+function updateView(){document.body.classList.toggle('pro-view',proView);$('viewMode').textContent=proView?'All sensors':'Driving view';$('viewMode').setAttribute('aria-pressed',String(proView))}
+updateView();
+$('viewMode').onclick=()=>{proView=!proView;try{localStorage.setItem('vc_pro_view_clean',proView?'1':'0')}catch{}updateView();lastLayout='';applyFit()};
+function availableKeys(){return defs.filter(d=>!$('g_'+d[0]).hidden&&(!proView||priorityKeys.has(d[0]))).map(d=>d[0])}
 function focusOptions(slot){const select=$('focusSelect'+slot),keys=[...new Set([...availableKeys(),focusKeys[slot]])];const signature=keys.join(',');if(select.dataset.keys!==signature){select.replaceChildren();for(const k of keys){const d=defs.find(x=>x[0]===k);if(!d)continue;const opt=document.createElement('option');opt.value=k;opt.textContent=d[1];select.append(opt)}select.dataset.keys=signature}select.value=focusKeys[slot]}
 function openFocus(key,split){focusKeys[0]=key||focusKeys[0];if(focusKeys[1]===focusKeys[0])focusKeys[1]=availableKeys().find(k=>k!==focusKeys[0])||'oil';splitMode=split;const dlg=$('focusDialog');if(!dlg.open)dlg.showModal();renderFocus()}
 function renderFocus(){const dlg=$('focusDialog');if(!dlg.open)return;$('focusPanes').classList.toggle('split',splitMode);$('focusPane1').hidden=!splitMode;$('focusMode').textContent=splitMode?'Two live gauges':'Full-screen gauge';$('focusSplit').textContent=splitMode?'Single gauge':'Split screen';$('focusRegen').textContent=$('regenStatus').textContent;$('focusRegen').parentElement.classList.toggle('active',!!(regen&&regen.on&&Date.now()-regen.t<25000));$('focusRegenDetails').textContent=$('regenStats').textContent;const dl=fresh('defLevel');$('focusDef').textContent='DEF · '+(dl===null?'—':dl.toFixed(0)+'%')+' · '+tankMessage(dl);displayTank($('focusDef'),dl);const fl=fresh('fuelLevel');$('focusFuel').textContent='Diesel · '+(fl===null?'—':fl.toFixed(0)+'%')+' · '+tankMessage(fl);displayTank($('focusFuel'),fl);$('focusAlarm').textContent=$('alerts').textContent;$('focusConnection').textContent=$('state').textContent+' · '+$('awakeStatus').textContent+(mode==='demo'?' · SAMPLE VALUES':'');for(let slot=0;slot<(splitMode?2:1);slot++){focusOptions(slot);const k=focusKeys[slot],d=defs.find(x=>x[0]===k);if(!d)continue;const v=fresh(k);$('focusValue'+slot).textContent=v===null?'—':v.toFixed(d[7]);$('focusUnit'+slot).textContent=d[5];$('focusSource'+slot).textContent=$('s_'+k).textContent+(mode==='demo'?' · DEMO ONLY':'');const pane=$('focusPane'+slot);pane.classList.toggle('stale',v===null);pane.classList.toggle('warn',$('g_'+k).classList.contains('warn'));pane.classList.toggle('tank-gauge',tankKeys.has(k));pane.dataset.band=tankKeys.has(k)?tankBand(v):'unknown';$('focusMeter'+slot).hidden=!barKeys.has(k);$('focusFill'+slot).style.width=bounded(v)+'%'}}
 for(let slot=0;slot<2;slot++)$('focusSelect'+slot).onchange=e=>{focusKeys[slot]=e.target.value;renderFocus()};
 $('focusClose').onclick=()=>$('focusDialog').close();$('focusSplit').onclick=()=>{splitMode=!splitMode;if(focusKeys[0]===focusKeys[1])focusKeys[1]=availableKeys().find(k=>k!==focusKeys[0])||'oil';renderFocus()};$('split').onclick=()=>openFocus(focusKeys[0],true);
-function fitCandidates(width){
- const maxCols=width>=1000?8:width>=730?7:6;
- const choices=[];for(let c=4;c<=maxCols;c++){choices.push({temps:c,across:3,secondary:2},{temps:c,across:3,secondary:3},{temps:c,across:1,secondary:c})}return choices
-}
-function setFitStyle(main,c,n){
- const styles={'--fit-temps':c.temps,'--fit-across':c.across,'--fit-secondary':c.secondary,'--fit-label':n+'px','--fit-reading':Math.round(n*1.95)+'px','--fit-unit':Math.max(10,Math.round(n*.75))+'px','--fit-status':Math.max(10,Math.round(n*.68))+'px','--fit-title':Math.max(13,Math.round(n*1.04))+'px','--fit-tank':Math.round(n*2.25)+'px','--fit-regen':Math.round(n*1.45)+'px','--fit-pad':Math.max(3,Math.round(n*.28))+'px'};
- for(const [k,v] of Object.entries(styles))main.style.setProperty(k,String(v))
-}
-function applyFit(){fitQueued=false;const width=window.innerWidth,height=Math.min(window.innerHeight,window.visualViewport?.height||window.innerHeight),wide=width>=570;document.body.classList.toggle('fit-on',fitEnabled&&wide);$('fit').setAttribute('aria-pressed',String(fitEnabled));$('fit').textContent=fitEnabled?'Fit: max text':'Fit: off';const keys=availableKeys();const signature=[width,Math.floor(height),fitEnabled,keys.map(k=>{const v=$('v_'+k).textContent;return k+':'+v.length+':'+$('g_'+k).classList.contains('live')+':'+$('g_'+k).classList.contains('warn')}).join(','),document.body.classList.contains('show-tools'),$('alerts').textContent,$('state').textContent,$('regenStatus').textContent,$('regenStats').textContent,mode].join('|');if(signature===lastLayout)return;lastLayout=signature;const main=document.querySelector('main');main.style.zoom='1';document.body.classList.remove('dense');if(!fitEnabled||!wide||document.body.classList.contains('show-tools'))return;
- const gauges=keys.map(k=>$('g_'+k));const fits=()=>main.getBoundingClientRect().height<=height-2&&main.scrollWidth<=width+2&&gauges.every(g=>g.scrollWidth<=g.clientWidth+2);
- let best=null;const choices=fitCandidates(width);
- for(const c of choices){let lo=11,hi=23;while(lo<=hi){const n=(lo+hi)>>1;setFitStyle(main,c,n);if(fits()){if(!best||n>best.n||(n===best.n&&c.across>best.c.across))best={c,n};lo=n+1}else hi=n-1}}
- if(best){setFitStyle(main,best.c,best.n);$('fitStatus').textContent='Largest measured fit: '+best.n+' px labels / '+Math.round(best.n*1.95)+' px readings.'}
- else{const c={temps:width>=730?7:6,across:3,secondary:3};setFitStyle(main,c,11);$('fitStatus').textContent='Too many readings for one legible screen; scroll to see the remaining gauges.'}
+function applyFit(){
+ fitQueued=false;
+ const wide=window.innerWidth>=570;
+ document.body.classList.toggle('fit-on',fitEnabled&&wide);
+ $('fit').setAttribute('aria-pressed',String(fitEnabled));
+ $('fit').textContent=fitEnabled?'Fit: large text':'Fit: off';
+ $('fitStatus').textContent='Responsive large-text layout. Scroll if additional readings need space.';
 }
 function scheduleFit(){if(!fitQueued){fitQueued=true;requestAnimationFrame(applyFit)}}
-$('fit').onclick=()=>{fitEnabled=!fitEnabled;try{localStorage.setItem('vc_fit',fitEnabled?'1':'0')}catch{}lastLayout='';applyFit()};
+$('fit').onclick=()=>{fitEnabled=!fitEnabled;try{localStorage.setItem('vc_fit_clean',fitEnabled?'1':'0')}catch{}lastLayout='';applyFit()};
 $('tools').onclick=()=>{document.body.classList.toggle('show-tools');if(!fitEnabled||window.innerWidth<570){$('connectionOptions').open=!$('connectionOptions').open}lastLayout='';applyFit()};
-window.addEventListener('resize',()=>{lastLayout='';scheduleFit()});window.visualViewport?.addEventListener('resize',()=>{lastLayout='';scheduleFit()});document.addEventListener('fullscreenchange',()=>{lastLayout='';scheduleFit()});render();keepScreen();startupConnect();
+window.addEventListener('resize',()=>{lastLayout='';scheduleFit()});window.visualViewport?.addEventListener('resize',()=>{lastLayout='';scheduleFit()});document.addEventListener('fullscreenchange',()=>{lastLayout='';scheduleFit()});render();startupConnect();keepScreen();scheduleFit();
 
 // This standalone dashboard needs no remote scripts, fonts or APIs.
 async function checkOffline(){
  const el=$('offlineStatus');
  if(!('serviceWorker' in navigator)||!('caches' in window)){el.textContent='Offline installation unavailable in this browser.';return}
  try{
-  const cache=await caches.open('roadtower-offline-v74');
+  const cache=await caches.open('roadtower-offline-v75');
   const cached=await cache.match(new URL('./vehicle-command.html',location.href));
   let installed=false;
-  if(cached){const html=await cached.text();installed=html.includes('Dashboard v12')}
+  if(cached){const html=await cached.text();installed=html.includes('Dashboard v13 Clean')}
   el.textContent=(navigator.onLine?'Online':'Offline')+' · '+(installed&&navigator.serviceWorker.controller?'Dashboard saved for offline use':'Offline setup pending; open once online and reload.');
   const reg=await navigator.serviceWorker.getRegistration()||await navigator.serviceWorker.register('./sw.js');
   if(navigator.onLine)reg.update().catch(()=>{});
