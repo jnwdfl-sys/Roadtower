@@ -2,8 +2,8 @@
    Repeater data lives in IndexedDB, independently of service-worker cache.
    OpenStreetMap tiles are intentionally NOT bulk cached for offline use.
 */
-const VERSION='roadtower-offline-v75';
-const SHELL=['./','./index.html','./bloodtracker.html','./anti-surveillance.html','./bible-resources.html','./roadtower.html','./activity.html','./vehicle-command.html','./repeaters.js','./gmrs-directory.json','./offline-maps.js','./live-layers.js','./nearest-plane.js','./cb-range.js','./storm-health.js','./aprs-tracker.js','./panel-layout.js','./roadtower-pro.css','./roadtower-pro.js'];
+const VERSION='roadtower-offline-v76';
+const SHELL=['./','./index.html','./bloodtracker.html','./anti-surveillance.html','./bible-resources.html','./roadtower.html','./activity.html','./vehicle-command.html','./vehicle-command-v14.html','./vehicle-command-v15.html','./repeaters.js','./gmrs-directory.json','./offline-maps.js','./live-layers.js','./nearest-plane.js','./cb-range.js','./storm-health.js','./aprs-tracker.js','./panel-layout.js','./roadtower-pro.css','./roadtower-pro.js'];
 const LEAFLET=[
  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
@@ -11,8 +11,8 @@ const LEAFLET=[
 self.addEventListener('install',event=>{
  event.waitUntil((async()=>{
   const cache=await caches.open(VERSION);
-  await Promise.all(['./index.html','./vehicle-command.html'].map(u=>cache.add(new Request(new URL(u,self.location.href),{cache:'reload'}))));
-  await Promise.allSettled(SHELL.filter(u=>!['./index.html','./vehicle-command.html'].includes(u)).map(u=>cache.add(u)));
+  await Promise.all(['./index.html','./vehicle-command.html','./vehicle-command-v14.html','./vehicle-command-v15.html'].map(u=>cache.add(new Request(new URL(u,self.location.href),{cache:'reload'}))));
+  await Promise.allSettled(SHELL.filter(u=>!['./index.html','./vehicle-command.html','./vehicle-command-v14.html','./vehicle-command-v15.html'].includes(u)).map(u=>cache.add(u)));
   await Promise.allSettled(LEAFLET.map(async u=>{
    const response=await fetch(u,{mode:'cors'});
    if(response.ok)await cache.put(u,response);
@@ -40,7 +40,7 @@ self.addEventListener('fetch',event=>{
   const cache=await caches.open(VERSION);
   if(leafletRequest)return await cache.match(req)||fetch(req);
   try{
-   const isVehicle=url.origin===location.origin&&url.pathname.endsWith('/vehicle-command.html');
+   const isVehicle=url.origin===location.origin&&/\/vehicle-command(?:-v\d+)?\.html$/.test(url.pathname);
    const response=await fetch(isVehicle?new Request(req,{cache:'no-store'}):req);
    if(response.ok)await cache.put(req,response.clone());
    return response;
