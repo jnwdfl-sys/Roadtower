@@ -39,9 +39,52 @@ body{background:#07121c;font-variant-numeric:tabular-nums}
 .focus-tanks{display:grid;grid-template-columns:1fr 1fr;gap:5px}.focus-tanks strong{padding:7px;border:1px solid;border-radius:7px;font-size:15px!important}.focus-meter{height:14px;max-width:360px}.focus-pane.tank-gauge select{color:#edf7ff;background:#0b1e2c}
 @media(max-width:569px){#dieselTop{grid-template-columns:1fr 1fr}#dieselTop #regenPanel{grid-column:1/-1}#fuelTop .gauge b,#defTop .gauge b{font-size:30px}}
 @media(min-width:570px){.fit-on #dieselTop{grid-template-columns:minmax(0,1.65fr) minmax(0,1fr) minmax(0,1fr)}}
+
+/* V9: measured, responsive maximum-text layout, no whole-page scaling. */
+@media(min-width:570px){
+body.fit-on{--fit-label:15px;--fit-reading:30px;--fit-unit:12px;--fit-status:10px;--fit-title:16px;--fit-tank:38px;--fit-regen:23px;--fit-pad:5px;--fit-temps:5;--fit-secondary:2;--fit-across:3}
+.fit-on main{padding:4px;max-width:none}
+.fit-on #dieselTop{gap:4px;margin-bottom:3px}
+.fit-on #dieselTop #regenPanel{padding:4px 6px}
+.fit-on #regenPanel h2{font-size:var(--fit-title)}
+.fit-on #regenStatus{font-size:var(--fit-regen)!important;overflow-wrap:anywhere}
+.fit-on #regenInfo,.fit-on #regenStats{font-size:var(--fit-status);line-height:1.1}
+.fit-on #defTop .gauge,.fit-on #fuelTop .gauge{padding:4px 6px;gap:2px}
+.fit-on #defTop .gauge>span:first-child,.fit-on #fuelTop .gauge>span:first-child{font-size:var(--fit-label)}
+.fit-on #defTop .gauge b,.fit-on #fuelTop .gauge b{font-size:var(--fit-tank)}
+.fit-on #defTop .gauge small,.fit-on #fuelTop .gauge small{font-size:var(--fit-status)}
+.fit-on .tank-ticks{font-size:var(--fit-status)}
+.fit-on header h1{font-size:var(--fit-title)}
+.fit-on header a{font-size:12px}
+.fit-on #connectionPanel{margin:2px 0;padding:3px 4px}
+.fit-on #connectionPanel .bar{gap:3px;margin:2px 0}
+.fit-on #connectionPanel .bar button{font-size:12px;min-height:28px;padding:3px 6px}
+.fit-on #connectionPanel #device,.fit-on #offlineStatus,.fit-on #awakeStatus{font-size:10px}
+.fit-on #alarm{margin:0;padding:3px 5px}
+.fit-on #alarm h2,.fit-on #alerts{font-size:var(--fit-status)}
+.fit-on .dashboard-section{margin:2px 0;padding:3px}
+.fit-on .dashboard-section h2{font-size:var(--fit-title);margin:0 0 3px;padding-bottom:2px;line-height:1.1}
+.fit-on .section-title small{font-size:var(--fit-status)}
+.fit-on .dashboard-section #temps{grid-template-columns:repeat(var(--fit-temps),minmax(0,1fr))}
+.fit-on .dashboard-secondary{grid-template-columns:repeat(var(--fit-across),minmax(0,1fr))!important;gap:3px}
+.fit-on .dashboard-secondary .grid{grid-template-columns:repeat(var(--fit-secondary),minmax(0,1fr))!important}
+.fit-on .dashboard-section .grid{gap:3px}
+.fit-on .dashboard-section .gauge{padding:var(--fit-pad);min-height:0;overflow:visible}
+.fit-on .dashboard-section .gauge>span:first-child{font-size:var(--fit-label);line-height:1.08;overflow-wrap:anywhere}
+.fit-on .dashboard-section .gauge b{font-size:var(--fit-reading);line-height:1.02;margin:2px 2px 0 0;letter-spacing:-.035em;white-space:nowrap}
+.fit-on .dashboard-section .gauge .unit,.fit-on #dieselTop .gauge .unit{font-size:var(--fit-unit)}
+.fit-on .dashboard-section .gauge small{font-size:var(--fit-status);line-height:1.05;margin-top:2px}
+.fit-on .dashboard-section .gauge.live:not(.warn):not(#g_transmission) small{display:none}
+.fit-on .dashboard-section .gauge.live:not(.warn):not(#g_transmission){border-left:2px solid #407087}
+.fit-on .dashboard-section .gauge.stale small,.fit-on .dashboard-section .gauge.warn small{display:block}
+.fit-on #resetTrip{font-size:11px;padding:3px 5px}
+.fit-on #mil{font-size:var(--fit-status);margin:3px 0}
+.fit-on .percent-meter{margin-top:2px}
+.fit-on #demoBanner{padding:3px 5px;font-size:12px}
+}
 </style></head><body><main><div id="dieselTop"><section class="panel" id="regenPanel" aria-live="polite"><h2 style="margin:0 0 8px">DPF regeneration</h2><div id="regenStatus" style="font-size:28px;font-weight:800">UNKNOWN</div><p id="regenInfo">Waiting for actual ECU regeneration status.</p><div id="regenStats" class="muted">Duration / peak DPF temperature: unavailable</div><small>High exhaust temperature alone does not confirm regeneration. No forced regeneration controls.</small></section><section id="defTop" aria-label="Diesel exhaust fluid tank level"></section><section id="fuelTop" aria-label="Diesel fuel tank level"></section></div>
-<header><a href="./index.html">← Joe's Toolbox</a><h1>Vehicle Command Center</h1><div class="muted">2020 GMC Sierra · Categorized dashboard v8 · Experimental BlueDriver BLE</div></header>
-<div class="panel" id="connectionPanel"><span id="state" class="flag" role="status">DISCONNECTED</span><p id="message">Park safely, switch ignition on, close the official BlueDriver app, then connect.</p><div class="bar"><button id="connect" class="primary">Connect BlueDriver</button><button id="reconnect">Reconnect</button><button id="stop">Disconnect</button><button id="demo">Preview demo</button><button id="full">Full screen</button><button id="fit" aria-pressed="true">Fit screen</button><button id="split">Split gauges</button><button id="tools">Settings</button></div><details id="connectionOptions"><summary>Connection and display options</summary><label><input id="keepAwake" type="checkbox" checked> Keep screen on while this dashboard is open (including reconnecting and offline)</label><label><input id="recover" type="checkbox" checked> Recover dropped connections automatically</label><label><input id="transProbe" type="checkbox" checked> Try GM transmission temperature (experimental; compare with factory display)</label><label><input id="allSensors" type="checkbox"> Show all candidate gauges (including unsupported)</label><label><input id="auto" type="checkbox"> Automatically connect to remembered BlueDriver on opening (requires first approval)</label><label><input id="voice" type="checkbox"> Spoken advisory alerts while dashboard is open</label></details><small id="device">No vehicle data received.</small><small id="awakeStatus" role="status">Screen awake: checking…</small><small id="offlineStatus" role="status">Checking offline availability…</small><div id="demoBanner" class="demo hide">DEMO ONLY — invented sample readings, not your vehicle.</div></div>
+<header><a href="./index.html">← Joe's Toolbox</a><h1>Vehicle Command Center</h1><div class="muted">2020 GMC Sierra · Categorized dashboard v9 · Experimental BlueDriver BLE</div></header>
+<div class="panel" id="connectionPanel"><span id="state" class="flag" role="status">DISCONNECTED</span><p id="message">Park safely, switch ignition on, close the official BlueDriver app, then connect.</p><div class="bar"><button id="connect" class="primary">Connect BlueDriver</button><button id="reconnect">Reconnect</button><button id="stop">Disconnect</button><button id="demo">Preview demo</button><button id="full">Full screen</button><button id="fit" aria-pressed="true">Fit screen</button><button id="split">Split gauges</button><button id="tools">Settings</button></div><details id="connectionOptions"><summary>Connection and display options</summary><label><input id="keepAwake" type="checkbox" checked> Keep screen on while this dashboard is open (including reconnecting and offline)</label><label><input id="recover" type="checkbox" checked> Recover dropped connections automatically</label><label><input id="transProbe" type="checkbox" checked> Try GM transmission temperature (experimental; compare with factory display)</label><label><input id="allSensors" type="checkbox"> Show all candidate gauges (including unsupported)</label><small id="fitStatus">Fit mode automatically maximizes text size on the unfolded screen.</small><label><input id="auto" type="checkbox"> Automatically connect to remembered BlueDriver on opening (requires first approval)</label><label><input id="voice" type="checkbox"> Spoken advisory alerts while dashboard is open</label></details><small id="device">No vehicle data received.</small><small id="awakeStatus" role="status">Screen awake: checking…</small><small id="offlineStatus" role="status">Checking offline availability…</small><div id="demoBanner" class="demo hide">DEMO ONLY — invented sample readings, not your vehicle.</div></div>
 <div class="status-grid"><section class="panel alarm" id="alarm" aria-live="polite"><h2 style="margin:0 0 8px">Alarm panel</h2><div id="alerts">Monitoring unavailable until live readings arrive.</div><small>Supplemental only. Follow the factory warning lights and owner’s manual. Set up while parked.</small></section>
 </div><section class="dashboard-section"><div class="section-title"><h2>01 · Temperatures</h2><small id="sensorSummary">Detecting available sensors</small></div><div class="grid" id="temps"></div></section><div class="dashboard-secondary"><section class="dashboard-section" id="economyPanel"><h2>02 · Fuel &amp; economy</h2><div class="grid" id="economy"></div><p class="muted" id="mpgInfo">Trip MPG uses sampled speed and measured fuel rate.</p><button id="resetTrip">Reset trip</button></section><section class="dashboard-section"><h2>03 · Engine &amp; electrical</h2><div class="grid" id="other"></div></section><section class="dashboard-section"><h2>04 · Emissions &amp; diagnostics</h2><div class="grid" id="emissions"></div><p id="mil">Check engine / reported DTC count: unavailable</p></section></div><div id="exhaust" hidden></div><div id="utility"><details class="panel"><summary>Observed regeneration history</summary><p class="muted">Only events observed while connected are recorded. An event may have started before connection or ended after disconnect.</p><div id="history"></div><button id="clearHistory">Clear history</button></details>
 <details class="panel"><summary>Diagnostic information</summary><small>Standard engine MIL status only; this version does not scan ABS, airbags, or manufacturer-specific codes.</small><p id="trans">Transmission temperature is an experimental GM Mode 22 reading (221940); verify against the factory display. DEF level and temperature use standard PID 9B, with level fallback PID 85. Other manufacturer-specific temperatures require verified definitions and adapter support.</p><a href="https://play.google.com/store/apps/details?id=com.lemurmonitors.bluedriver">Official BlueDriver app</a></details>
@@ -150,21 +193,35 @@ function openFocus(key,split){focusKeys[0]=key||focusKeys[0];if(focusKeys[1]===f
 function renderFocus(){const dlg=$('focusDialog');if(!dlg.open)return;$('focusPanes').classList.toggle('split',splitMode);$('focusPane1').hidden=!splitMode;$('focusMode').textContent=splitMode?'Two live gauges':'Full-screen gauge';$('focusSplit').textContent=splitMode?'Single gauge':'Split screen';$('focusRegen').textContent=$('regenStatus').textContent;$('focusRegen').parentElement.classList.toggle('active',!!(regen&&regen.on&&Date.now()-regen.t<25000));$('focusRegenDetails').textContent=$('regenStats').textContent;const dl=fresh('defLevel');$('focusDef').textContent='DEF · '+(dl===null?'—':dl.toFixed(0)+'%')+' · '+tankMessage(dl);displayTank($('focusDef'),dl);const fl=fresh('fuelLevel');$('focusFuel').textContent='Diesel · '+(fl===null?'—':fl.toFixed(0)+'%')+' · '+tankMessage(fl);displayTank($('focusFuel'),fl);$('focusAlarm').textContent=$('alerts').textContent;$('focusConnection').textContent=$('state').textContent+' · '+$('awakeStatus').textContent+(mode==='demo'?' · SAMPLE VALUES':'');for(let slot=0;slot<(splitMode?2:1);slot++){focusOptions(slot);const k=focusKeys[slot],d=defs.find(x=>x[0]===k);if(!d)continue;const v=fresh(k);$('focusValue'+slot).textContent=v===null?'—':v.toFixed(d[7]);$('focusUnit'+slot).textContent=d[5];$('focusSource'+slot).textContent=$('s_'+k).textContent+(mode==='demo'?' · DEMO ONLY':'');const pane=$('focusPane'+slot);pane.classList.toggle('stale',v===null);pane.classList.toggle('warn',$('g_'+k).classList.contains('warn'));pane.classList.toggle('tank-gauge',tankKeys.has(k));pane.dataset.band=tankKeys.has(k)?tankBand(v):'unknown';$('focusMeter'+slot).hidden=!barKeys.has(k);$('focusFill'+slot).style.width=bounded(v)+'%'}}
 for(let slot=0;slot<2;slot++)$('focusSelect'+slot).onchange=e=>{focusKeys[slot]=e.target.value;renderFocus()};
 $('focusClose').onclick=()=>$('focusDialog').close();$('focusSplit').onclick=()=>{splitMode=!splitMode;if(focusKeys[0]===focusKeys[1])focusKeys[1]=availableKeys().find(k=>k!==focusKeys[0])||'oil';renderFocus()};$('split').onclick=()=>openFocus(focusKeys[0],true);
-function applyFit(){fitQueued=false;const wide=window.innerWidth>=570;document.body.classList.toggle('fit-on',fitEnabled&&wide);$('fit').setAttribute('aria-pressed',String(fitEnabled));$('fit').textContent=fitEnabled?'Fit: on':'Fit: off';const signature=[window.innerWidth,window.innerHeight,fitEnabled,availableKeys().join(','),document.body.classList.contains('show-tools')].join('|');if(signature===lastLayout)return;lastLayout=signature;const main=document.querySelector('main');main.style.zoom='1';document.body.classList.remove('dense');if(fitEnabled&&wide&&!document.body.classList.contains('show-tools')){if(main.getBoundingClientRect().height>window.innerHeight+3)document.body.classList.add('dense');const height=main.getBoundingClientRect().height;if(height>window.innerHeight+3)main.style.zoom=String(Math.max(.72,Math.min(1,(window.innerHeight-4)/height)))}}
+function fitCandidates(width){
+ const maxCols=width>=1000?8:width>=730?7:6;
+ const choices=[];for(let c=4;c<=maxCols;c++){choices.push({temps:c,across:3,secondary:2},{temps:c,across:3,secondary:3},{temps:c,across:1,secondary:c})}return choices
+}
+function setFitStyle(main,c,n){
+ const styles={'--fit-temps':c.temps,'--fit-across':c.across,'--fit-secondary':c.secondary,'--fit-label':n+'px','--fit-reading':Math.round(n*1.95)+'px','--fit-unit':Math.max(10,Math.round(n*.75))+'px','--fit-status':Math.max(10,Math.round(n*.68))+'px','--fit-title':Math.max(13,Math.round(n*1.04))+'px','--fit-tank':Math.round(n*2.25)+'px','--fit-regen':Math.round(n*1.45)+'px','--fit-pad':Math.max(3,Math.round(n*.28))+'px'};
+ for(const [k,v] of Object.entries(styles))main.style.setProperty(k,String(v))
+}
+function applyFit(){fitQueued=false;const width=window.innerWidth,height=Math.min(window.innerHeight,window.visualViewport?.height||window.innerHeight),wide=width>=570;document.body.classList.toggle('fit-on',fitEnabled&&wide);$('fit').setAttribute('aria-pressed',String(fitEnabled));$('fit').textContent=fitEnabled?'Fit: max text':'Fit: off';const keys=availableKeys();const signature=[width,Math.floor(height),fitEnabled,keys.map(k=>{const v=$('v_'+k).textContent;return k+':'+v.length+':'+$('g_'+k).classList.contains('live')+':'+$('g_'+k).classList.contains('warn')}).join(','),document.body.classList.contains('show-tools'),$('alerts').textContent,$('state').textContent,$('regenStatus').textContent,$('regenStats').textContent,mode].join('|');if(signature===lastLayout)return;lastLayout=signature;const main=document.querySelector('main');main.style.zoom='1';document.body.classList.remove('dense');if(!fitEnabled||!wide||document.body.classList.contains('show-tools'))return;
+ const gauges=keys.map(k=>$('g_'+k));const fits=()=>main.getBoundingClientRect().height<=height-2&&main.scrollWidth<=width+2&&gauges.every(g=>g.scrollWidth<=g.clientWidth+2);
+ let best=null;const choices=fitCandidates(width);
+ for(const c of choices){let lo=11,hi=23;while(lo<=hi){const n=(lo+hi)>>1;setFitStyle(main,c,n);if(fits()){if(!best||n>best.n||(n===best.n&&c.across>best.c.across))best={c,n};lo=n+1}else hi=n-1}}
+ if(best){setFitStyle(main,best.c,best.n);$('fitStatus').textContent='Largest measured fit: '+best.n+' px labels / '+Math.round(best.n*1.95)+' px readings.'}
+ else{const c={temps:width>=730?7:6,across:3,secondary:3};setFitStyle(main,c,11);$('fitStatus').textContent='Too many readings for one legible screen; scroll to see the remaining gauges.'}
+}
 function scheduleFit(){if(!fitQueued){fitQueued=true;requestAnimationFrame(applyFit)}}
 $('fit').onclick=()=>{fitEnabled=!fitEnabled;try{localStorage.setItem('vc_fit',fitEnabled?'1':'0')}catch{}lastLayout='';applyFit()};
 $('tools').onclick=()=>{document.body.classList.toggle('show-tools');if(!fitEnabled||window.innerWidth<570){$('connectionOptions').open=!$('connectionOptions').open}lastLayout='';applyFit()};
-window.addEventListener('resize',()=>{lastLayout='';scheduleFit()});document.addEventListener('fullscreenchange',()=>{lastLayout='';scheduleFit()});render();keepScreen();startupConnect();
+window.addEventListener('resize',()=>{lastLayout='';scheduleFit()});window.visualViewport?.addEventListener('resize',()=>{lastLayout='';scheduleFit()});document.addEventListener('fullscreenchange',()=>{lastLayout='';scheduleFit()});render();keepScreen();startupConnect();
 
 // This standalone dashboard needs no remote scripts, fonts or APIs.
 async function checkOffline(){
  const el=$('offlineStatus');
  if(!('serviceWorker' in navigator)||!('caches' in window)){el.textContent='Offline installation unavailable in this browser.';return}
  try{
-  const cache=await caches.open('roadtower-offline-v68');
+  const cache=await caches.open('roadtower-offline-v69');
   const cached=await cache.match(new URL('./vehicle-command.html',location.href));
   let installed=false;
-  if(cached){const html=await cached.text();installed=html.includes('Categorized dashboard v8')}
+  if(cached){const html=await cached.text();installed=html.includes('Categorized dashboard v9')}
   el.textContent=(navigator.onLine?'Online':'Offline')+' · '+(installed&&navigator.serviceWorker.controller?'Dashboard saved for offline use':'Offline setup pending; open once online and reload.');
   const reg=await navigator.serviceWorker.getRegistration()||await navigator.serviceWorker.register('./sw.js');
   if(navigator.onLine)reg.update().catch(()=>{});
