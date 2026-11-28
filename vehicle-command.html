@@ -62,7 +62,7 @@ function transmissionBytes(raw){for(const line of raw.split(/[\r\n>]+/)){const h
 function put(k,v){if(typeof v==='number'&&Number.isFinite(v)){vals[k]={v,t:Date.now()};seen.add(k);lastValid=Date.now()}}
 function fresh(k){return vals[k]&&Date.now()-vals[k].t<25000?vals[k].v:null}
 function render(){renderRegen();let issues=[];for(const d of defs){let k=d[0],v=fresh(k),g=$('g_'+k);$('v_'+k).textContent=v===null?'—':v.toFixed(d[7]);$('s_'+k).textContent=v!==null?(mode==='demo'?'Sample':'Live · '+Math.floor((Date.now()-vals[k].t)/1000)+'s ago'):known[k]===false?'No response / unsupported':'No current data';let bad=v!==null&&Number.isFinite(limits[k])&&(k==='voltage'?v<limits[k]:v>limits[k]);g.className='gauge'+(v!==null?' live':seen.has(k)?' stale':'')+(bad?' warn':'');g.hidden=!$('allSensors').checked&&!['transmission','coolant','oil','ambient','intake','avgmpg','instantmpg','voltage','regenTrigger','regenMinutes'].includes(k)&&!seen.has(k);if(v===null&&seen.has(k))$('s_'+k).textContent='No fresh data'; if(k==='transmission')$('s_'+k).textContent=v===null?'Awaiting compatible GM data':mode==='demo'?'Sample':'Experimental · verify';if(bad)issues.push(d[1]+' crossed your advisory limit: '+v.toFixed(d[7])+' '+d[5])}
-$('sensorSummary').textContent=defs.filter(d=>d[5]==='°F'&&fresh(d[0])!==null).length+' live temperatures';let m=mil&&Date.now()-mil.t<60000?mil:null;$('mil').textContent=m?'Check engine: '+(m.on?'ON':'off')+' · reported emissions DTC count: '+m.count+(mode==='demo'?' (sample)':''):'Check engine / reported DTC count: unavailable';if(m&&m.on)issues.push('Check engine light reported ON. Follow factory guidance.');
+$('sensorSummary').textContent=defs.filter(d=>d[5]==='°F'&&fresh(d[0])!==null).length+(mode==='demo'?' sample temperatures':' current temperatures');let m=mil&&Date.now()-mil.t<60000?mil:null;$('mil').textContent=m?'Check engine: '+(m.on?'ON':'off')+' · reported emissions DTC count: '+m.count+(mode==='demo'?' (sample)':''):'Check engine / reported DTC count: unavailable';if(m&&m.on)issues.push('Check engine light reported ON. Follow factory guidance.');
 const n=defs.filter(d=>fresh(d[0])!==null&&d[0]!=='transmission').length;const msg=issues.length?issues.join(' • '):n?'No configured advisory limits exceeded in '+n+' current readings. Other faults may be present.':'Monitoring unavailable — no current readings.';$('alerts').textContent=msg;$('alarm').className='panel alarm'+(m&&m.on?' critical':issues.length?' warn':'');let spoken=issues.join('. ');if(mode==='live'&&spoken&&spoken!==lastAlarm&&$('voice').checked&&'speechSynthesis'in window){try{speechSynthesis.speak(new SpeechSynthesisUtterance(spoken))}catch{}}lastAlarm=spoken;
 $('demoBanner').classList.toggle('hide',mode!=='demo');$('connect').disabled=mode==='connecting'||mode==='live';$('reconnect').disabled=mode==='connecting'||mode==='live';$('demo').disabled=mode==='connecting'||mode==='live';
 $('device').textContent=mode==='demo'?'Sample values only':lastValid?'Last valid data: '+new Date(lastValid).toLocaleTimeString():'No vehicle data received.'}
@@ -101,12 +101,13 @@ async function checkOffline(){
  const el=$('offlineStatus');
  if(!('serviceWorker' in navigator)||!('caches' in window)){el.textContent='Offline installation unavailable in this browser.';return}
  try{
-  const reg=await navigator.serviceWorker.register('./sw.js');
   const cache=await caches.open('roadtower-offline-v64');
   const cached=await cache.match(new URL('./vehicle-command.html',location.href));
   let installed=false;
   if(cached){const html=await cached.text();installed=html.includes('Categorized dashboard v4')}
   el.textContent=(navigator.onLine?'Online':'Offline')+' · '+(installed&&navigator.serviceWorker.controller?'Dashboard saved for offline use':'Offline setup pending; open once online and reload.');
+  const reg=await navigator.serviceWorker.getRegistration()||await navigator.serviceWorker.register('./sw.js');
+  if(navigator.onLine)reg.update().catch(()=>{});
   if(reg.installing)reg.installing.addEventListener('statechange',()=>{if(reg.installing?.state==='activated'||reg.active)refreshOffline()});
  }catch(e){el.textContent='Offline cache unavailable: '+e.message}
 }
